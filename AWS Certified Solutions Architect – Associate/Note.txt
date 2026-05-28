@@ -1,0 +1,45 @@
+Access aws:
+    1) management console(protected by password + MFA)
+    2) cli (protected by access keys)
+    3) sdk (for code, protected by access keys)
+    Access key ID ~= username
+    Secret Access Key ~= password
+IAM:
+    IAM Security Tools:
+        iam credential report (account-level):
+            a report of lists all acc users and status of their credentials
+        iam Last Accessed in iam user detail (old name: access advisor)(user-level):
+            service permissions granted to a user. and service who last accessed.
+    IAM Guidelins Best Practices:
+        one physical user = one aws user
+        assign user to group, and assign permissions to group.
+        use and enforce MFA.
+        create and use Roles for giving permissions to AWS services.
+        Audit permissions of your account using credential report & Last accessed.
+        ** Never share iam users & access keys **
+    Summary:
+        Users: physical users, has a password for console.
+        Groups: contains users only.
+        Policies: json doc that outlines permissions for users to groups.
+        Roles: EC2 instances or aws services.
+        Security: MFA + password Policy.
+        cli: manage services using command line.
+        sdk: manage services using programming language.
+    Questions:
+        1)IAM Users don't have to belong to a User Group. => 
+            IAM User တစ်ယောက် create လုပ်ရင် group ထဲမထည့်လည်းရတယ်
+            Grammar:
+                don't have to => မလုပ်လည်းရတယ်, မလိုအပ်ဘူး
+                Not "မလုပ်ရဘူး"
+        2) IAM User Groups can contain IAM Users and other User Groups.
+            Ans is false because group can contain only users. not do hierarchy of groups.
+        3) An IAM policy consists of one or more statements. A statement in an IAM Policy consists of the following, 
+        EXCEPT:
+            effect,
+            Principal
+            Version
+            Action
+            Resource
+        Ans: Version. because Version is part of policy, not the statement.
+        Statement have Sid, Effect, Principal, Action, Resource and Condition.
+    
