@@ -42,4 +42,196 @@ IAM:
             Resource
         Ans: Version. because Version is part of policy, not the statement.
         Statement have Sid, Effect, Principal, Action, Resource and Condition.
-    
+EC2:
+    Security Groups:
+        as a "firewall" on ec2 instances.
+        control how traffic is allowed into or out of ec2.
+        only contain allow rules,
+        can reference by IP or by Security group.
+        Security Groups are VPC scoped.(Security Groups are locked down to a Region/VPC combination)
+            Security Group တစ်ခုဟာ
+            Region တစ်ခု + VPC တစ်ခု အတွင်းမှာပဲ အသုံးပြုနိုင်တယ်။
+                eg:
+                    သင်မှာ:
+                        Region: Tokyo (ap-northeast-1)
+                        VPC: Production-VPC
+                        ရှိတယ်ဆိုပါစို့။
+                        Security Group:
+                        WebServer-SG
+                        ကို create လုပ်လိုက်တယ်။
+                        ဒီ Security Group ကို:
+                        ✅ Tokyo Region ထဲက
+                        ✅ Production-VPC ထဲက
+                        EC2 တွေမှာပဲ attach လုပ်နိုင်တယ်။
+        Does live "outside" the EC2 - if traffic is blocked the EC2 instance won't see it.
+            Security Group က EC2 instance အတွင်းမှာ မဟုတ်ဘဲ
+            EC2 အပြင်ဘက်မှာ firewall အနေနဲ့ အလုပ်လုပ်တယ်။
+
+            Traffic တစ်ခုကို Security Group က block လုပ်လိုက်ရင်
+            EC2 instance ထိတောင် မရောက်ဘူး။
+                e.g:
+                EC2 တစ်လုံးရှိတယ်:
+
+                EC2 Web Server
+                IP: 10.0.1.10
+
+                Security Group Rule:
+
+                Allow:
+                HTTP (80) from anywhere
+
+                NO SSH (22)
+
+                Hacker က SSH နဲ့ connect လုပ်ဖို့ ကြိုးစားတယ်:
+
+                1. Internet
+                    ↓
+                2. Security Group
+                    ↓
+                3. EC2
+
+                Security Group က စစ်ဆေးတယ်။
+
+                SSH (22) ?
+                Not Allowed
+
+                ဆိုတော့:
+
+                ❌ Drop
+
+                EC2 က ဘာမြင်လဲ?
+
+                Nothing
+
+                EC2 ထိ request မရောက်ဘူး။
+                Log ထဲတောင် မရှိနိုင်ဘူး။
+                Security Group က:
+                instance level firewall
+
+                လို့ ခေါ်ပေမယ့်
+
+                တကယ်တမ်း:
+
+                EC2 Operating System ထဲမှာ run နေတာ မဟုတ်ဘူး
+
+                AWS networking layer မှာ run နေတာ။
+            Compare With Linux Firewall
+                Linux Server ထဲမှာ:
+
+                iptables
+                ufw
+                firewalld
+
+                သုံးရင်
+
+                traffic က server ထဲရောက်ပြီးမှ
+                OS firewall က block လုပ်တယ်
+
+                Security Group ဆိုရင်:
+
+                traffic က EC2 မရောက်ခင်
+                AWS က block လုပ်တယ်
+            ဒါကြောင့်:
+                ✅ Security Group = AWS network layer
+                ❌ Security Group = EC2 OS firewall မဟုတ်
+                Security Group = EC2 ရဲ့ အပြင်ဘက် gate keeper
+                မဝင်ခွင့်ပေးရင်
+                EC2 က request ရှိခဲ့တာတောင် မသိဘူး။
+        It's good to maintain one separate security group for SSH acccess.
+            SSH access အတွက် သီးသန့် Security Group တစ်ခုထားတာ ကောင်းတဲ့ practice ဖြစ်တယ်။
+            Security Group တစ်ခုထဲမှာ:
+                HTTP 80
+                HTTPS 443
+                SSH 22
+                အားလုံးပေါင်းထည့်ထားတယ်။
+                အလုပ်တော့လုပ်တယ်။
+                ဒါပေမယ့် manage လုပ်ရခက်လာနိုင်တယ်။
+                Better Practice
+                    Security Group ခွဲထားမယ်။
+
+                    Web Traffic SG
+                    Web-SG
+
+                    Allow:
+                    80
+                    443
+                    SSH SG
+                    SSH-SG
+
+                    Allow:
+                    22
+                    Only from:
+                    Your Office IP
+                    Your Home IP
+        How can administrators securely access EC2 instances in a private subnet?
+        ans: Bastion Host.
+            Bastion Host =  SSH ဝင်ဖို့အတွက် သီးသန့်ထားတဲ့ EC2 server
+            Without Bastion
+                Internet
+                ↓
+                Web1 (SSH open)
+                App1 (SSH open)
+                DB1 (SSH open)
+                Server အားလုံး Port 22 ဖွင့်ထားရမယ်။
+                ❌ Security မကောင်း
+            With Bastion Host
+                Internet
+                ↓
+                Bastion Host (Public Subnet)
+                ↓ SSH
+                Private EC2 Servers
+            Admin က:
+            Bastion Host ကို SSH ဝင်မယ်
+            Bastion Host ကနေ Private EC2 တွေကို SSH ထပ်ဝင်မယ်
+        regulate:
+            access to Ports,
+            authorised IP ranges
+        If Connection timed out
+            Request timed out
+            Timeout
+            =
+            Network/Security Problem
+            (Security Group, NACL, Routing)
+        If Connection Refused
+            =
+            Application Problem
+            (App not running, wrong port)
+        Classic Ports:
+            22 = SSH(Secure shell),
+            21 = FTP(File Transfer Protocol),
+            22 = SFTP(Secure FIle Transfer Protocol)
+            80 = HTTP(access unsecured websites)
+            443 = HTTPS(access secured websites)
+            3389 = RDP (Remote desktop Protocol) Login into a window instance.
+        User Data:
+            #! /bin/bash
+            # Use this for your user data (script from top to bottom)
+            # install httpd (linux 2 version)
+            yum update -y
+            yum install -y httpd
+            systemctl start httpd
+            systemctl enable httpd
+            echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+        SSH Summary:
+            Mac, Linux, Windows >= 10 can do with ssh.
+            for only Windows < 10, Putty should use.
+            for all, EC2 instance Connect can do.
+            for linux/mac osx,
+                cmd: ssh -i kms_key.pem ec2-user@public ip
+                to readonly file: chmod 0400 kms_key.pem
+                to edit file: use sudo
+                to check current user: whoami
+                to check current directory: pwd
+                to check internet access: ping google.com
+            for window > 10, all same flow of mac osx.
+                if reatonly action need, change file -> properties -> Security -> Advanced -> Disable inheritance -> Remove all... -> 
+                    Add -> owner user -> Apply -> OK -> 
+            for window < 10,
+                download: https://putty.org/index.html
+                Before Putty, we need to create ppk file from existing pem file.
+                first run PuTTYgen, Load -> kms_key.pem -> Save private key -> Yes -> file name set: name.ppk
+                Run Putty, Host Name -> ec2-user@public ip -> ssh -> Saved Sessions -> Save -> Accept -> login as: ec2-user, 
+                Connection's SSH's Auth -> choose ppk key.
+            EC2 Instance Connect:
+                
+
