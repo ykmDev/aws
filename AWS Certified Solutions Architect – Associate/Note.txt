@@ -233,5 +233,426 @@ EC2:
                 Run Putty, Host Name -> ec2-user@public ip -> ssh -> Saved Sessions -> Save -> Accept -> login as: ec2-user, 
                 Connection's SSH's Auth -> choose ppk key.
             EC2 Instance Connect:
+                run via ssh. So, need to alow SSH port 22 on security group.
+        IAM Role:
+            Never Don't add aws account with aws configure within instance.
+            Use Instance -> Security -> IAM Role.
+    Purchasing Options:
+        On-Demand Instances
+            short workload, predictable pricing. pay by second.
+        Reserved
+            1 ~ 3 yrs
+            Reserved instances: long workloads
+            Convertible reserved instances: long workloads with flexible instances.
+        Saving Plans
+            1 ~ 3 yrs.
+            long workload.
+        Spot Instances
+            short workloads, cheap, can lose instances(less reliable)
+        Dedicated Hosts:
+            book an entire physical server.
+        Dedicated Instances:
+            no other customers will share your hardware.
+        Capacity Reservations:
+            reserve capacity in specific AZ for any duration. 
+        More Note:
+            On-Demand:
+                Linux Or Window - per second, after first min.
+                all other OS - per hour.
+                has highest cost but no upfront payment.
+                no long term.
+                Recommended for short-term and un-interrupted workloads.
+            Reserved:
+                72% discount compared to On-demand.
+                can reserve specific attributes(instance type, region, tenancy, os)
+                payment options: noupfront, partial upfront, all upfront.
+                scope: regional or zonal
+                Recommended for steady-state applications(think database)
+                can buy and sell in reserved instance marketplace.
+            Savign Plans:
+                get discount based on long-term (same as RIs)
+                locked to a specific instance family, region.
+            Spot:
+                discount up to 90%.
+                most cost-efficient instances.
+                useful for workloads
+                    batch jobs
+                    data analysic
+                    image processing
+                    any distructed workloads
+                Spot Instance Request:
+                    Define max spot price and get the instance while current spot price < max
+                    the hourly spot price vaires based on offer.
+                    if current spot price > your max price you can choose to stop or terminate your instance with a 2 min grace period.
+                        explanation:
+                            What is a Spot Instance Request?
+                            Spot Instance ဆိုတာ
+                            AWS မှာ မသုံးနေတဲ့ EC2 server ကို
+                            ဈေးသက်သက်သာသာနဲ့ ငှားသုံးတာ။
+
+                            ဒါပေမယ့်
+
+                            AWS က server ပြန်လိုလာရင်
+
+                            "2 မိနစ်အတွင်း
+                            ပြန်ပေးပါ"
+
+                            လို့ ပြောနိုင်တယ်။
+
+                            သင်က
+
+                            အများဆုံး(max spot price)
+                            $0.30/hour
+                            ပဲပေးမယ်
+
+                            လို့ သတ်မှတ်ထားတယ်ဆိုပါစို့။
+
+                            Spot price က
+
+                            $0.20
+
+                            ဆိုရင်
+
+                            ✅ EC2 ရမယ်။
+
+                            ဒါပေမယ့်
+
+                            Spot price က
+
+                            $0.40
+
+                            ဖြစ်သွားရင်
+
+                            AWS က
+
+                            2 မိနစ်ပေးပြီး
+                            instance ကို
+                            Stop သို့မဟုတ် Terminate
+                            လုပ်နိုင်တယ်။
+                            During those 2 minutes you can:
+                                Save your work
+                                Upload files to S3
+                                Finish current tasks
+                                Shut down gracefully
+                            Because AWS suddenly needs those physical servers for:
+                                On-Demand customers
+                                Capacity Reservations
+                                Higher-priority workloads
+                            AWS must reclaim the capacity.
+                    How to terminate Spot Instances? you can only cancel spot instance requests that are open, active, disabled.
+                        explanation:
+                            One-Time vs Persistent Request
+
+                            This is the most important part.
+
+                            There are two request types.
+
+                            ① One-Time Request
+
+                            Imagine you tell AWS:
+
+                            I need one Spot Instance.
+
+                            AWS finds one.
+
+                            Spot Request
+                                │
+                                ▼
+                            Launch EC2
+
+                            Later, the instance is interrupted or terminated.
+
+                            What happens?
+
+                            Nothing.
+
+                            The request is finished.
+
+                            AWS does NOT launch another EC2.
+
+                            Example:
+
+                            Request
+                                │
+                            Launch EC2
+                                │
+                            Interrupted
+                                │
+                            Finished
+                            Myanmar
+
+                            One-Time ဆိုတာ
+
+                            တစ်ခါပဲ တောင်းတာ
+
+                            Instance ပျက်သွားရင်
+
+                            AWS က အသစ်ပြန်မဖန်တီးဘူး။
+                            ② Persistent Request
+
+                            Now imagine you tell AWS:
+
+                            I always want one Spot Instance running.
+
+                            AWS launches one.
+
+                            Spot Request
+                                │
+                                ▼
+                            EC2 Running
+
+                            If AWS interrupts it:
+
+                            EC2 Interrupted
+                                │
+                                ▼
+                            AWS automatically tries
+                            to launch another one
+
+                            As soon as capacity becomes available, AWS starts a replacement.
+
+                            Myanmar
+
+                            Persistent ဆိုတာ
+
+                            အမြဲတမ်း EC2 ရှိနေချင်တယ်။
+
+                            တစ်လုံးပျက်သွားရင်
+
+                            AWS က အသစ်တစ်လုံး
+                            ထပ်ရှာပြီး run ပေးမယ်။
+
+                            Step 3: Why Can't I Just Terminate the EC2?
+
+                            Suppose you have:
+
+                            Persistent Request
+                                    │
+                                    ▼
+                            Spot EC2
+
+                            You terminate the EC2 manually.
+
+                            What happens?
+
+                            AWS sees:
+
+                            The request still exists!
+
+                            So AWS launches another EC2.
+
+                            Terminate EC2
+                                │
+                                ▼
+                            AWS creates new EC2
+
+                            Many beginners are surprised by this behavior.
+
+                            To Stop Everything
+
+                            You must:
+
+                            Cancel the Spot Request
+                            Then terminate the Spot Instance (if it's still running)
+
+                            Otherwise AWS continues trying to satisfy the request.
+
+                            Step 4: What Does This Mean?
+
+                            Your note says:
+
+                            You can only cancel spot instance requests that are open, active, disabled.
+
+                            These are the request states.
+
+                            Open
+
+                            AWS is still looking for capacity.
+
+                            Need EC2
+                            Searching...
+
+                            No instance yet.
+
+                            Active
+
+                            AWS found capacity.
+
+                            Spot Request
+                                │
+                                ▼
+                            EC2 Running
+                            Disabled
+
+                            The request exists, but AWS isn't launching instances right now.
+
+                            Think of it as paused.
+
+                            Only these request states can be cancelled.
+
+                            If a request is already completed or cancelled, there's nothing left to cancel.
+
+                            Real Example
+
+                            Suppose you create:
+
+                            Persistent Request
+
+                            1 x t3.medium
+
+                            AWS launches:
+
+                            EC2 #1
+
+                            AWS later interrupts it.
+
+                            EC2 #1
+                            Stopped
+
+                            AWS automatically launches:
+
+                            EC2 #2
+
+                            You don't want any more Spot Instances.
+
+                            Wrong way:
+
+                            Terminate EC2 #2
+
+                            AWS immediately launches:
+
+                            EC2 #3
+
+                            Correct way:
+
+                            Cancel Persistent Request
+
+                            Then
+                            Terminate EC2
+                            Now AWS stops creating new instances.
+                    Spot Fleets:
+                        Fleet means A group of EC2 instances.
+                        Spot Instance အများကြီးကို
+                        တစ်ခါတည်း စီမံခန့်ခွဲတဲ့ service ဖြစ်တယ်။
+                        AWS ကို
+                        m5.large မရရင်
+                        c5.large သုံး
+                        ဒါလည်းမရရင်
+                        m6i.large သုံး
+                        AZ-a မရရင်
+                        AZ-b သုံး
+                        လို့ ပြောထားနိုင်တယ်။
+                        AWS က
+                        ရနိုင်တဲ့နေရာကနေ
+                        အလိုအလျောက်ရွေးပြီး
+                        100 လုံးပြည့်အောင် ကြိုးစားပေးတယ်။
+                        eg:
+                        Need 20 EC2
+                                │
+                                ▼
+                        Spot Fleet
+                                │
+                        ┌──────┼──────┐
+                        │      │      │
+                        ▼      ▼      ▼
+                        Pool1  Pool2  Pool3
+                        │      │      │
+                        5      8      7
+                                │
+                                ▼
+                        20 EC2 ✓
+                        You can tell AWS:
+                            Don't spend
+                            more than
+                            $0.25/hour
+                            Imagine you need:
+                            100 taxis
+
+                            Option 1:
+
+                            Only use Toyota Prius.
+
+                            If only 50 are available:
+
+                            ❌ You get 50 taxis.
+
+                            Option 2:
+
+                            Accept:
+
+                            Toyota
+                            Honda
+                            Nissan
+                            Mazda
+
+                            Now it's much easier to find 100 taxis.
+
+                            Spot Fleet works the same way.
+                            Example
+                                Need:
+                                10 servers
+                                Configuration:
+                                8 Spot
+                                2 On-Demand
+                            Spot Instance = one cheap server
+                            Spot Fleet = many cheap servers, intelligently managed
+                            | Spot Instance                     | Spot Fleet              |
+                            | --------------------------------- | ----------------------- |
+                            | One request                       | Many requests           |
+                            | One instance type                 | Multiple instance types |
+                            | One Availability Zone (typically) | Multiple AZs            |
+                            | Easier                            | Smarter                 |
+                            | Less available                    | Higher availability     |
+                        Strategies to allocate Spot Instances:
+                            lowestPrice
+                                ဈေးအသက်သာဆုံး
+                            diversified
+                                Pool အများကြီးမှာ
+                                ခွဲသုံး
+                            capacityOptimized
+                                Server အများဆုံးကျန်တဲ့ Pool
+                            priceCapacityOptimized
+                                Capacity များတဲ့ Pool တွေထဲက
+                                ဈေးအသက်သာဆုံးကိုရွေး
+                            Note:
+                                Lowest cost → ✅ lowestPrice
+                                High availability / Reduce interruption risk → ✅ diversified
+                                Lowest interruption rate → ✅ capacityOptimized
+                                Best practice / Recommended for most workloads → ✅ priceCapacityOptimized
+            Dedicated Host:
+                a physical server with ec2 full dedicated.
+                can use existing serverbound software(per-socket, per-core, vm license)
+                Purchasing options:
+                    on-demand: per second.
+                    reserved: 1 or 3 yrs(no upfront, partial upfront, all upfront)
+                most expensive option.
+                using for complicated licensing model(BYOL)
+            Dedicated Instances:
+                no control over instance placement(hardware)
+                may share hardware with other instances.
+            Capacity Reservations:
+                guarantee availability
+                Reserve EC2 capacity, NOT reserve a discount.
+                must pay normal On-Demand pricing.
+                Capacity Reservation = Reserve servers (capacity)
+                    Example
+                        Capacity Reservation ဆိုတာ
+                        EC2 server ကို
+                        ကြိုတင်နေရာဦးထားတာ
+                        ဖြစ်ပါတယ်။
+                        ဥပမာ
+                        မနက်ဖြန်
+                        10 EC2
+                        သေချာလိုတယ်ဆိုရင်
+                        ဒီနေ့ကတည်းက
+                        AWS ကို
+                        "ဒီ server 10 လုံး
+                        ငါ့အတွက် သိမ်းထားပါ"
+                        လို့ပြောထားတာပါ။
+            
+            
+    
+
+
                 
 

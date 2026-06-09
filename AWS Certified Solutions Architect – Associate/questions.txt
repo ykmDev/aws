@@ -1,0 +1,12 @@
+1) You have an e-commerce application with an OLTP database hosted on-premises. 
+This application has popularity which results in its database has thousands of requests per second.
+You want to migrate the database to an EC2 instance. Which EC2 Instance Type should you choose to 
+handle this high-frequency OLTP database?
+Compute Optimized
+Storage Optimized
+Memory Optimized
+General Purpose
+ans: Storage Optimized because:
+Storage Optimized EC2 instances are great for workloads requiring high, 
+sequential read/write access to large data sets on local storage.
+----------------------------------------------
