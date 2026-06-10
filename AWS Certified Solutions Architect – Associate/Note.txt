@@ -649,7 +649,286 @@ EC2:
                         "ဒီ server 10 လုံး
                         ငါ့အတွက် သိမ်းထားပါ"
                         လို့ပြောထားတာပါ။
+    Private vs Public IP(IPv4)
+        IP Address = House Address
+        networking has two IPS: IPv4 and IPv6.
+        IPv4 with three dots: 1.160.10.240
+            still most common format.
+            3.7 billion different addresss in public area.
+            [0-255].[0-255].[0-255].[0-255]
+        IPv6 very long: 3ffe:1900:4545:3:200:f8ff:fe21:67cf
+            newer and solve problems for IOT.
+        Private vs Public IP (IPv4) Fundamental Differences
+            Public IP:
+                Public IP means the machine can be identified on the internet (WWW) 
+                    Public IP ဆိုတာ Internet ပေါ်ကနေ တိုက်ရိုက်ရှာတွေ့နိုင်တဲ့ IP 
+                Must be unique across the whole web (not two machines can have the same public IP).
+                Can be geo-located easily
+            Private IP:
+                Private IP means the machine can only be identified on a private network only
+                    Private Network အတွင်းမှာပဲ အသုံးပြုတဲ့ IP
+                The IP must be unique across the private network
+                BUT two different private networks (two companies) can have the same IPs.
+                    Because they are different private networks. They never see each other.
+                Machines connect to WWW using a NAT + internet gateway (a proxy)
+                    using flow:
+                        Private EC2
+                            │
+                            ▼
+                        NAT Gateway
+                            │
+                            ▼
+                        Internet Gateway
+                            │
+                            ▼
+                        Internet
+                        Imagine:
+                            Private EC2
+                            10.0.1.10
+
+                            It wants to install updates.
+
+                            Destination: ubuntu.com
+
+                            But
+
+                            10.0.1.10
+                            is private.
+
+                            Internet doesn't know where it is.
+                        NAT means: Network Address Translation
+                            It changes:
+                            Private IP
+                            ↓
+                            Public IP
+                        Example
+                            Before NAT
+                            10.0.1.10
+
+                            After NAT
+                            54.12.90.8
+
+                            Internet sees:
+                            54.12.90.8
+
+                            not
+                            10.0.1.10
+                        Without NAT
+                            Private EC2
+                            10.0.1.10
+                            ↓
+                            Internet
+                            ❌ Doesn't know this IP
+                        Important:
+                            A Private EC2 can:
+                            ✅ Access Internet (through NAT Gateway)
+
+                            But
+                            ❌ Internet cannot start a connection to the Private EC2.
+
+                            This is why private subnets are much more secure.
+            Memory:
+                | Public IP                            | Private IP                                       |
+                | ------------------------------------ | ------------------------------------------------ |
+                | Reachable from Internet              | Not directly reachable from Internet             |
+                | Globally unique                      | Only unique inside the private network           |
+                | Used by Web Servers                  | Used by Databases, App Servers                   |
+                | Can receive inbound Internet traffic | Needs NAT Gateway for outbound Internet access   |
+                | Example: `54.x.x.x`                  | Example: `10.0.x.x`, `172.16.x.x`, `192.168.x.x` |
+                Public IP
+                    အိမ်လိပ်စာလိုပဲ
+
+                    ကမ္ဘာပေါ်က လူတိုင်း
+                    ရှာတွေ့နိုင်တယ်။
+                Private IP
+                    ကုမ္ပဏီအတွင်း
+                    အခန်းနံပါတ်လိုပဲ
+
+                    အပြင်က
+                    မမြင်နိုင်ဘူး။
+                NAT Gateway
+                    Private IP ကို
+                    Public IP အဖြစ်
+                    ဘာသာပြန်ပေးတဲ့
+                    Translator
+                    NAT Gateway
+                    =
+                    Private → Internet ✅
+                    Internet → Private ❌
+            Elastic IPs:
+                when stop/start ec2 instance -> change public ip.
+                if need fixed IP, will use Elastic IP. it never changes until you release it.
+                Elastic IP is pubilc IPv4 IP.
+                can attach it to one instance.
+                With an Elastic IP address, you can mask the failure of an instance or software by rapidly remapping the address to another instance in your account.
+                    "mask the failure" means enduser don't even know the server changed.
+                each aws account can have 5 Elastic IP by default. you can ask AWS to increase that.
+                Overall, try to avoid using Elastic IP:
+                    They often reflect poor architectural decisions.
+                        Why is Elastic IP considered a poor architecture?
+                            Imagine a company has:
+                            100 EC2 Servers
+
+                            Do you need:
+                            100 Elastic IPs?
+
+                            No.
+
+                            That's difficult to manage.
+
+                            AWS recommends:
+                            One Load Balancer
+                            ↓
+                            Many EC2
+                            instead.
+                            Better Solution is
+                                use a random public IP and register a DNS name to it.
+                                    Example
+                                        EC2:
+                                        Public IP
+                                        18.181.10.20
+
+                                        Instead of telling users:
+                                        18.181.10.20
+
+                                        You create DNS:
+                                        www.mycompany.com
+                                        ↓
+                                        18.181.10.20
+
+                                        If Public IP changes,
+                                        just update the DNS record.
+
+                                        Users still type:
+                                        www.mycompany.com
+
+                                        They never notice.
+                            Or, use a Load Balancer and don't use a public IP.
+                            Example
+                                Users
+                                │
+                                ▼
+                                Load Balancer
+                                │
+                                ┌─┴───────────┐
+                                ▼             ▼
+                                EC2-1       EC2-2
+                                Users never connect directly to EC2.
+                                They connect only to the Load Balancer.
+                                If EC2 fails,
+                                the Load Balancer sends traffic to another EC2 automatically.
+                                No need for Elastic IPs on each EC2.
+                                Imagine Facebook.
+                                    Do they give every server an Elastic IP?
+
+                                    No.
+
+                                    Millions of users connect to:
+                                    facebook.com
+                                    ↓
+                                    DNS
+                                    ↓
+                                    Load Balancer
+                                    ↓
+                                    Thousands of servers
+                Elastic IP = One stable address for one instance (or quickly moved to another instance).
+                Load Balancer = One stable endpoint for many instances.
+            private IP is for internal AWS Network.
+            pubilc IP is for wwww.
+            when we are doing SSH into ec2,
+                we can't use private IP, because we are not same network.
+                we can only use the public IP.
+    Placement Groups:
+        Placement Group ဆိုတာ
+        EC2 Instance တွေကို
+        AWS Data Center ထဲမှာ
+        ဘယ်လိုနေရာချမလဲ
+        ဆိုတာ သတ်မှတ်ပေးတဲ့ Strategy ဖြစ်တယ်။
+        First, Why Do We Need Placement Groups?
+            Normally, when you launch EC2 instances:
+
+            EC2-1
+            EC2-2
+            EC2-3
+
+            AWS decides where to place them.
+
+            You don't control:
+
+            Which physical server
+            Which rack
+            How close they are
+
+            AWS automatically chooses.
+
+            Sometimes, however, you have special requirements.
+
+            For example:
+
+            Requirement 1
+            I want all EC2s
+            to communicate
+            VERY FAST.
+
+            OR
+
+            Requirement 2
+            I don't want
+            all EC2s to fail
+            at the same time.
+
+            AWS asks:
+
+            "How should I place your EC2 instances?"
+
+            That's exactly what Placement Groups are for.
+        သတ်မှတ်ပေးတဲ့ Strategy: 3
+            Cluster Placement Group
+                Keyword: Performance
+                aws pusts ec2: Very close together. communication becomes extremely fast.
+                EC2 တွေကို
+                တစ်နေရာတည်း
+                အနီးနားမှာထားတာ။
+                Disadvantage:
+                    Imagine Rack A catches fire.
+                    Everything fails together.
+                    Higher performance,
+                    Lower fault tolerance (အမှားခံနိုင်ရည်နည်းခြင်း)
+                Note: Very safe.
+            Spread Placement Group
+                Keyword: Availability
+                aws pusts ec2: separates EC2 instances.
+                EC2 တွေကို
+                တစ်နေရာတည်းမှာ မထားဘူး။
+                ဝေးဝေးခွဲထားတယ်။
+                Note: very safe.
+            Partition Placement Group
+                Each partition uses completely different racks.
+                Partition Placement Group ဆိုတာ
+                EC2 တွေကို
+                အုပ်စုကြီးတွေခွဲထားတာ။
+                Many Instances
+                ↓
+                One Partition
+                Applications like:
+                Hadoop
+                Kafka
+                Cassandra,
+                Hundreds of EC2
+                already work in partitions.
+                AWS aligns the hardware with the application design.
+                Note: Scalable + fault isolation(ချို့ယွင်းချက်ခွဲထုတ်ခြင်း။)
+            Memory:
+                | Strategy      | Goal                               | Best For                    | Risk                                       | 
+                | ------------- | ---------------------------------- | --------------------------- | ------------------------------------------ |
+                | **Cluster**   | Lowest latency                     | HPC, ML, Trading            | One rack failure can affect many instances |
+                | **Spread**    | Highest availability               | Critical applications       | Max 7 instances per AZ                     |
+                | **Partition** | Fault isolation for large clusters | Hadoop, Cassandra, Kafka,Big Data| One partition can fail, others continue    |
             
+                            
+
+        
+
             
     
 

@@ -10,3 +10,40 @@ ans: Storage Optimized because:
 Storage Optimized EC2 instances are great for workloads requiring high, 
 sequential read/write access to large data sets on local storage.
 ----------------------------------------------
+A company has a production database running on EC2.
+The database server should never share the same underlying hardware as another database server in the same group.
+Only six database servers are required.
+Which Placement Group is MOST appropriate?
+
+A. Cluster
+B. Spread
+C. Partition
+D. Spot Fleet
+ans: B.
+----------------------------------------------
+An application running on a private EC2 instance needs to download operating system updates from the internet.
+The EC2 instance must NOT accept inbound internet traffic.
+Which AWS service enables this?
+
+A. Internet Gateway
+B. Elastic IP
+C. NAT Gateway
+D. VPC Peering
+ans: C.
+----------------------------------------------
+A company needs 100 EC2 instances for a large analytics job.
+The company wants to maximize the chance of obtaining Spot capacity while minimizing interruption risk.
+Which Spot Fleet allocation strategy is BEST?
+
+A. lowestPrice
+B. diversified
+C. capacityOptimized
+D. priceCapacityOptimized
+ans: D.
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+
