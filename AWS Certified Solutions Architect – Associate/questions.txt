@@ -41,6 +41,9 @@ C. capacityOptimized
 D. priceCapacityOptimized
 ans: D.
 ----------------------------------------------
+Which option resumes applications exactly where they stopped?
+Answer
+✅ Hibernate
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------

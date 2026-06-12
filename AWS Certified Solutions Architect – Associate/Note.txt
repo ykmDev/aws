@@ -911,8 +911,8 @@ EC2:
                 ↓
                 One Partition
                 Applications like:
-                Hadoop
-                Kafka
+                Hadoop, HDFS, HBase,
+                Apache Kafka
                 Cassandra,
                 Hundreds of EC2
                 already work in partitions.
@@ -924,10 +924,309 @@ EC2:
                 | **Cluster**   | Lowest latency                     | HPC, ML, Trading            | One rack failure can affect many instances |
                 | **Spread**    | Highest availability               | Critical applications       | Max 7 instances per AZ                     |
                 | **Partition** | Fault isolation for large clusters | Hadoop, Cassandra, Kafka,Big Data| One partition can fail, others continue    |
-            
-                            
+                HPC means high-performance computing.
+    Elastic Network Interfaces(ENI):
+        "virtual network card".
+        ENI ဆိုတာ EC2 ရဲ့ Network Card (LAN Card) လိုပဲ။
+        Visual:
+            Internet
+                │
+                ▼
+            ENI
+            (Virtual Network Card)
+                │
+                ▼
+            EC2 Instance
 
-        
+            Without an ENI,
+            the EC2 cannot communicate.
+        Once you compare it to a physical computer,
+        What is a Network Interface?
+            Your laptop has a network card (NIC).
+            It connects your laptop to the network.
+            Without a network card,
+            ❌ your laptop cannot communicate with other computers.
+            EC2 is like a computer.
+            It also needs a network card.
+            AWS calls this network card: Elastic Network Interface.
+        Why is it called "Elastic"?
+            Because it is flexible.
+            You can:
+            Attach it
+            Detach it
+            Move it
+            between EC2 instances (within the same Availability Zone).
+        What does an ENI contain?
+            Every ENI has exactly one Primary Private IPv4 address.
+            one ENI owns multiple(Secondary) private IPs.
+                Suppose your ENI has:
+                    Primary
+                    10.0.1.15
+
+                    You can also add:
+                    Secondary
+                    10.0.1.20
+                    10.0.1.21
+                    10.0.1.22
+                Why?
+                    Example:
+                    One EC2 hosts:
+                    Website A
+                    Website B
+                    Website C
+
+                    Each website uses a different IP.
+                    One ENI can provide multiple private IPs.
+            Security Group:
+                When packets arrive,
+                AWS checks the Security Group attached to the ENI.
+            MAC Address:
+                Just like your laptop has: 00:1A:2B...
+                An ENI also has a MAC address.
+            Public IP
+                If assigned,
+                the Public IP is associated with the ENI.
+            Elastic IP
+                You don't attach an Elastic IP directly to the EC2.
+                You attach it to the ENI.
+        Real Example
+            Imagine:
+                EC2 Web Server
+            Attached ENI
+                Private IP 10.0.1.10
+                Elastic IP 52.10.10.10
+                Security Group
+                    HTTP
+                    HTTPS
+                    SSH
+            Everything belongs to the ENI.
+        Why Move an ENI?
+            Imagine:
+                EC2-1
+                ↓
+                ENI
+            EC2-1 crashes.
+            Create: EC2-2
+            Detach ENI.
+            Attach to EC2-2.
+            Now EC2-2 immediately has:
+            Same Private IP
+            Same Elastic IP
+            Same Security Groups
+            Very useful for recovery.
+        Can an EC2 Have Multiple ENIs?
+            Yes!
+            Example
+                EC2
+                ↓
+                ENI-1
+                ↓
+                Private Network
+            AND
+                EC2
+                ↓
+                ENI-2
+                ↓
+                Management Network
+            One EC2 can have multiple virtual network cards (the number depends on the instance type).
+            Example:
+                Imagine:
+                    Application -> ENI-1 -> Web traffic
+                    Application -> ENI-2 -> Database traffic
+                Traffic is separated.
+        Memory:
+            Every EC2 must have at least one ENI.
+            Every ENI has exactly one Primary Private IPv4 address.
+            An ENI can also have multiple Secondary Private IPv4 addresses.
+            An ENI can be detached from one EC2 and attached to another EC2 in the same Availability Zone.
+            EC2 automatically creates a Primary ENI. 
+                EC2 တစ်လုံးဖန်တီးလိုက်တာနဲ့ AWS က ENI ကိုလည်း အလိုအလျောက်ဖန်တီးပေးတယ်။
+            An ENI can have multiple Private IPs (Primary + Secondary).
+                inside of instance, when we check with cmd: ip addr <or> ip a
+                secondary Private IPv4 will find.
+            If EC2 are delete/terminate, auto-generated ENI also will delete because these are primary.
+                Delete EC2. Primary ENI may be deleted. Secondary ENI can remain
+            Primary ENI cannot be detached.
+            How many ENIs can be attached?
+                It depends on the instance type (t3.micro, m5.large, c5.xlarge, etc.).
+                The number of ENIs and private IP addresses is determined by the EC2 instance type.
+                For t3.micro
+                    Maximum:
+                    2 ENIs
+                    Up to 2 IPv4 addresses per ENI
+                Basically,
+                    Larger instance types generally support:
+                        More ENIs
+                        More IP addresses
+                        Higher network bandwidth
+            Security Groups are attached to the ENI, not directly to the EC2 instance.
+                ENI ထဲက Security Group ကို EC2 က အသုံးပြုနေတာ။
+                Actually, AWS works like this:
+                EC2
+                │
+                ▼
+                Primary ENI
+                │
+                ▼
+                Security Group
+            ENI as the network identity of the EC2.
+            Everything related to networking is attached to the ENI:
+                ENI
+                ├── Private IP
+                ├── Secondary Private IPs
+                ├── Elastic IP
+                ├── MAC Address
+                └── Security Groups
+            The EC2 simply uses that network identity.
+    Hibernate:
+        3 important (lifecycle)actions:
+            1. Stop
+                After Stop
+                    RAM
+                    -------------
+                    ❌ Cleared
+
+                    EBS
+                    -------------
+                    ✅ Still Exists
+                When Start again
+                    AWS does:
+                    Boot Operating System
+                    ↓
+                    Start Services
+                    ↓
+                    Start Application
+
+                    Everything starts from the beginning.
+                If EC2 is stopped,
+                RAM is cleared.
+                Redis cache disappears (unless configured otherwise).
+                When EC2 starts,
+                it must rebuild the cache. caches get warmed up, and that can take time!
+                This causes slower startup.
+                    Cache Warm-up:
+                        our application uses Redis.
+                            Initially
+
+                            Cache
+
+                            Empty
+
+                            First user visits.
+
+                            Database
+                            ↓
+                            Redis
+
+                            Now cache becomes populated.
+                            This is called Cache Warm-up.
+            2. Hibernate
+                Think of Windows.
+                Instead of Shut Down,
+                you click:
+                Hibernate
+                Computer powers off.
+                BUT
+                before shutting down,
+                Windows saves RAM to disk.
+                AWS does exactly the same.
+                Before Hibernate
+                    RAM
+                        Application
+                        Browser
+                        Variables
+                        Sessions
+                    AWS copies RAM -> EBS
+                    Then powers off.
+                    When Start again
+                        AWS does
+                        Read RAM
+                        ↓
+                        Restore Memory
+                        ↓
+                        Continue
+                        Application continues exactly where it stopped.
+                Why is Hibernate faster?
+                    Because OS is not stopped / restarted, aws perform: OS -> frozen(Pause) instead of shutdown.
+                    Normal Start
+                        Boot OS
+                        ↓
+                        Start Application
+                        ↓
+                        Load Cache
+                        ↓
+                        Reconnect DB
+                        ↓
+                        Ready
+                        Maybe 60 seconds
+                    Hibernate
+                        Power On
+                        ↓
+                        Restore RAM
+                        ↓
+                        Continue
+                        Maybe 15 seconds
+                Is our application still running?
+                    No.
+                    Power is OFF.
+                    CPU is OFF.
+                    RAM has no power.
+                    Nothing is executing.
+                Why must Root EBS be encrypted?
+                    Root EBS is the boot disk.
+                        Imagine RAM contains
+                            Password
+                            API Keys
+                            JWT Token
+                            Database Password
+                            User Session
+                        AWS saves RAM
+                        ↓
+                        EBS
+
+                        If EBS wasn't encrypted
+                        someone with disk access could potentially read all those secrets.
+            3. Terminate
+                Terminate means
+                    Destroy. RAM and Root EBS Deleted. Everything is gone.
+        Compare All Three:
+            Stop
+                RAM ❌ Lost
+                EBS ✅ Keep
+            Hibernate
+                RAM ✅ Saved (preserved=မပျောက်အောင် သိမ်းထားတာ)
+                EBS ✅ Keep
+            Terminate
+                RAM ❌ Lost
+                EBS ❌ Lost
+        Memory:
+            Hibernate ဆိုတာ
+                RAM ထဲက Data ကို EBS ထဲမှာ သိမ်းထားပြီး စက်ပိတ်တာ။
+                ပြန်ဖွင့်ရင် RAM ကို ပြန် Restoreလုပ်တယ်။
+                Application က မ Run တော့ဘူး။
+                CPU လည်း ပိတ်သွားတယ်။
+                RAM လည်း Power မရှိတော့ဘူး။
+            User Data is meant for initial setup(just only First start).
+            Hibernate သုံးမယ်ဆို Root EBS Must be Encrypted ဖြစ်ရတယ်။
+            Requirement:
+                • Supported Instance Families - C3, C4, C5, 13, M3, M4, R3, R4, T2, T3, ...
+                    Not supported Old Instance Type.
+                    Not every EC2 supports Hibernate!!
+                • Instance RAM Size - must be less than 150 GB.
+                • Instance Size - not supported for bare metal instances.
+                    Bare Metal EC2 က Physical Server ကို တိုက်ရိုက် အသုံးပြုတာ။
+                    Hibernate က Virtualization နဲ့ အလုပ်လုပ်တဲ့ Feature ဖြစ်လို့ Support မလုပ်ဘူး။
+                • AMI - Amazon Linux 2, Linux AMI, Ubuntu, RHEL, CentOS & Windows...
+                • Root Volume - must be EBS, encrypted, not instance store, and Large enough.
+                    Root EBS must have enough free space.
+                    RAM က 32 GB ဆိုရင် Root EBS ထဲမှာ 32 GB ထက်ပိုတဲ့နေရာရှိရမယ်။ မရှိရင် Hibernate မရဘူး။
+                • Available for On-Demand, Reserved and Spot Instances.
+        HandsOnLab:
+            Run cmd on ec2 console: uptime
+            the ouput showing time is is OS up time.
+            after Hibernate run, and recheck run cmd, uptime, same time will remain not start from 0 minute.
+       
+
 
             
     
