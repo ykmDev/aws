@@ -1225,10 +1225,42 @@ EC2:
             Run cmd on ec2 console: uptime
             the ouput showing time is is OS up time.
             after Hibernate run, and recheck run cmd, uptime, same time will remain not start from 0 minute.
-       
-
-
-            
+    EBS Volume:
+        an EBS(Elastic Block Store) Volume is a network drive.
+        Persist:
+            Stop လုပ်လည်း Data မပျောက်ဘူး။
+            For termination, remember it depends on the volume's Delete on Termination setting.
+        can only be mounted to one instance at a time(at Cloud Practitioner (CCP) level)
+            EBS တစ်လုံးကို တစ်ချိန်တည်းမှာ EC2 နှစ်လုံးမသုံးနိုင်ဘူး။
+        scoped to a single Availability Zone./locked ta an az.
+            when to move a volumn across, first need to snapshot it.
+            EBS က
+                AZ တစ်ခုနဲ့ ချိတ်ထားတာ။
+                AZ-a မှာ ဖန်တီးထားရင်
+                AZ-b က EC2 နဲ့ မချိတ်နိုင်ဘူး။
+        as a "network USB sticks". but you Actually don't physically put it in a computer.
+        Billed for all requested provisioned capacity.
+            Provision means: "AWS allocates (reserves) resources for you in advance."
+                Provisioned = ကြိုတင်သတ်မှတ်ပြီး AWS က သင့်အတွက် Resource ကို Reserve လုပ်ပေးထားတာ။
+                    100 GB ဖန်တီးရင် 100 GB အတွက်ပေးရမယ်။
+                    Example:
+                        When creating an EBS volume, AWS asks:
+                        Size:
+                        [100 GB]
+                        You choose: 100 GB
+                        AWS immediately reserves 100 GB of storage for you.
+                        Even if you only store one small file: hello.txt (1 MB)
+                        and, AWS still charges for: 100 GB
+                        because you reserved (provisioned) that capacity.
+                IOPS = Input / Output Operations Per Second
+                    Disk က တစ်စက္ကန့်မှာ ဘယ်နှစ်ကြိမ် Read / Write လုပ်နိုင်သလဲ။
+            can increase capacity on later.
+        Memory:
+            EBS က EC2 ထဲမှာ တကယ်တပ်ထားတဲ့ Physical Hard Disk မဟုတ်ဘူး။ 
+            AWS Network ကနေ ချိတ်ထားတဲ့ Disk ဖြစ်တယ်။ ဒါကြောင့် AWS က Network Drive လို့ခေါ်တာ။Everything is virtual.
+            EBS vs Instance Store
+                EBS is Network SSD.
+                Instance Store is Physical SSD Inside Server.
     
 
 
