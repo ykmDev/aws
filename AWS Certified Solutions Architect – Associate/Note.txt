@@ -1261,7 +1261,156 @@ EC2:
             EBS vs Instance Store
                 EBS is Network SSD.
                 Instance Store is Physical SSD Inside Server.
-    
+    EBS Snapshot:
+        make a backup of ebs volumn at a point in time.
+            Point in Time ဆိုတာ အချိန်တစ်ခုမှာ ရှိတဲ့ Data အတိုင်း သိမ်းထားတာ။
+            Example
+                10:00 AM
+
+                Database: 1000 Customers
+                Take Snapshot.
+
+                11:00 AM
+
+                Database: 1100 Customers
+                Restore snapshot.
+
+                Result: 1000 Customers
+
+                Not 1100.
+
+                Because
+                the snapshot captured 10:00 AM.
+        not necessary to detach volumn, but recommended.
+            for data consistency.
+                Snapshot ရိုက်တဲ့အချိန် Application က Data ရေးနေတယ်ဆိုရင်
+                Incomplete Data ဖြစ်နိုင်တယ်။
+                Better Practice
+                    For databases
+                    People often:
+
+                    Stop Database
+                    ↓
+                    Take Snapshot
+                    ↓
+                    Start Database
+        Copy Across AZ.
+            Snapshot lives in the Region.
+            The Snapshot itself is regional.
+            It is not tied to a single AZ.
+                copy workflow in AZ:
+                    EBS (AZ-a)
+                    ↓
+                    Snapshot (Region)
+                    ↓
+                    New EBS (AZ-b)
+        Copy Across Region directly.
+            AWS allows
+                Snapshot
+                ↓
+                Copy
+                ↓
+                Singapore
+
+                Then
+                create a new EBS
+                inside Singapore.
+        Important Note:
+            Description:
+                "We don't know when an earthquake or disaster will happen. 
+                So if we only take a snapshot every midnight, won't we lose today's data?"
+                This leads us to one of the most important concepts
+                    RPO (Recovery Point Objective)
+                    RTO (Recovery Time Objective)
+                    RPO means How much data loss can the business accept?
+                    Suppose the company says:
+                        Maximum Data Loss
+                        24 hours
+                        Daily snapshot is enough.
+                    But if they say
+                        Maximum Data Loss
+                        15 minutes
+                        Daily snapshot is NOT enough.
+                    Therefore...
+                    They take snapshots more frequently: Every Hour, Every 30 minutes.
+                    But is Snapshot enough?
+                    For many businesses...
+                        NO.
+            Business အရေးကြီးရင်
+                နေ့တစ်ခါ မဟုတ်ဘဲ ၁ နာရီတစ်ခါ ၁၅ မိနစ်တစ်ခါ Snapshot ရိုက်ကြတယ်။
+            ဒါပေမယ့် Bank လို Facebook လို Amazon Shopping လို
+                System တွေက Snapshot တစ်ခုတည်းကို အားမကိုးဘူး။
+                    Real-time Replication နဲ့
+                    အခြား Region ကို အမြဲ Copy ကူးထားတယ်။
+                "The company wants backups." => snapshot
+                "The company wants almost zero data loss." =>
+                    Snapshot alone is usually not enough.
+                        You should think about:
+                            Database replication
+                            Multi-AZ
+                            Cross-Region replication
+                            Continuous backup (depending on the AWS service)
+        Feature:
+            EBS Snapshot Archive:
+                75% cheaper:
+                    Archive ဆိုတာ အသုံးမပြုတော့တဲ့ Snapshot ကို စျေးသက်သာတဲ့ Storage ထဲရွှေ့ထားတာ။
+                    Why cheaper?
+                    AWS doesn't keep it ready for immediate use.
+                Takes within 24 to 72 hours(1 day to to 3 days) for restoring the archive
+                    Question
+                        Company must keep backups for 7 years at the lowest cost.
+                    Answer
+                        ✅ Snapshot Archive
+            Recycle Bin:
+                if accidentally click delete snapshot, aws store on Recycle bin as like as window.
+                မှားဖျက်လိုက်ရင် ချက်ချင်းမပျောက်ဘူး။ but, must be "Create retention rule".
+                Specify retention/keep data (from 1 day to 1 year)
+                    Retention: Keep /ထိန်းသိမ်းမှု
+            Fast Snapshot Restore:
+                Without FSR:
+                    if snapshot is 1 TB EBS, the first time read is slower.
+                        AWS may need to fetch data from the snapshot in the background.
+                        That initial access can be slower.
+                        This is called lazy loading.
+                        2nd time is faster.
+                With FSR:
+                    AWS prepares everything beforehand.
+                        Every block is already initialized.
+                        No waiting.
+                        but, expensive.
+                    When is FSR useful?
+                        Example
+                        Large production database.
+                        10 TB
+                        Disaster.
+                        Need new database
+                        NOW.
+                        Cannot wait
+                        for lazy loading.
+                        Enable
+                        Fast Snapshot Restore
+                        Everything is immediately responsive.
+            Question:
+                A company creates new EBS volumes from snapshots during disaster recovery and 
+                requires full performance immediately after creation.
+                ✅ Answer: Fast Snapshot Restore (FSR)
+    AMI:
+        amazon machin image (AMI = Blueprint (Template) for creating EC2 instances.)
+        customization of ec2 instance.
+            can add own softwawre, configuration, os, monitor.
+            faster boot/configuration time because all your software is pre-packaged.
+        AMI are built for specific region. can be copied across regions.
+        can lauch ec2 from 
+            public ami, own ami, aws marketplace ami.
+        what contain:
+            ├── Root EBS Snapshot
+            ├── Operating System
+            ├── Installed Software
+            ├── Configuration
+            ├── Boot Information
+            ├── Block Device Mapping
+            └── Metadata
+
 
 
                 

@@ -45,7 +45,13 @@ Which option resumes applications exactly where they stopped?
 Answer
 ✅ Hibernate
 ----------------------------------------------
+Does Stop delete EBS?
+ans: No.
 ----------------------------------------------
+Does Terminate always delete EBS?
+ans: Not always.
+It depends on
+Delete on Termination
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
