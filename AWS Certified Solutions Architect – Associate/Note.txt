@@ -1395,13 +1395,25 @@ EC2:
                 requires full performance immediately after creation.
                 ✅ Answer: Fast Snapshot Restore (FSR)
     AMI:
+        EC2 Template
         amazon machin image (AMI = Blueprint (Template) for creating EC2 instances.)
         customization of ec2 instance.
             can add own softwawre, configuration, os, monitor.
             faster boot/configuration time because all your software is pre-packaged.
         AMI are built for specific region. can be copied across regions.
-        can lauch ec2 from 
+        can lauch ec2 from
             public ami, own ami, aws marketplace ami.
+            public ami:
+                created by AWS or the community.
+            own ami:
+                created by your company, Only your AWS account can use it.
+            Marketplace AMI:
+                Suppose you want:
+                    Windows Server with SQL Server
+                    Fortinet Firewall
+                    Cisco Security Appliance
+                Instead of installing everything yourself.
+                include licensed software, so there may be additional charges.
         what contain:
             ├── Root EBS Snapshot
             ├── Operating System
@@ -1410,8 +1422,382 @@ EC2:
             ├── Boot Information
             ├── Block Device Mapping
             └── Metadata
+        EC2 Instance Store:
+            many beginners think: "All EC2 storage = EBS"
+                ❌ Not true.
+            AWS actually has 2 major storage types attached to EC2:
+                1. EBS (Network Storage)
+                2. Instance Store (Physical Storage)
+            • EBS volumes are network drives with good but "limited" performance
+            • If you need a high-performance hardware disk, use EC2 Instance Store.
+                Because: The disk is physically attached to the host machine.
+                example:
+                    EBS is like as:
+                        Your PC
+                            ↓
+                            Network
+                            ↓
+                            Storage
+                        Because it is over the network:
+                        Some latency exists.
+                    Instance Store is like as:
+                        Your PC
+                        ↓
+                        Internal SSD
+                        no network, Very fast.
+            • Better I/O performance
+                Example:
+                You are processing:
+                10 TB logs
+                or
+                Millions of cache records
+                or
+                Temporary video rendering
+                Need maximum speed.
+                Instance Store can help.
+            • EC2 Instance Store lose their storage if they're stopped (ephemeral)
+                Ephemeral means temporary!
+                Compare with EBS
+                    EBS
+                    Stop EC2
+                    ↓
+                    Data Survives
 
+                    Instance Store
+                    Stop EC2
+                    ↓
+                    Data Lost
+            • Good for buffer / cache / scratch data / temporary content
+                Never store: Production Database, Customer Data, Financial Records on Instance Store.
+            • Risk of data loss if hardware fails
+            • Backups and Replication are your responsibility.
+                For EBS:
+                    Snapshot
+                    AWS helps.
 
+                For Instance Store:
+                    You handle backup
+                    Your application must replicate data elsewhere.
+            Summary:
+                | Feature          | EBS (Elastic Block Store)               | Instance Store                 |
+                | ---------------- | --------------------------------------- | ------------------------------ |
+                | Storage Type     | Network Storage                         | Physical Local Storage         |
+                | Location         | Separate network storage                | Attached to EC2 host machine   |
+                | Persistence      | ✅ Persistent                            | ❌ Temporary (Ephemeral)        |
+                | Stop EC2         | ✅ Data remains                          | ❌ Data lost                    |
+                | Terminate EC2    | Depends on DeleteOnTermination          | ❌ Data lost                    |
+                | Snapshot Support | ✅ Yes                                   | ❌ No                           |
+                | Backup           | Easy (Snapshots)                        | Manual                         |
+                | Performance      | High                                    | Very High                      |
+                | Hardware Failure | Protected by AWS                        | Data may be lost               |
+                | Best For         | Databases, Applications, Important Data | Cache, Buffer, Temporary Files |
+        Reboot instance:
+            When creating an AMI, AWS asks: ☑ Reboot instance
+            What does it mean?
+            Imagine you are editing a Microsoft Word file.
+            Word File
+                ↓
+            You are typing
+                ↓
+            Not saved yet
 
+            Now suddenly someone copies your hard disk.
+            The copied file may be:
+                Half saved
+                Half not saved
+            The data may be inconsistent.
+            The same thing can happen on EC2.
+            Suppose your EC2 is running:
+                MySQL Database
+                Apache
+                Laravel
+            Currently:
+                RAM
+                ↓
+                Writing data
+                ↓
+                EBS Volume
+            Some data may still be:
+            RAM only
+            and not yet written to disk.
+            Reboot Instance = Checked
+            ☑ Reboot instance
+            AWS does:
+            Stop Applications
+            ↓
+            Flush RAM to Disk
+            ↓
+            Reboot OS
+            ↓
+            Take Snapshot
+            ↓
+            Create AMI
+
+            This creates a crash-consistent / file-system-consistent image.
+            Much safer.
+
+            Example
+                Database Server
+                MySQL
+                Customer Orders
+
+                Current order:
+                Order #1001
+                Still in memory.
+
+                Not written to disk yet.
+            If AWS takes snapshot immediately: Snapshot
+
+            Maybe:
+            Order #1000 exists
+            Order #1001 missing
+            because data wasn't fully written yet.
+
+            If reboot is enabled:
+
+            MySQL
+            ↓
+            Write everything to disk
+            ↓
+            Shutdown
+            ↓
+            Snapshot
+
+            Now snapshot is consistent.
+
+            Reboot Instance = Unchecked
+            ☐ Reboot instance
+            AWS does:
+            Snapshot immediately
+            without rebooting.
+            Advantages:
+            No downtime
+            Faster
+            Disadvantages:
+            Risk of inconsistent data
+            Real Example
+            Suppose EC2 is:
+                Apache Web Server
+                Static HTML only.
+                No database.
+                No active writes.
+            Then:
+            ☐ Reboot instance
+            is usually fine.
+            Suppose EC2 is:
+                MySQL Database Server
+                or
+                PostgreSQL
+                or
+                Oracle
+            Then:
+            ☑ Reboot instance
+
+            is recommended.
+            AWS Documentation Meaning
+            AWS says:
+            data is at rest
+            Meaning:
+            RAM
+            ↓
+            Disk
+            Everything has already been written to disk.
+        Note:
+            If the question says:
+                "The company wants to deploy hundreds of identical web servers quickly."
+                Think:
+                ✅ AMI
+            Remember these relationships:
+                EC2
+                │
+                ├── Root EBS Volume
+                │         │
+                │         └── EBS Snapshot (backup of the volume)
+                │
+                └── Create AMI
+                        │
+                        ├── Includes a snapshot of the root volume
+                        └── Adds boot configuration and metadata
+                                    │
+                                    ▼
+                                Launch New EC2
+                Snapshots are primarily for backing up storage.
+                AMIs are primarily for creating new EC2 instances quickly and consistently.
+        EBS Volume Types:
+            families:
+                SSD Family
+                ├── gp2
+                ├── gp3
+                ├── io1
+                └── io2
+
+                HDD Family
+                ├── st1
+                └── sc1
+            First to understand SSD and HDD.
+                SSD
+                    Advantages:
+                        Fast
+                        Low latency
+                        High IOPS
+                    Best for:
+                        OS
+                        Database
+                        Applications
+                HDD
+                    Advantages:
+                        Cheap
+                        Large storage
+                    Best for:
+                        Logs
+                        Backups
+                        Big files
+            gp2/ gp3 (SSD): General purpose SSD volume. Default Choice.
+                gp3 is basically the newer version. More performance, 
+                Lower cost, cost effective storage, low-latency, develpment and test env.
+            iol / io2 Block Express (SSD): Highest-performance premium SSD.
+                mission-critical low-latency, databases workloads,
+                support ebs multi-attach.
+                think like:
+                    gp3: Normal SSD
+                    io2: Super SSD
+                1000 IOPS = 1000 operations/sec.
+            st1 (HDD): Low cost HDD volume/ frequently accessed, 
+                throughput-intensive workloads/ big data/ data warehouses/ log processing.
+                    throughput = large amt of data.
+                    Example:
+                        Video Files
+                        Log Files
+                        Analytics Data
+                    Need: High MB/sec
+                    not: High IOPS
+                    Use: ✅ st1 => Frequently Accessed Big Files.
+            sc1 (HDD): Cheapest HDD volume/ less frequently accessed workloads.
+                Data is rarely accessed
+                    Examples:
+                        Archives
+                        Old Logs
+                        Old Reports
+                    Use: ✅ sc1 => Rarely Accessed Files.
+            Important Note:
+                gp2/gp3 and io1/io2 can be used as root/boot volumes.
+                st1/sc1 cannot use as root/boot volumn.
+                Which EBS volume type should be used for a particular workload?
+                    Web Server
+                    EC2 + Apache
+
+                    Answer: ✅ gp3
+
+                    MySQL Database
+                    High Transaction Rate
+
+                    Answer: ✅ io2
+
+                    Video Streaming
+                    Large files
+
+                    Answer: ✅ st1
+
+                    Archive Storage
+                    Rarely accessed
+
+                    Answer: ✅ sc1
+            EBS Multi-attach:
+                Normally one EBS volume = one EC2 instance.
+                But EBS Multi-Attach is a special exception.
+                Limitation #1: Only supported on:
+                    io1
+                    io2
+                Not other volumn types.
+                Limitation #2:
+                    Same AZ Only.
+                    Works/allowed:
+                        EC2-1 (1a)
+                        EC2-2 (1a)
+                        EC2-3 (1a)
+                        ↓
+                        Same io2 Volume
+
+                        Not allowed:
+                            EC2-1 (1a)
+                            EC2-2 (1b)
+                            ↓
+                            Same Volume
+                        Because EBS volumes live inside a single AZ.
+                    Why would we need this?
+                        Imagine:
+                        Application Server A
+                        Application Server B
+                        Both need access to the same data.
+                        Normal way:
+
+                        Server A
+                        ↓
+                        Own Disk
+
+                        Server B
+                        ↓
+                        Own Disk
+
+                        Need synchronization.
+                        Complicated.
+
+                        Multi-Attach:
+                        Server A
+                            ↓
+                            Shared Volume
+                            ↑
+                        Server B
+
+                        Both read/write same storage.
+                        Teradata(Clustered Database) is all need access to the same disk.
+                Each instance has full read & write permissions.
+                    EC2-1: write file.txt
+                    Allowed.
+                    EC2-2: delete file.txt
+                    Allowed.
+                    This creates a problem. The Big Danger.
+                    Imagine:
+                        EC2-1:
+                        Writing customer.txt
+                        At exactly same time:
+                        EC2-2:
+                        Writing customer.txt
+                        Who wins?
+                        Potential data corruption.
+                        Therefore:
+                        Applications must manage concurrent writes.
+                        application must coordinate.
+                            Example:
+                                Server A
+                                Wait
+                                ↓
+                                Write
+                                ↓
+                                Unlock
+                                ↓
+                                Server B Write
+                                This is called: Locking.
+            Up to 16 EC2 Instances at a time.
+            Must use a file system that's cluster-aware (not XFS, EXT4, etc...)
+                Because: EXT4 assumes: One Server owns the disk.
+            Note:
+                Question:
+                    A company wants to attach a gp3 volume to 5 EC2 instances.
+                    Answer:
+                    ❌ Not possible.
+                    Only:
+                        io1
+                        io2
+                        support Multi-Attach.
+                If the question says:
+                    "Multiple EC2 instances need shared storage"
+                    Don't immediately choose Multi-Attach.
+                    Ask yourself:
+                    Shared Block Storage?
+                    → EBS Multi-Attach
+                    Shared File Storage?
+                    → Later you'll learn Amazon EFS.
+        EBS Encryption:
+            
                 
-
