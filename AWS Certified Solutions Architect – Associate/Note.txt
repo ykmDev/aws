@@ -1225,6 +1225,22 @@ EC2:
             Run cmd on ec2 console: uptime
             the ouput showing time is is OS up time.
             after Hibernate run, and recheck run cmd, uptime, same time will remain not start from 0 minute.
+    Three Storage Types:
+        Block Storage (EBS): it only knows Block. OS manage the folder/path.
+        File Storage (EFS): it already know the folder/permissions/ownership think like Company Shared Folder.
+        Object Storage (S3): s3 store Object not files, think like a warehouse.
+        | Feature           | **Block Storage**   | **File Storage**        | **Object Storage**                    |
+        | ----------------- | ------------------- | ----------------------- | ------------------------------------- |
+        | AWS Service       | **EBS**             | **EFS**                 | **S3**                                |
+        | Looks Like        | Hard Disk (SSD/HDD) | Shared Folder           | Cloud Bucket                          |
+        | Stores            | Blocks              | Files & Folders         | Objects                               |
+        | Folder Structure  | Created by OS       | Built-in                | Not a real filesystem (uses prefixes) |
+        | Mount to EC2      | ✅ Yes              | ✅ Yes                 | ❌ No                                  |
+        | Boot Volume       | ✅ Yes              | ❌ No                  | ❌ No                                  |
+        | Share Between EC2 | Normally No         | Yes                     | Yes (via API)                         |
+        | Access Method     | OS Disk Driver      | NFS                     | HTTP/API                              |
+        | Typical Use       | OS, Database        | WordPress, Shared Files | Images, Videos, Backups, Logs         |
+
     EBS Volume:
         an EBS(Elastic Block Store) Volume is a network drive.
         Persist:
@@ -1401,6 +1417,8 @@ EC2:
             can add own softwawre, configuration, os, monitor.
             faster boot/configuration time because all your software is pre-packaged.
         AMI are built for specific region. can be copied across regions.
+            Question: You can use an AMI in N.Virginia Region us-east-1 to launch an EC2 instance in any AWS Region.
+            Ans: False.
         can lauch ec2 from
             public ami, own ami, aws marketplace ami.
             public ami:
@@ -1491,6 +1509,11 @@ EC2:
                 | Performance      | High                                    | Very High                      |
                 | Hardware Failure | Protected by AWS                        | Data may be lost               |
                 | Best For         | Databases, Applications, Important Data | Cache, Buffer, Temporary Files |
+
+            Question: You are running a high-performance database that requires an IOPS of 310,000 for its underlying storage. 
+                What do you recommend?
+            Ans: EC2 Instance Store
+            EBS with io1 is not enough becasue 64,000 is max IOPS on io1/io2.
         Reboot instance:
             When creating an AMI, AWS asks: ☑ Reboot instance
             What does it mean?
@@ -1623,181 +1646,1073 @@ EC2:
                                 Launch New EC2
                 Snapshots are primarily for backing up storage.
                 AMIs are primarily for creating new EC2 instances quickly and consistently.
-        EBS Volume Types:
-            families:
-                SSD Family
-                ├── gp2
-                ├── gp3
-                ├── io1
-                └── io2
+    EBS Volume Types:
+        families:
+            SSD Family
+            ├── gp2
+            ├── gp3
+            ├── io1
+            └── io2
 
-                HDD Family
-                ├── st1
-                └── sc1
-            First to understand SSD and HDD.
-                SSD
-                    Advantages:
-                        Fast
-                        Low latency
-                        High IOPS
-                    Best for:
-                        OS
-                        Database
-                        Applications
-                HDD
-                    Advantages:
-                        Cheap
-                        Large storage
-                    Best for:
-                        Logs
-                        Backups
-                        Big files
-            gp2/ gp3 (SSD): General purpose SSD volume. Default Choice.
-                gp3 is basically the newer version. More performance, 
-                Lower cost, cost effective storage, low-latency, develpment and test env.
-            iol / io2 Block Express (SSD): Highest-performance premium SSD.
-                mission-critical low-latency, databases workloads,
-                support ebs multi-attach.
-                think like:
-                    gp3: Normal SSD
-                    io2: Super SSD
-                1000 IOPS = 1000 operations/sec.
-            st1 (HDD): Low cost HDD volume/ frequently accessed, 
-                throughput-intensive workloads/ big data/ data warehouses/ log processing.
-                    throughput = large amt of data.
-                    Example:
-                        Video Files
-                        Log Files
-                        Analytics Data
-                    Need: High MB/sec
-                    not: High IOPS
-                    Use: ✅ st1 => Frequently Accessed Big Files.
-            sc1 (HDD): Cheapest HDD volume/ less frequently accessed workloads.
-                Data is rarely accessed
-                    Examples:
-                        Archives
-                        Old Logs
-                        Old Reports
-                    Use: ✅ sc1 => Rarely Accessed Files.
-            Important Note:
-                gp2/gp3 and io1/io2 can be used as root/boot volumes.
-                st1/sc1 cannot use as root/boot volumn.
-                Which EBS volume type should be used for a particular workload?
-                    Web Server
-                    EC2 + Apache
+            HDD Family
+            ├── st1
+            └── sc1
+        First to understand SSD and HDD.
+            SSD
+                Advantages:
+                    Fast
+                    Low latency
+                    High IOPS
+                Best for:
+                    OS
+                    Database
+                    Applications
+            HDD
+                Advantages:
+                    Cheap
+                    Large storage
+                Best for:
+                    Logs
+                    Backups
+                    Big files
+        gp2/ gp3 (SSD): General purpose SSD volume. Default Choice.
+            gp3 is basically the newer version. More performance, 
+            Lower cost, cost effective storage, low-latency, develpment and test env.
+        iol / io2 Block Express (SSD): Highest-performance premium SSD.
+            mission-critical low-latency, databases workloads,
+            support ebs multi-attach.
+            think like:
+                gp3: Normal SSD
+                io2: Super SSD
+            1000 IOPS = 1000 operations/sec.
+        st1 (HDD): Low cost HDD volume/ frequently accessed, 
+            throughput-intensive workloads/ big data/ data warehouses/ log processing.
+                throughput = large amt of data.
+                Example:
+                    Video Files
+                    Log Files
+                    Analytics Data
+                Need: High MB/sec
+                not: High IOPS
+                Use: ✅ st1 => Frequently Accessed Big Files.
+        sc1 (HDD): Cheapest HDD volume/ less frequently accessed workloads.
+            Data is rarely accessed
+                Examples:
+                    Archives
+                    Old Logs
+                    Old Reports
+                Use: ✅ sc1 => Rarely Accessed Files.
+        Important Note:
+            gp2/gp3 and io1/io2 can be used as root/boot volumes.
+            st1/sc1 cannot use as root/boot volume.
+            Which EBS volume type should be used for a particular workload?
+                Web Server
+                EC2 + Apache
 
-                    Answer: ✅ gp3
+                Answer: ✅ gp3
 
-                    MySQL Database
-                    High Transaction Rate
+                MySQL Database
+                High Transaction Rate
 
-                    Answer: ✅ io2
+                Answer: ✅ io2
 
-                    Video Streaming
-                    Large files
+                Video Streaming
+                Large files
 
-                    Answer: ✅ st1
+                Answer: ✅ st1
 
-                    Archive Storage
-                    Rarely accessed
+                Archive Storage
+                Rarely accessed
 
-                    Answer: ✅ sc1
-            EBS Multi-attach:
-                Normally one EBS volume = one EC2 instance.
-                But EBS Multi-Attach is a special exception.
-                Limitation #1: Only supported on:
+                Answer: ✅ sc1
+        EBS Multi-attach:
+            Normally one EBS volume = one EC2 instance.
+            But EBS Multi-Attach is a special exception.
+            Limit 1: Only supported on: io1/io2
+                Not other volumn types.
+            Limit 2: Same AZ Only.
+                Works/allowed:
+                    EC2-1 (1a)
+                    EC2-2 (1a)
+                    EC2-3 (1a)
+                    ↓
+                    Same io2 Volume
+
+                    Not allowed:
+                        EC2-1 (1a)
+                        EC2-2 (1b)
+                        ↓
+                        Same Volume
+                    Because EBS volumes live inside a single AZ.
+                Why would we need this?
+                    Imagine:
+                    Application Server A
+                    Application Server B
+                    Both need access to the same data.
+                    Normal way:
+
+                    Server A
+                    ↓
+                    Own Disk
+
+                    Server B
+                    ↓
+                    Own Disk
+
+                    Need synchronization.
+                    Complicated.
+
+                    Multi-Attach:
+                    Server A
+                        ↓
+                        Shared Volume
+                        ↑
+                    Server B
+
+                    Both read/write same storage.
+                    Teradata(Clustered Database) is all need access to the same disk.
+            Each instance has full read & write permissions.
+                EC2-1: write file.txt
+                Allowed.
+                EC2-2: delete file.txt
+                Allowed.
+                This creates a problem. The Big Danger.
+                Imagine:
+                    EC2-1:
+                    Writing customer.txt
+                    At exactly same time:
+                    EC2-2:
+                    Writing customer.txt
+                    Who wins?
+                    Potential data corruption.
+                    Therefore:
+                    Applications must manage concurrent writes.
+                    application must coordinate.
+                        Example:
+                            Server A
+                            Wait
+                            ↓
+                            Write
+                            ↓
+                            Unlock
+                            ↓
+                            Server B Write
+                            This is called: Locking.
+        Up to 16 EC2 Instances at a time.
+        Must use a file system that's cluster-aware (not XFS, EXT4, etc...)
+            Because: EXT4 assumes: One Server owns the disk.
+        Note:
+            Question:
+                A company wants to attach a gp3 volume to 5 EC2 instances.
+                Answer:
+                ❌ Not possible.
+                Only:
                     io1
                     io2
-                Not other volumn types.
-                Limitation #2:
-                    Same AZ Only.
-                    Works/allowed:
-                        EC2-1 (1a)
-                        EC2-2 (1a)
-                        EC2-3 (1a)
-                        ↓
-                        Same io2 Volume
+                    support Multi-Attach.
+            If the question says:
+                "Multiple EC2 instances need shared storage"
+                Don't immediately choose Multi-Attach.
+                Ask yourself:
+                Shared Block Storage?
+                → EBS Multi-Attach
+                Shared File Storage?
+                → Later you'll learn Amazon EFS.
+    EBS Encryption:
+        if someone steals the disk: Unreadable.
+        AWS does it automatically: Encryption and decryption are handled by AWS.
+        Data at rest is encrypted inside the volume
+            "Data at Rest" means: Stored on Disk.
+        Data in Transit Encryption:
+            All the data in flight moving between the instance and the volume 
+            is encrypted
+            Remember:
+                EC2
+                ↓
+                Network
+                ↓
+                EBS
 
-                        Not allowed:
-                            EC2-1 (1a)
-                            EC2-2 (1b)
-                            ↓
-                            Same Volume
-                        Because EBS volumes live inside a single AZ.
-                    Why would we need this?
-                        Imagine:
-                        Application Server A
-                        Application Server B
-                        Both need access to the same data.
-                        Normal way:
+                Because EBS is network storage.
 
-                        Server A
-                        ↓
-                        Own Disk
+                Without encryption:
+                EC2 ---> Data ---> EBS
 
-                        Server B
-                        ↓
-                        Own Disk
+                Someone intercepting traffic could potentially see it.
 
-                        Need synchronization.
-                        Complicated.
+                With encryption:
+                EC2 ---> Encrypted Data ---> EBS
 
-                        Multi-Attach:
-                        Server A
-                            ↓
-                            Shared Volume
-                            ↑
-                        Server B
+                Much safer.
+        All snapshots are encrypted Automatically if from Encrypted Volume.
+        All volumes created from the snapshot.
+            Example:
+                Encrypted Volume
+                ↓
+                Encrypted Snapshot
+                ↓
+                New Volume
+                Result: Encrypted Volume(cannot change Encryption checkbox.)
+        can change encryption checkbox on creation from un-encrypted snapshot.
+        Encryption has a minimal impact on latency by using AWS KMS.
+    Amazon EFS(Elastic File System):
+        is like a shared network folder.[EBS is like a hard disk for one computer]
+        uses NFS Protocol.
+            NFS uses: TCP Port 2049.
+            NFS is a protocol that lets multiple Linux machines share files over the network.
+            No NFS server installation required.
+        Works Across Multiple AZs
+            EBS can work single AZ.
+            Question:Multiple EC2 instances in multiple Availability Zones need shared storage.
+            ans: Amazon EFS
+        use cases: cms, web serving, data sharing, wordpress
+        uses securtiy group to control access to EFS.
+        compatible with Linux based ami(not window)
+            becasue:
+                NFS is primarily a Linux/Unix protocol.
+                Windows servers typically use SMB-based services such as Amazon FSx for Windows File Server.
+        encryption at rest.
+        Automatic Scaling
+            Suppose today you store: 10 GB
 
-                        Both read/write same storage.
-                        Teradata(Clustered Database) is all need access to the same disk.
-                Each instance has full read & write permissions.
-                    EC2-1: write file.txt
-                    Allowed.
-                    EC2-2: delete file.txt
-                    Allowed.
-                    This creates a problem. The Big Danger.
-                    Imagine:
-                        EC2-1:
-                        Writing customer.txt
-                        At exactly same time:
-                        EC2-2:
-                        Writing customer.txt
-                        Who wins?
-                        Potential data corruption.
-                        Therefore:
-                        Applications must manage concurrent writes.
-                        application must coordinate.
-                            Example:
-                                Server A
-                                Wait
-                                ↓
-                                Write
-                                ↓
-                                Unlock
-                                ↓
-                                Server B Write
-                                This is called: Locking.
-            Up to 16 EC2 Instances at a time.
-            Must use a file system that's cluster-aware (not XFS, EXT4, etc...)
-                Because: EXT4 assumes: One Server owns the disk.
+            Tomorrow: 1 TB
+
+            Next month: 20 TB
+
+            Do you resize disks?
+
+            ❌ No.
+
+            EFS automatically grows.
+
+            10 GB
+            ↓
+            100 GB
+            ↓
+            10 TB
+            ↓
+            100 TB
+
+            Automatically.
+        Pay-per-use:
+            "Pay only for what you use"
+            Unlike EBS,
+            you don't choose:
+            100 GB
+            500 GB
+            2 TB
+            Instead,
+            AWS measures: "Actual Usage"
+
+            If you use: 5 GB
+
+            You pay for: 5 GB
+        No capacity planning.
+            With EBS:
+            You think:
+            Should I create
+            100 GB?
+            200 GB?
+            500 GB?
+            With EFS:
+
+            Create File System
+            ↓
+            Done
+            AWS handles the storage growth.
+        EFS Scale:
+            Thousands of EC2 instances can access the same EFS simultaneously.
+            You never resize EFS manually.
+            AWS grows it automatically.
+        EFS Performance Mode:
+            General Purpose:
+                fast response
+                low latency
+                good for normal websites.
+            Max I/O:
+                need: Thousands of servers reading files simultaneously.
+                Very High Parallelism
+                Higher Latency.
+                Good for:
+                    Big Data
+                    Video Processing
+                    Machine Learning
+                    Analytics
+                Higher Throughput(large amt of data)
+                    Throughput Mode:
+                        three modes:
+                            Bursting(default): Good for Normal applications.
+                            Provisioned: always needs 1 GB/sec.
+                                good for Databases, High-performance applications, Predictable heavy workloads
+                            Elastic:
+                                If condition is Impossible to predict.
+                                Elastic automatically changes throughput.
+                                Good for Unpredictable workloads.
             Note:
+                | Requirement                            | Choose              |
+                | -------------------------------------- | ------------------- |
+                | Web server, CMS, WordPress             | **General Purpose** |
+                | Big Data, Analytics, Media Processing  | **Max I/O**         |
+                | Normal workload with occasional spikes | **Bursting**        |
+                | Constant guaranteed throughput         | **Provisioned**     |
+                | Unpredictable workload                 | **Elastic**         |
+        EFS Storage Classes:
+            is very similar to Amazon S3 Storage Classes.
+            three levels:
+                Frequently Used/everyday files
+                        ↓
+                Standard
+
+                Sometimes Used/accessed occasionally
+                        ↓
+                EFS-IA
+
+                Almost Never Used/Rarely accessed/annual/ long-term retention
+                        ↓
+                Archive
+            Lifecycle management:
+                you don't move files manually.
+                AWS does it automatically.
+                example:
+                    Suppose you configure:
+                        30 Days
+                        ↓
+                        Move to IA
+
+                        AWS checks:
+
+                        No access for 30 days
+                        ↓
+                        Automatically move
+
+                        No manual work.
+            Availability:
+                Multiple copies exist across Availability Zones.
+                Example:
+                    AZ-A
+                    Copy
+                    AZ-B
+                    Copy
+                    If one AZ fails,
+                    EFS still works.
+                    Perfect for production.
+            One Zone:
+                much cheaper.
+                Good for:
+                    Development
+                    Testing
+                    Temporary projects
+
+                    Not ideal for production systems that require high availability.
+            One Zone + IA:
+                Very low cost.
+                if using One Zone + IA, cost savings over 90%.
+            Note:
+                | Standard        | IA                    | Archive      |
+                | --------------- | --------------------- | ------------ |
+                | Frequent access | Infrequent            | Rare         |
+                | Fast            | Slight retrieval cost | Cheapest     |
+                | Highest price   | Lower price           | Lowest price |
                 Question:
-                    A company wants to attach a gp3 volume to 5 EC2 instances.
-                    Answer:
-                    ❌ Not possible.
-                    Only:
-                        io1
-                        io2
-                        support Multi-Attach.
-                If the question says:
-                    "Multiple EC2 instances need shared storage"
-                    Don't immediately choose Multi-Attach.
-                    Ask yourself:
-                    Shared Block Storage?
-                    → EBS Multi-Attach
-                    Shared File Storage?
-                    → Later you'll learn Amazon EFS.
-        EBS Encryption:
+                Company stores project files rarely opened.
+                Answer:✅ EFS-IA
+
+                Question:
+                Company stores audit files accessed once a year.
+                Answer:✅ Archive
+    Note:
+        EBS vs EFS:
+            | Feature                 | EBS                                                  | EFS                     |
+            | ----------------------- | ---------------------------------------------------- | ----------------------- |
+            | Storage Type            | Block Storage                                        | File Storage            |
+            | Share with Multiple EC2 | Normally No (except Multi-Attach io1/io2 in same AZ) | Yes                     |
+            | Multi-AZ                | No                                                   | Yes                     |
+            | Auto Scaling            | No                                                   | Yes                     |
+            | Snapshot                | Yes                                                  | Backup service          |
+            | Linux                   | Yes                                                  | Yes                     |
+            | Windows                 | Yes                                                  | Not natively for EFS    |
+            | Typical Use             | Database, Boot Volume                                | Shared Files, WordPress |
+        EBS Multi-Attach vs EFS
+            | If the question says...                                                                              | Choose...            |
+            | ---------------------------------------------------------------------------------------------------- | -------------------- |
+            | Shared **block** storage, up to 16 EC2, same AZ, io1/io2                                             | **EBS Multi-Attach** |
+            | Shared **file** storage, many EC2, multiple AZs, Linux applications (WordPress, CMS, shared uploads) | **Amazon EFS**       |
+    Scalability:
+        Can the system handle MORE users?
+        Traffic များရင် Server တိုး။ Traffic လျော့ရင် Server လျော့။ AWS က Auto လုပ်ပေးတယ်။
+        an application/system can handle greater loads by adaptation.
+        two types:
+            Vertical(Scale Up):
+                Make ONE server stronger.
+                Disadvantages is we cannot upgrade forever/No bigger instance exists.
+            Horizontal(Scale Out):
+                add more servers.
+            | Vertical                    | Horizontal        |
+            | --------------------------- | ----------------- |
+            | Bigger server               | More servers      |
+            | Scale Up                    | Scale Out         |
+            | Limited                     | Nearly unlimited  |
+            | Easier                      | More complex      |
+            | Usually downtime for resize | Often no downtime |
+    Elasticity:
+        AWS automatically adds or removes servers.Like a rubber band:
+            Stretch
+            ↓
+            Shrink
+    High Availability:
+        run at least 2 data centers.
+        Server တစ်လုံးပျက်ရင်တောင် Website မပျက်ဘူး။ AZ တစ်ခု ပျက်ရင်တောင်
+        နောက် AZ က ဆက်အလုပ်လုပ်တယ်။
+        Goal: Reduce downtime.
+            Example:
+                Server A fails
+                ↓
+                Server B starts serving users
+            There might be a few seconds of interruption.
+    Fault Tolerance:
+        Fault Tolerance means the system continues working even when a component fails, 
+        with little or no interruption.
+        The keyword is:
+            Failure
+            ↓
+            Still Works
+            Real-Life Example
+                Imagine an airplane.
+                It has:
+                2 engines
+                If one engine fails:
+                Engine 1 ❌
+                Engine 2 ✅
+
+                The airplane continues flying.
+                That is Fault Tolerance.
+        Goal:  No interruption (or almost none).
+    High Availability vs Fault Tolerance:
+        Imagine your house loses electricity.
+            High Availability:
+            A generator starts after 10 seconds.
+            Power ❌
+            ↓
+            10 seconds
+            ↓
+            Generator starts.
+            Note:
+                တစ်ခုခုပျက်ရင် Service ကို အမြန်ဆုံး ပြန်တက်အောင်လုပ်ထားတာ။
+                Downtime နည်းအောင်။
+
+            Fault Tolerance
+            The generator is already running.
+            Electricity changes instantly.
+            Power ❌
+            ↓
+            Immediately
+            ↓
+            Generator
+
+            You don't even notice.
+            Note:
+                တစ်ခုခုပျက်ရင်တောင် Service က မပျက်ဘဲ ဆက်အလုပ်လုပ်တာ။
+    Load Balancer:
+        spread load
+        Single Point of Access (DNS)
+            Each EC2 has a different IP.
+            Instead, users always access: www.example.com
+            DNS resolves to: Application Load Balancer
+        Handle Failures Automatically
+            EC2 တစ်လုံး ပျက်ရင် Load Balancer က Healthy EC2 ကို Auto ပို့ပေးတယ်။
+        Health Checks
+            Every few seconds,
+            the Load Balancer asks:
+
+            Are you alive?
+
+            Example:
+            GET /
+            200 OK
+
+            Healthy.
+
+            If:
+            500
+            or
+            Timeout
+
+            Unhealthy.
+
+            Load Balancer stops sending traffic.
+        SSL Termination (HTTPS)
+            Normally
+
+            Browser
+            ↓
+            HTTPS
+            ↓
+            EC2
+
+            EC2 decrypts HTTPS.
+
+            Instead,
+            Load Balancer can decrypt.
+
+            Browser
+            ↓
+            HTTPS
+            ↓
+            Load Balancer
+            ↓
+            HTTP
+            ↓
+            EC2
+
+            This reduces work for EC2.
+        Stickiness (Cookies)
+            Login ဝင်ပြီးရင် Request အားလုံးကို Server တစ်လုံးတည်းကို ပို့ချင်ရင် Stickiness သုံးတယ်။
+            Imagine you login.
+                EC2-1
+                ↓
+                Logged In
+
+                Next request:
+
+                Without stickiness
+
+                EC2-2
+
+                Session disappears.
+
+                With stickiness:
+
+                Login
+                ↓
+                EC2-1
+                ↓
+                Next Request
+                ↓
+                EC2-1
+
+                The Load Balancer uses a cookie to remember where to send your requests.
+        Separate Public and Private Traffic:
+            Very common AWS architecture.
+                Internet
+                ↓
+                Public Load Balancer
+                ↓
+
+                Private EC2
+
+                Notice:
+                EC2 has:
+                No Public IP
+                Much more secure.
+                Users only access the Load Balancer.
+    Elastic Load Balancer:
+        a managed service.
+            "Managed" mean: AWS manages it for you.
+        Imagine Two Choices
+            Build Your Own Load Balancer
+                You launch an EC2.
+
+                EC2
+                ↓
+                Install Ubuntu
+                ↓
+                Install Nginx
+                ↓
+                Configure Load Balancing
+                Now you are responsible for everything.
+
+            Using ELB
+                Create ELB
+                ↓
+                Done
+                AWS manages everything.
+        It costs less to setup your own load balancer.
+            Nginx ကို ကိုယ်တိုင်တင်ရင် EC2 တစ်လုံးစာပဲကုန်ကျမယ်။
+            ဒါပေမယ့် Maintenance အကုန် ကိုယ်တိုင်လုပ်ရမယ်။
+            Production မှာ AWS ELB သုံးတာက ပိုကောင်းတယ်။
+        Integrated with Many AWS Services
+            ASG က EC2 အသစ် ဖန်တီးလိုက်တာနဲ့ ELB က Auto သိပြီး Traffic ပို့ပေးတယ်။
+        4 kinds of managed Load Balancer:
+            Classic Load Balancer(CLB): v1 2009
+                HTTP, HTTPS, TCP, SSL(Secure TCP)
+            Application Load Balancer(ALB): v2 2016
+                HTTP, HTTPS, Websocket.
+            Network Load Balancer(NLB): v2 2017
+                TCP, TLS(Secure TCP), UDP
+                    extremely fast.
+                    AWS says: Millions of requests per second.
+            Gateway Load Balancer(GWLB): 2020
+                Operates at layer 3 (Network layer) - IP Protocol
+            Note: recommended to use newer generation.
+                some can be setup as internal(private) or external(public) elbs.
+
+                Just remember OSI layer, these:
+                    Application Layer (L7)
+                    ↓
+                    Transport Layer (L4)
+                    ↓
+                    Network Layer (L3)
+            ALB:
+                Routing tables:
+                    based on path/hostname/query string.
+                target groups:
+                    ec2 instances, can be managed by ASG.
+                    ec2 tasks, managed by ec2 itself.
+                    lambda functions,
+                    IP addresses,
+                    ALB can route to multiple target groups
+                        eg: for /user route to go one target group,
+                        eg: for /search route to go one target group,
+                        query string routing:
+                            /requests route go to ALB v2
+                            ?Platform=Mobile -> target group 1(aws ec2 based)
+                            ?Platform=Desktop -> target group 2(on-premises Private IP routing)
+                    Health checks are at target group level.
+                aws automatically created: Fixed hostname(DNS)(xxx.region.elb.amazonaws.com)
+                    Note: normally don't remember this dns name.
+                    use Route 53 (or another DNS provider)
+                        eg:
+                            www.mycompany.com
+                                    │
+                                    ▼
+                            Route53
+                                    │
+                                    ▼
+                            xxx.region.elb.amazonaws.com
+                the application servers don't see the IP of the client directly.
+                    Your laptop IP is:
+                        1.2.3.4
+
+                        You open: www.example.com
+
+                        The request goes like this:
+
+                        Your Browser
+                        1.2.3.4
+                            │
+                            ▼
+                        Application Load Balancer
+                            │
+                            ▼
+                        EC2
+
+                        Question: What IP does EC2 see?
+
+                        Many beginners think:
+                        1.2.3.4
+
+                        ❌ Wrong.
+
+                        Actually,
+
+                        EC2 sees: ALB's Private IP
+
+                        because ALB forwards the request.
+                        Then How Can EC2 Know the Real Client IP?
+                        AWS adds a special HTTP header: X-Forwarded-For
+                the true IP of client is inserted in the header X-Forwarded-For.
+                we can also get Port(X-Forwarded-Port) and proto (X-Forwarded-Proto)
+                    X-Forwarded-Port:
+                        Client က ဘယ် Port(80/443, etc.) ကနေ ဝင်လာလဲဆိုတာ Header ထဲမှာသိမ်းထားတယ်။
+                    X-Forwarded-Proto:
+                        Browser က HTTPS နဲ့ဝင်လာတယ်။ ALB က SSL ဖြုတ်ပြီး EC2 ကို HTTP နဲ့ပို့တယ်။
+                        ဒါပေမယ့်Application က Client က HTTPS နဲ့လာတာကိုသိဖို့သုံး
+                            Complete Flow
+                                Browser
+
+                                IP = 1.2.3.4
+
+                                HTTPS
+
+                                        │
+
+                                        ▼
+
+                                Application Load Balancer
+
+                                        │
+
+                                Adds
+
+                                X-Forwarded-For: 1.2.3.4
+
+                                X-Forwarded-Port: 443
+
+                                X-Forwarded-Proto: https
+
+                                        │
+
+                                HTTP
+
+                                        ▼
+
+                                EC2
+                Note:
+                    | Header            | Meaning                           |
+                    | ----------------- | --------------------------------- |
+                    | X-Forwarded-For   | Original Client IP                |
+                    | X-Forwarded-Port  | Original Port (80/443, etc.)      |
+                    | X-Forwarded-Proto | Original Protocol (HTTP or HTTPS) |
+                Discussion:
+                    EC2 only receives HTTP with LB using or without LB?
+                    aws: No. EC2 can receive either HTTP or HTTPS. It depends on your architecture.
+                    Case 1: Without a Load Balancer
+
+                        Your architecture:
+
+                        Browser
+                        │
+                        HTTPS
+                        │
+                        ▼
+                        EC2
+
+                        In this case:
+
+                        ✅ The browser talks directly to the EC2 instance.
+                        ✅ EC2 must have an SSL/TLS certificate installed (for example, in Nginx or Apache).
+                        ✅ EC2 decrypts the HTTPS traffic itself.
+
+                        Example:
+
+                        Client
+                            │
+                        HTTPS (443)
+                            │
+                            ▼
+                        Nginx (SSL Certificate)
+                            │
+                        HTTP
+                            │
+                        Laravel
+
+                        So EC2 receives HTTPS on port 443, and Nginx terminates SSL.
+                    Case 2: With an Application Load Balancer (Most Common)
+
+                        Architecture:
+
+                        Browser
+                            │
+                        HTTPS
+                            │
+                            ▼
+                        ALB
+                            │
+                        HTTP
+                            │
+                            ▼
+                        EC2
+
+                        Here:
+
+                        The SSL certificate is attached to the ALB (often using AWS Certificate Manager).
+                        The ALB decrypts the HTTPS request.
+                        The EC2 instance receives plain HTTP.
+
+                        This is called: SSL Termination
+
+                        This is the default architecture used by many AWS applications.
+                    Can ALB Send HTTPS to EC2?
+
+                        Yes!
+
+                        You can configure the target group to use:
+                            HTTP (port 80)
+                            HTTPS (port 443)
+
+                        Example:
+
+                        Browser
+                            │
+                        HTTPS
+                            ▼
+                        ALB
+                            │
+                        HTTPS
+                            ▼
+                        EC2
+
+                        This is called end-to-end encryption.
+                    Which One Is More Common?
+
+                        For most web applications:
+
+                        Browser
+                        │
+                        HTTPS
+                        ▼
+                        ALB
+                        │
+                        HTTP
+                        ▼
+                        EC2
+
+                        Reason:
+
+                        Simpler certificate management
+                        Lower CPU usage on EC2
+                        Easier certificate renewal with ACM
+
+                        Real Laravel Example
+                            Without ALB:
+
+                                Internet
+
+                                ↓
+
+                                HTTPS
+
+                                ↓
+
+                                Nginx (Certificate)
+
+                                ↓
+
+                                Laravel
+
+                                You manage the certificate on the EC2 instance.
+                            With ALB:
+
+                                Internet
+
+                                ↓
+
+                                HTTPS
+
+                                ↓
+
+                                ALB (Certificate)
+
+                                ↓
+
+                                HTTP
+
+                                ↓
+
+                                Laravel
+
+                                No certificate is needed on the EC2 instance (unless you intentionally choose HTTPS between ALB and EC2).
+            NLB:
+                Traffic အရမ်းများတဲ့ System တွေမှာ NLB ကို သုံး
+                It understands:
+                    TCP
+                    UDP
+                    TLS
+                It does NOT understand:
+                    /api
+                    /login
+                Unlike ALB, it never checks:
+                    URL
+                    HTTP headers
+                    Cookies
+                It simply forwards the network traffic.
+                Ultra-Low Latency
+                Public Static IP per AZ
+                    NLB က AZ တစ်ခုစီအတွက် Static Public IPရတယ်။
+                    IP မပြောင်းဘူး။ Firewall, Whitelist, Partner Company, VPN တွေမှာ အရမ်းအသုံးဝင်တယ်။
+                    ALB has:
+                        Hostname: my-alb.ap-northeast-1.elb.amazonaws.com
+
+                        The underlying IP addresses can change over time.
+                        You normally use DNS.
+                    NLB gives: Static IP
+                        Example:
+
+                        AZ-a
+
+                        3.10.20.30
+
+                        AZ-b
+
+                        3.10.20.31
+
+                        These IP addresses remain stable.
+                Supports assigning Elastic IP.
+                Question: 
+                    A company must whitelist a fixed public IP address in a partner's firewall.
+                    ✅ Answer: Network Load Balancer with Elastic IPs
+                three kinds of targets:
+                    EC2 Instances
+                        Exactly like ALB.
+                    IP Addresses(Private IP Only)
+                        Because NLB forwards traffic inside your VPC.
+                    ALB as a Target
+                        can forward traffic to an Application Load Balancer.
+                        Why would anyone do this?
+
+                        Imagine:
+
+                        You need:
+                        ✅ Static IP
+                        AND
+                        ✅ Path-based Routing
+                        Problem:
+                            ALB
+                            ✔ Path Routing
+                            ❌ Static IP
+                            NLB
+                            ✔ Static IP
+                            ❌ Path Routing
+                        Solution:
+                            Internet
+                            ↓
+                            NLB
+                            (Static IP)
+                            ↓
+                            ALB
+                            (Path Routing)
+                            ↓
+                            EC2
+
+                        Now you have both.
+
+                        This is a real AWS architecture.
+                        Company တစ်ခုက Static IP လည်း လိုတယ်။ Path Routing လည်း လိုတယ်။ 
+                        ဒါဆို NLB, ALB ၂ ခုကို တွဲသုံးနိုင်တယ်။
+                Health Checks:
+                    Unlike ALB, NLB supports several health check protocols.
+                    Website ကို မစစ်ဘူး။ Port ဖွင့်ထားလား Connection ရလား ဒါပဲ စစ်တယ်။
+                    Example
+                        Suppose Nginx is running,
+
+                        but Laravel has crashed.
+
+                        TCP check:
+
+                        Port 80
+
+                        Open
+
+                        Healthy
+
+                        Even though Laravel isn't working.
+
+                        HTTP check:
+
+                        GET /
+
+                        ↓
+
+                        500 Internal Server Error
+
+                        Unhealthy.
+
+                        So HTTP health checks are often better for web applications.
+            GLB:
+                special load balancer for security devices.
+                GWLB က Website အတွက် Load Balancer မဟုတ်ဘူး။ Security Device တွေကို Load Balance လုပ်ဖို့ ဖန်တီးထားတာ။
+                Suppose a company has this architecture:
+                    Internet
+                    ↓
+                    EC2
+
+                    Everything works.
+                    Before traffic reaches the application, we want to inspect every packet.
+                    For example:
+                        Virus detection
+                        SQL Injection detection
+                        Malware detection
+                        Packet inspection
+                        Company Firewall
+
+                    How do you do this?
+
+                    Without GWLB
+                        Internet
+                        ↓
+                        Firewall EC2
+                        ↓
+                        Application EC2
+
+                    Problems:
+                        Need to manage firewall scaling
+                        Need multiple firewall instances
+                        Difficult routing
+                        Difficult High Availability
+                AWS solved this by creating: Gateway Load Balancer.
+                Example: Firewalls, Intrusion Detection(IDS) and Prevention Systems(IPS), Deep Packet Inspection Systems(DPI), payload manipulation
+                    IDS is like Security Camera. IPS can block attacks.
+                    DPI က Packet ရဲ့ အပြင်ပိုင်းကိုပဲ မကြည့်ဘူး။ Packet ထဲက Data ကိုပါ ဖတ်ပြီး စစ်ဆေးတယ်။
+                    Payload Manipulation is 
+                        Imagine the packet contains:
+                            <script>alert('hack')</script>
+                        A security appliance could:
+                            remove it
+                            replace it
+                            block it
+                        before it reaches your application.
+                Combine: Transparent Network Gateway + LB
+                    Transparent ဆိုတာ User မသိဘဲ နောက်ကွယ်မှာလုပ်နေတဲ့သဘော။ Browser က Firewall ရှိမှန်းမသိဘူး။
+                Use the GENEVE protocol on port 6081.
+                Note:
+                    AWS က Firewall ကို ကိုယ်တိုင် မပေးဘူး။ Partner Company တွေရဲ့ Firewall Software ကို EC2 ပေါ်မှာ Run လို့ရတယ်။
+                    GWLB က အဲဒီ Firewall တွေကို Load Balance လုပ်ပေးတယ်။
+            ALB vs NLB
+                | Feature                     | ALB                    | NLB           |
+                | --------------------------- | ---------------------- | ------------- |
+                | OSI Layer                   | Layer 7                | Layer 4       |
+                | Protocols                   | HTTP, HTTPS, WebSocket | TCP, TLS, UDP |
+                | Path Routing                | ✅ Yes                  | ❌ No          |
+                | Hostname Routing            | ✅ Yes                  | ❌ No          |
+                | Query String Routing        | ✅ Yes                  | ❌ No          |
+                | Static IP                   | ❌ No                   | ✅ Yes         |
+                | Elastic IP                  | ❌ No                   | ✅ Yes         |
+                | Very Low Latency            | Good                   | ⭐ Best        |
+                | Millions of TCP Connections | Good                   | ⭐ Excellent   |
+        Sticky Sessions:
+            supported on three LB: CLB, ALB, NLB.
+            User က Login လုပ်တယ်။ Login Data ကို EC2-A မှာ သိမ်းထားတယ်။ 
+            နောက် Request တစ်ခုမှာ ALB က EC2-B ဆီ ပို့လိုက်ရင် EC2-B မှာ Login Data မရှိဘူး။ User ကLogout ဖြစ်သွားနိုင်တယ်။
+            Instead of randomly choosing every request, Every request goes to the same server.
+            That's called Session Affinity or Sticky Session.
+            To remember, AWS sends a cookie to the browser.
+                Example:
+                Set-Cookie: AWSALB=xxxxxxxx
+                Browser stores it.
+                Next request:
+                    Cookie: AWSALB=xxxxxxxx
+                ALB reads it and says: "Oh! This user belongs to EC2-A."
+                Then forwards the request to EC2-A.
+                The cookie doesn't live forever.
             
-                
+            Is Sticky Session the Best Solution?
+            AWS says:
+                Not really.
+                Instead,
+                store sessions centrally. like: redis.
+                Other options include storing sessions in a shared database.
+            အားနည်းချက်
+                Enabling stickiness may bring imbalance.
+                Load Balance မညီနိုင်ဘူး
+                Modern cloud applications usually avoid relying on sticky sessions.
+                Instead:
+                    Users
+                    ↓
+                    ALB
+                    ↓
+                    EC2-A
+                    ↓
+                    shared session store (Redis)
+
+                    EC2-B
+                    ↓
+                    shared session store (Redis)
+
+                Any server can handle any request.
+                This scales much better.
+            Cookie Names:
+                Cookie Name Must Be Unique
+                two cookie have:
+                    Duration-based Cookies:
+                        LB creates. not do developer. AWSALB for alb, AWSELB for clb.
+                            Duration means 1 hr, 2 hr, 1 day. after that time, expires -> alb can choose another ec2.
+                    Application-based Cookie:
+                        your application creates. as like as laravel_session, PHPSESSID.
+                        Never use AWSALB, AWSALBAPP, or AWSALBG as your application's cookie names.
+                Which One Should We Use?
+                    Most companies use
+                    Duration-based
+                    because it's simpler.
+                    Application-based is used only when the application already has its own session cookie and you want ALB to use it.
+
+
