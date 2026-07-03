@@ -2709,10 +2709,17 @@ EC2:
                     Application-based Cookie:
                         your application creates. as like as laravel_session, PHPSESSID.
                         Never use AWSALB, AWSALBAPP, or AWSALBG as your application's cookie names.
+                        On setting of ALB attribute, we must be tell cookie name.
                 Which One Should We Use?
                     Most companies use
                     Duration-based
                     because it's simpler.
                     Application-based is used only when the application already has its own session cookie and you want ALB to use it.
-
-
+        Cross-Zone LB:
+            Cross-Zone မဖွင့်ထားရင်
+            AZ-A က LB က AZ-A ထဲက EC2 တွေဆီပဲ ပို့လို့ရတယ်။
+            AZ-B က LB ကလည်း AZ-B ထဲက EC2 ဆီပဲ ပို့တယ်။
+            ဒါကြောင့် EC2 အရေအတွက် မညီရင် Load မညီတော့ဘူး။
+            With Cross-Zone Load Balancing:
+                LB-A can send traffic to all EC2s.
+                LB-B can also send traffic to all EC2s.
