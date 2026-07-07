@@ -2723,3 +2723,242 @@ EC2:
             With Cross-Zone Load Balancing:
                 LB-A can send traffic to all EC2s.
                 LB-B can also send traffic to all EC2s.
+                ဒါကြောင့် Load Balance ညီသွားတယ်။
+            Which Load Balancers Support Cross-Zone?
+                | Load Balancer | Default                            |
+                | ------------- | ---------------------------------- |
+                | ALB           | ✅ Enabled                          |
+                | CLB           | ❌ Disabled (can enable with pay charge )            |
+                | NLB           | ❌ Disabled by default (can enable no charge) |
+        SSL/TLS basic:
+            SSL: Secure Socket Layer
+            TLS: Transport Layer Security, newer version
+            nowadays, TLS cert are mainly used. but people still refer as SSL
+            public SSL cert are issued by Certificate authorities (CA)
+            LB uses an X.509 certicate (SSL/TLS server certificate)
+            
+            can upload own cert. Instead of buying a certificate manually,
+                using ACM(AWS Certificate Manager)
+                Advantages:
+                    Free public certificates (for eligible public domains)
+                    Automatic renewal
+                    Easy attachment to ALB
+            Where Is the Certificate Installed?
+                not on EC2, very often it is installed on the Load Balancer.
+                    Browser
+                    ↓
+                    HTTPS
+                    ↓
+                    ALB
+                    ↓
+                    HTTP
+                    ↓
+                    EC2
+            ALB can store all: Default certificate, optional list of certs
+                How Does ALB Know Which Certificate to Use?
+                    using SNI(Server Name Indication)
+                        SNI ဆိုတာ Browser က "ဘယ် Domain ကိုဝင်တာလဲ" ဆိုတာ ALB ကိုပြောပေးတာ။
+                        ALB က သက်ဆိုင်တဲ့ Certificate ကိုရွေးပေးတယ်။
+                        Question:
+                            One ALB serves:
+                                shop.example.com
+                                api.example.com
+                            Each has a different certificate.
+                            How does ALB know which certificate to present?
+                            ✅ Answer: SNI (Server Name Indication)
+                        Note:
+                            only work for ALB & NLB(newer generation), CloudFront.
+                            not work for CLB (older gen)
+                Security Policy:
+                    Not all browsers support modern TLS.
+                    Example:
+                        Old Windows XP browser
+                        ↓
+                        TLS 1.0 only
+
+                        Modern Chrome
+                        ↓
+                        TLS 1.3
+
+                        ALB lets you choose
+                        which TLS versions to support.
+                    Example:
+
+                        Strict Policy
+                            TLS 1.3
+                            TLS 1.2
+                        Old browsers cannot connect.
+
+                        Legacy Policy
+                            TLS 1.0
+                            TLS 1.1
+                            TLS 1.2
+                        Older browsers can still connect.
+            Connection Draininig:
+                User က 2 GB file Download လုပ်နေတယ်။ Download မပြီးသေးဘူး။
+                အဲ့ဒီအချိန်မှာ EC2 ကို Terminate လုပ်လိုက်ရင် User ရဲ့ Download ချက်ချင်း ပြတ်သွားမယ်။
+                ဒါက User Experience မကောင်းဘူး။
+                Solution is Connection Draininig.
+                    Instead of immediately terminating EC2,
+                        AWS says: "Wait a little."
+                            Not Wait Forever:
+                                set a timeout: 30, 60, 300 seconds, 
+                    In-flight Requests:
+                        A request that is currently being processed.
+                        အလုပ်လုပ်နေဆဲ Request
+                    What Happens During Deregistration?
+                        EC2-A ကို ဖြုတ်တော့မယ်ဆိုရင် User အဟောင်းတွေက ဆက်သုံးလို့ရတယ်။
+                        ဒါပေမယ့် User အသစ်တွေကို EC2-A ဆီ မပို့တော့ဘူး။
+                        Suppose your Target Group has:
+                            EC2-A
+                            EC2-B
+                        You remove EC2-A.
+                        ALB marks it as: Deregistering
+
+                        Now ALB behaves like this.
+                        Existing Users
+                            User 1
+                            ↓
+                            EC2-A
+
+                            Continue...
+
+                            Allowed.
+
+                        New Users
+                            User 2
+                            ↓
+                            EC2-B
+
+                            New requests are not sent to EC2-A anymore.
+                Connection Draining vs Deregistration Delay
+                    AWS changed the name.
+                        | Load Balancer | Feature Name         |
+                        | ------------- | -------------------- |
+                        | CLB           | Connection Draining  |
+                        | ALB           | Deregistration Delay |
+                        | NLB           | Deregistration Delay |
+
+                    The behavior is the same.
+                    Only the name changed.
+            Note:
+                HTTP က စာသားအတိုင်းပို့တယ်။
+                HTTPS က Encryption လုပ်ပြီးပို့တယ်။ ဒါကြောင့် Password, Credit Cardတို့ကိုလုံခြုံစေတယ်။
+                Certificate ကို EC2 မှာ ထားလို့ရတယ်။ ဒါပေမယ့် AWS Best Practice က ALB မှာထားတာ။
+
+                Most common: HTTPS → ALB → HTTP → EC2 (SSL termination at the ALB)
+                Also possible: HTTPS → ALB → HTTPS → EC2 (end-to-end encryption)
+
+                CLB = One Certificate
+                    CLB က Certificate တစ်ခုတည်းပဲထည့်လို့ရတယ်။ Domain ၃ ခုရှိရင် CLB ၃ ခုလိုမယ်။
+                ALB/NLB = Multiple Certificates using SNI
+                
+                Cipher: an encryption algorithm.
+                    Encrypt data (make it unreadable)
+                    Decrypt data (turn it back into the original)
+                ciphers clients: chrome, edge, iPhone app, etc..
+                    During HTTPS Connection
+
+                    Imagine this conversation:
+                        Browser
+                        │
+                        ▼
+                        ALB
+
+                    Browser says:
+
+                    "I support these encryption methods:"
+
+                    AES-128
+                    AES-256
+                    CHACHA20
+
+                    ALB replies:
+
+                    "I only allow these:"
+
+                    AES-256
+                    CHACHA20
+
+                    Both choose:
+
+                    AES-256
+
+                    Now the connection is encrypted using AES-256.
+
+                    This process is part of the TLS handshake.
+    Auto Scaling Group:
+        Free
+        scale out(add instances) to increase load.
+        scale in(remove instances) to decrese load.
+        ensure min and max instance value.
+            Minimum Capacity ဆိုတာ AWS က "ဘယ်လိုပဲဖြစ်ဖြစ် ဒီအရေအတွက်ထက် မလျော့စေရဘူး"
+            Desired Capacity ဆိုတာ လက်ရှိ ရှိစေချင်တဲ့ EC2 အရေအတွက်။
+            Maximum ဆိုတာ AWS က ဘယ်လောက် အများဆုံး EC2 ဖန်တီးခွင့်ရှိလဲ
+        flow:
+            Users -> ELB -> ASG -> EC2 instances
+            This relationship must always be true.
+                Minimum ≤ Desired ≤ Maximum
+        Launch Template:
+            EC2 တစ်လုံး ဖန်တီးဖို့ လိုအပ်တဲ့ Setting အားလုံးကို သိမ်းထားတဲ့ Template
+            how an Auto Scaling Group knows what kind of EC2 instance to create?
+                ASG = Manager
+                Launch Template = Blueprint (or recipe)
+            contain:
+                • AMI + Instance Type
+                • EC2 User Data
+                • EBS Volumes
+                • Security Groups
+                • SSH Key Pair
+                • IAM Roles for your EC2 Instances
+                • Network + Subnets Information
+                • Load Balancer Information
+            CloudWatch alarms & Scaling:
+                Auto Scaling Group = Worker
+                CloudWatch Alarm = Manager
+                The manager watches the servers and tells the worker what to do.
+                    If Average CPU > 70%
+                    ↓
+                    Alarm
+                Alarm Triggers Auto Scaling
+            Average CPU:
+                Metrics such as Average CPU are computed for the overall ASG instances.
+                Suppose
+                    EC2-1
+
+                    80%
+                    EC2-2
+
+                    60%
+                    EC2-3
+
+                    40%
+
+                    Average: (80 + 60 + 40) ÷ 3 = 60%
+
+                    CloudWatch looks at the average of all instances in the ASG
+                flow:
+                    CloudWatch Metric
+                        ↓
+                    CloudWatch Alarm
+                    ↓
+                    Auto Scaling Policy
+                    ↓
+                    Auto Scaling Group
+                    ↓
+                    Launch / Terminate EC2
+    Important:
+        ASG only manages the EC2 instances that it created (or that are attached to it).
+        It does not manage EC2 instances that you launched manually.
+    Note:
+        Auto Scaling = CPU only.
+        CloudWatch can trigger scaling based on many different metrics.
+        Examples metrics:
+            🌐 Web servers → Request count per target (ALB)
+            📊 API servers → Average CPU or request rate
+            📨 Queue workers → Queue length (e.g., Amazon SQS messages)
+            🎥 Video processing → Number of jobs waiting
+                                
+
+
+
