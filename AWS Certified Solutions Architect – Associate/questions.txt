@@ -53,6 +53,62 @@ ans: Not always.
 It depends on
 Delete on Termination
 ----------------------------------------------
+A company notices that traffic increases every weekday at 9 AM. 
+They want AWS to automatically learn this pattern and add EC2 instances before users arrive, 
+without manually creating schedules.
+
+✅ Answer: Predictive Scaling
+❌ Not Scheduled Scaling, because Scheduled Scaling requires you to define the schedule yourself.
+----------------------------------------------
+Registered targets in a Target Groups for an Application Load Balancer can be one of the following, EXCEPT:
+1. ec2 instances
+2. Network Load Balancer
+3. Private IP Address
+4. Lambda functions
+
+ans: 2. Network Load Balancer
+----------------------------------------------
+For compliance purposes, you would like to expose a fixed static IP address to your end-users so that 
+they can write firewall rules that will be stable and approved by regulators. 
+What type of Elastic Load Balancer would you choose?
+1. ALB with Elastic IP attached to it.
+2. NLB
+
+ans: NLB.
+because ALB can't attach Elastic IP.
+NLB has one static IP address per AZ. can attach Elastic IP.
+ALB and Classic LB have static DNS name.
+----------------------------------------------
+You have an Auto Scaling Group fronted by an Application Load Balancer. 
+You have configured the ASG to use ALB Health Checks, then one EC2 instance has just been reported unhealthy. 
+What will happen to the EC2 instance?
+
+1. ASG will keeep the instance running and re-start the application
+2. ASG will detach the EC2 instance and leave it running
+3. ASG will terminate EC2 instance
+
+ans: 3. ASG will terminate EC2 instance
+because we can configure ASG to check LB' health checks instead of EC2 status check(default)
+----------------------------------------------
+Your boss asked you to scale your Auto Scaling Group based on the number of requests per minute your application makes to your database. What should you do?
+1. Create a CloudWatch custom matric then create a CloudWatch Alarm.
+2. You politely tell him it's Impossible
+3. Enable Detailed Monitoring then create a CloudWatch
+
+ans: 1. Create a CloudWatch custom matric then create a CloudWatch Alarm.
+because default not have for "number of requests per minute" in metric.
+----------------------------------------------
+You have an ASG and a Network Load Balancer. The application on your ASG supports the HTTP protocol 
+and is integrated with the Load Balancer health checks. You are currently using the TCP health checks. 
+You would like to migrate to using HTTP health checks, what do you do?
+1. Migrate to an ALB.
+2. Migrate the health check to HTTP.
+
+ans: 2. Migrate the health check to HTTP.
+because, 2. NLB support HTTP health check as well as TCP and HTTPS
+1 would work, but, not necessary.
 ----------------------------------------------
 ----------------------------------------------
+
+
 

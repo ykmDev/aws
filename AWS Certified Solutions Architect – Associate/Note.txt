@@ -2947,18 +2947,447 @@ EC2:
                     Auto Scaling Group
                     ↓
                     Launch / Terminate EC2
-    Important:
-        ASG only manages the EC2 instances that it created (or that are attached to it).
-        It does not manage EC2 instances that you launched manually.
-    Note:
-        Auto Scaling = CPU only.
-        CloudWatch can trigger scaling based on many different metrics.
-        Examples metrics:
-            🌐 Web servers → Request count per target (ALB)
-            📊 API servers → Average CPU or request rate
-            📨 Queue workers → Queue length (e.g., Amazon SQS messages)
-            🎥 Video processing → Number of jobs waiting
-                                
+        Scaling Policies:
+            Dynamic Scaling:
+                AWS က အလိုအလျောက်EC2 တိုး/လျှော့လုပ်
+                    Target Tracking Scaling:
+                        simple to set-up
+                        eg: I want the average ASG CPU to stay at around 40%
 
+                        Scale Out is fast, Scale In is slow.
+                    Simple/Step Scaling:
+                        smarter than Simple Scaling.
+                        When a CloudWatch alarm is triggered (CPU > 70%), then add 2 units
+                        When a CloudWatch alarm is triggered (CPU < 3>0%), then remove 1 units
+                    
+            Scheduled Scaling:
+                Traffic လာမယ့်အချိန်ကို ကြိုသိနေတယ်
+                anticipate a scaling based on known usage patterns
+                eg: increase then min capacity to 10 at 5 pm on Fridays
+            Predictive scaling:
+                continuously forecast load and schedule scaling ahead
+                newer and smarter scaling policy in AWS
+                Predictive Scaling ဆိုတာ AWS က အရင်က Traffic History ကို လေ့လာပြီး
+                    နောက်တစ်ခါ Traffic များမယ့်အချိန်ကိုခန့်မှန်းပြီး EC2 တွေကို ကြိုတင် ဖန်တီးပေးတာပါ
+            Good Metrics to Scale on:
+                CPUUtilization
 
+            Question:
+                A company notices that traffic increases every weekday at 9 AM. 
+                They want AWS to automatically learn this pattern and add EC2 instances before users arrive, 
+                without manually creating schedules.
+
+                ✅ Answer: Predictive Scaling
+                ❌ Not Scheduled Scaling, because Scheduled Scaling requires you to define the schedule yourself.
+            | Scaling Policy     | Trigger                                              |
+            | ------------------ | ---------------------------------------------------- |
+            | Target Tracking    | Maintain a target metric (e.g., CPU 50%)             |
+            | Simple Scaling     | One CloudWatch alarm → one fixed action              |
+            | Step Scaling       | Different alarm thresholds → different actions       |
+            | Scheduled Scaling  | Time-based schedule set by you                       |
+            | Predictive Scaling | AWS forecasts future demand using historical metrics |
+
+            The difference is:
+                | Policy    | Question it answers              |
+                | --------- | -------------------------------- |
+                | Dynamic   | **React** to current traffic     |
+                | Scheduled | **Prepare** for expected traffic |
+        Termination policy:
+            If desired decrease/Scale-In, How to choose termination of instance?
+                AWS does not simply terminate the newest (latest) instance first.
+                AWS follows a termination policy.
+                Termination policy:
+                    priorities:
+                        Keep Availability Zones balanced.
+                        Prefer terminating instances that use older launch templates/configurations.
+                        Then apply the configured termination policy (which may consider launch time).
+                    explanation:
+                        Step 1: Is one AZ holding more instances?
+
+                            Example:
+
+                            AZ-A
+
+                            3 instances
+                            AZ-B
+
+                            1 instance
+
+                            AWS prefers to terminate an instance from AZ-A to keep the AZs balanced.
+
+                            This helps maintain High Availability.
+                        Step 2: Which Instance Should Be Removed?
+
+                            If there are multiple candidates, AWS looks at the termination policy.
+
+                            The default policy generally prefers to terminate instances launched from older launch configurations/templates or mixed-instance configurations first, before considering launch time.
+
+                            If all instances are equivalent, launch time may become one of the deciding factors.
+
+                            Example
+
+                            Suppose:
+
+                            10:00
+
+                            EC2-A
+                            10:05
+
+                            EC2-B
+                            10:10
+
+                            EC2-C
+                            10:15
+
+                            EC2-D
+
+                            If all four are:
+
+                            Same Launch Template
+                            Same AZ balance
+                            Same configuration
+
+                            Then AWS may terminate one of the newer instances according to its default policy.
+
+                            But don't memorize "latest is always deleted." That is not the rule.
+
+                            Why?
+
+                            Imagine:
+
+                            Old instances:
+
+                            Launch Template v1
+
+                            New instances:
+
+                            Launch Template v2
+
+                            You update your application.
+
+                            AWS would rather keep:
+
+                            v2
+
+                            and remove:
+
+                            v1
+
+                            because v2 contains the latest software.
+                        Can Customize It.
+        metrics:
+            Based on CloudWatch metrics, launch another EC2.
+            1. CPUUtilization(most common)
+                Average CPU utilization across your EC2 instances
+            2. RequestCountPerTarget
+                CPU ကိုမကြည့်ဘူး။ ALB က EC2 တစ်လုံးချင်းစီကို Request ဘယ်လောက်ဝင်လဲဆိုတာ ကြည့်တယ်
+                    Why not CPU?
+                        Sometimes
+                        Application က CPU မသုံးဘူး။
+                        Example
+                            Nginx
+                            Static Website
+                            Image Server
+
+                        CPU က 15% ပဲရှိတယ်။
+
+                        ဒါပေမယ့် Request 30000/sec ရှိနိုင်တယ်။
+
+                        CPU ကိုကြည့်ရင် AWS က "Load မရှိဘူး" လို့ထင်မယ်။
+
+                        တကယ်တော့
+
+                        Request တွေ အရမ်းများနေတယ်။
+
+                        ဒါကြောင့် RequestCountPerTarget ကိုသုံးတာ။
+            3. Network In / Network Out
+                Bandwidth ကြည့်တာ Example: Video Streaming
+            4. Custom CloudWatch Metric
+                AWS ပေးထားတဲ့ Metric တွေမလုံလောက်ရင် ကိုယ်တိုင် Metric ပို့နိုင်
+            | Metric                | Best For                      | Why?                                        |
+            | --------------------- | ----------------------------- | ------------------------------------------- |
+            | CPUUtilization        | Compute-intensive apps        | CPU load reflects demand                    |
+            | RequestCountPerTarget | ALB web applications          | Measures actual traffic per EC2             |
+            | Network In/Out        | Streaming, downloads, proxies | Network bandwidth is the bottleneck         |
+            | Custom Metric         | Special business logic        | Scale based on application-specific metrics |
+        Cooldown Period:
+            Auto Scaling Down (Cooldown Period):
+            mean: after scale-out/in instance, aws does not check immediately CPU again.
+            (default Cooldown = 300 seconds)
+            During these 5 minutes:
+                No more Scale Out
+                No more Scale In
+            Imagine:
+                Suppose your architecture is:
+                            Users
+                            │
+                            ▼
+                    Application Load Balancer
+                    /        |         \
+                    ▼         ▼          ▼
+                EC2 #1    EC2 #2     EC2 #3
+
+                Current traffic is high.
+
+                CPU Average = 80%
+
+                Your Auto Scaling Policy is:
+
+                    CPU > 70% → Add 1 EC2
+
+                AWS launches a new EC2.
+
+                                Users
+                                │
+                                ▼
+                        Application Load Balancer
+                    /      |      |      \
+                    ▼       ▼      ▼       ▼
+                EC2#1   EC2#2   EC2#3   EC2#4
+
+                Now the question is...
+                Should AWS immediately check the CPU again and add another EC2?
+                ❌ No!
+                AWS waits for a period called the Cooldown Period.
+            Use a ready-to-use AMI to reduce configuration time.
+        Instance Warmup:
+            meaning: Don't include this new EC2 in Auto Scaling metrics until it's actually working.
+            Imagine:
+                Suppose your restaurant is getting crowded.
+                    Current staff:
+
+                    Restaurant
+
+                    Chef A
+                    Chef B
+
+                    Customers increase.
+
+                    You hire Chef C.
+
+                    Now ask yourself these questions:
+
+                    Question 1
+
+                    Should I count Chef C as a full worker immediately?
+
+                    ❌ No.
+
+                    He is still:
+
+                    Wearing uniform
+                    Learning the kitchen
+                    Preparing ingredients
+
+                    This is exactly what Instance Warmup is.
+            Real example:
+                Suppose you have:
+
+                        Users
+                        │
+                        ▼
+                        ALB
+                        │
+                        ▼
+                        EC2-1
+                        EC2-2
+
+                        Average CPU
+
+                        80%
+
+                        Target Tracking Policy
+
+                        Target CPU = 50%
+
+                        AWS launches EC3.
+
+                        Timeline
+                        12:00
+                        EC2-1
+                        CPU = 80%
+
+                        EC2-2
+                        CPU = 80%
+
+                        Average
+
+                        80%
+
+                        Launch EC3.
+
+                        12:01
+
+                        EC3 is booting.
+
+                        It is NOT serving traffic yet.
+
+                        EC2-1 = 80%
+
+                        EC2-2 = 80%
+
+                        EC2-3 = 0%
+
+                        Now imagine AWS includes EC3 in the average immediately.
+
+                        Average CPU becomes
+
+                        (80+80+0)/3
+
+                        =53%
+
+                        AWS thinks:
+
+                        Great!
+
+                        CPU almost reached target.
+
+                        But actually...
+
+                        EC3 isn't working yet!
+
+                        Real workload is still:
+
+                        EC2-1
+
+                        EC2-2
+
+                        Both still at
+
+                        80%
+
+                        This is WRONG.
+
+                        Solution
+
+                        AWS ignores EC3 for a while.
+
+                        Warmup = 300 sec
+
+                        During warmup,
+
+                        AWS calculates average using only:
+
+                        EC2-1
+
+                        EC2-2
+
+                        After EC3 becomes ready,
+
+                        AWS starts including it.
+
+                        Now CPU becomes
+
+                        EC2-1 =45%
+
+                        EC2-2 =40%
+
+                        EC2-3 =35%
+
+                        Average
+
+                        40%
+
+                        Now the metric is accurate.
+        Health Check Grace Period:
+            It is NOT about scaling.
+            It is about health checks.
+            meaning: prevented the instance from being terminated while it was still starting.
+            Imagine:
+                Your manager checks every minute:
+
+                "Is Chef C working?"
+
+                But Chef C is still changing clothes.
+
+                Should the manager fire him immediately?
+
+                ❌ No.
+
+                Give him time first.
+
+                This is Health Check Grace Period.
+            Real example:
+                Suppose EC3 starts.
+
+                    AWS Health Check begins checking.
+
+                    GET /
+
+                    Response?
+
+                    But EC3 is still booting.
+
+                    Amazon Linux
+
+                    ↓
+
+                    Nginx starting
+
+                    ↓
+
+                    PHP starting
+
+                    ↓
+
+                    Laravel starting
+
+                    ↓
+
+                    Database connecting
+
+                    Health Check gets:
+
+                    HTTP 503
+
+                    or
+
+                    Connection refused
+
+                    AWS thinks:
+
+                    Instance unhealthy!
+
+                    Terminate it!
+
+                    Launch another one!
+
+                    That would create an endless loop.
+        Comparison:
+            | Feature  | Instance Warmup                          | Health Check Grace Period      |
+            | -------- | ---------------------------------------- | ------------------------------ |
+            | Purpose  | Scaling metrics                          | Health checks                  |
+            | Used by  | Auto Scaling policies                    | EC2/ALB health checks          |
+            | Ignores  | CloudWatch metrics from the new instance | Failed health checks           |
+            | Prevents | Wrong scaling decisions                  | Premature instance termination |
+        Important:
+            ASG only manages the EC2 instances that it created (or that are attached to it).
+            It does not manage EC2 instances that you launched manually.
+
+            One Thing Students Often Confuse
+                People think:
+                    Desired = Current Total EC2
+                ❌ Wrong.
+
+                Correct is:
+                    Desired = Current EC2 owned by THIS ASG
+
+        Note:
+            Auto Scaling = CPU only.
+            CloudWatch can trigger scaling based on many different metrics.
+            Examples metrics:
+                🌐 Web servers → Request count per target (ALB)
+                📊 API servers → Average CPU or request rate
+                📨 Queue workers → Queue length (e.g., Amazon SQS messages)
+                🎥 Video processing → Number of jobs waiting
+RDS:
+    DB service for Relational Database Service,
+    allows: Postres, Mysql, MariaDb, Oracle, Microsoft SQL Server
+    advantage using RDS vs on EC2.
+        Automated Provisioning
+        OS Patching
+        Point-in-Time Restore (PITR)
+            can restore to: nearest time before mistake [DELETE FROM customers;]
+        Monitoring Dashboards
+        Read Replicas
 
