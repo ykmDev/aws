@@ -3390,4 +3390,175 @@ RDS:
             can restore to: nearest time before mistake [DELETE FROM customers;]
         Monitoring Dashboards
         Read Replicas
+            for read request(=read only kinds) -> use replica 1, 2
+            for write request(=INSERT, UPDATE, DELETE) -> use primary
+            primary to replica 1,2 with asychronous replication, a little 2 sec replication lag.
+                asychronous replication: data store on Primary first, return success. and then later, copy to replica.
+            To inconsistent data, can write only Primary, and then send to Replica.
+            architecture:
+                                   Users
+                                    │
+                        ┌───────────┴───────────┐
+                        ▼                       ▼
+                    Read Request           Write Request
+                        │                       │
+                        ▼                       ▼
+                Read Replica            Primary RDS
+                                                │
+                                        Async Replication
+                                                │
+                                                ▼
+                                        Read Replica 
+            Can a Read Replica Become the Main Database?
+                Yes.
 
+                If needed, AWS lets you promote a Read Replica.
+
+                Primary
+
+                ↓
+
+                Failure
+
+                You can promote:
+
+                Replica
+
+                ↓
+
+                New Primary
+
+                ⚠️ This is usually a manual action.
+
+                Unlike Multi-AZ, Read Replica does not automatically fail over.
+            Network Cost:
+                in aws there's a network cost when data goes from one AZ to another.
+                Within same region, you don't pay that fee. If Cross-region, pay fees.
+        Multi-AZ
+            use Standby.
+                The Standby is not used for application traffic(read/write).
+                It only waits for a failure.
+                Don't confuse it with Read Replica.
+
+                Suppose your database is:
+
+                Tokyo AZ-A
+
+                Primary RDS
+
+                AWS creates another copy:
+
+                Tokyo AZ-B
+
+                Standby RDS
+
+                Normally:
+
+                Applications
+
+                ↓
+
+                Primary
+
+                Standby is not used.
+
+                If AZ-A fails:
+
+                Primary
+
+                ↓
+
+                Fail
+
+                AWS automatically switches to:
+
+                Standby
+
+                Users usually notice little or no interruption.
+
+                This is Disaster Recovery (DR).
+            Synchronous Replication:
+                eg: If a customer places an order, return a success response after both(AZs) databases have the data.
+            Unlike Asynchronous Replication:
+                eg: If a customer places an order, return a success response after Primary db saved. 
+                later, copy to Replica. there can be a delay.
+            automatic faliover:
+                if Primary(AZ-A) crash, aws detect : Primary Unhealthy.
+                Immediately, AWS promotes the StandBy to Primary.
+                still use One DNS endpoint.
+                No Manual Intervention.
+                    Imagine your application connects like this:
+                        mydb.xxxxxx.ap-northeast-1.rds.amazonaws.com
+
+                        Your application always uses one endpoint.
+
+                            DB_HOST=mydb.xxxxxx.ap-northeast-1.rds.amazonaws.com
+
+                        Suppose AZ-A fails.
+
+                        Do you need to change:
+
+                            DB_HOST=...
+
+                        ❌ No.
+
+                        AWS automatically changes where that DNS name points.
+                        After failover:
+                            DNS
+                            ↓
+                            New Primary (AZ-B)
+
+                            Your application still uses the same hostname.
+                            No code changes.
+                            No configuration changes.
+        Read Replica VS Multi-AZ
+            | Read Replica               | Multi-AZ                           |
+            
+            | -------------------------- | ---------------------------------- |
+            | 🚀 Improve performance     | 🛡️ Improve availability |
+            | Handles read traffic       | Waits as a standby       |
+            | Asynchronous replication   | Synchronous replication  |
+            | Manual promotion if needed | Automatic failover       |
+            | Used for scaling reads     | Not used for scaling     |
+            | Improve read performance   | Improve availability               |
+            | Read traffic               | Disaster recovery                  |
+            | Can serve queries          | Cannot serve queries while standby |
+            | Can have multiple replicas | One standby copy                   |
+            | Manual promotion if needed | Automatic failover                 |
+        Rasy Remember:
+            Read Replica = Performance
+            Multi-AZ = High Availability
+            Read Replica helps your database work faster. Multi-AZ helps your database survive failures.
+        Scaling
+        Storage backed by EBS
+            RDS stores database files on Amazon EBS.
+        Memory Trick:
+            | Requirement                     | Choose                  |
+            | ------------------------------- | ----------------------- |
+            | Want AWS to manage the database | ✅ RDS                   |
+            | Need OS access (SSH)            | ✅ Database on EC2       |
+            | Improve read performance        | ✅ Read Replica          |
+            | Automatic failover              | ✅ Multi-AZ              |
+            | Restore to a specific second    | ✅ Point-in-Time Restore |
+            | High Availability               | ✅ Multi-AZ              |
+            | Disaster Recovery               | ✅ Multi-AZ              |
+    Auto Scaling:
+        if running out of free storage, it scales automatically.
+        have to set: Max Storage threshold
+            The threshold protects you from unlimited storage growth and unexpected costs.
+            AWS can do: 20 GB -> 30 GB -> 40 GB -> 60 GB -> 100 GB
+            AWS doesn't increase storage immediately.
+            It waits until all conditions are met.
+            Automatic modify:
+                free storage < 10% of allocated storage
+                low-storage lasts at least 5 min
+                6 hr have passed since last modification
+        only changes storage capacity.
+        does not increase:
+            CPU, RAM, Database instance class
+        Can Storage Shrink Automatically?
+            meaning: if your data much smaller, Will AWS reduce storage back to lower?
+        ❌ No.
+        Storage Auto Scaling only increases storage.
+        It never automatically decreases it.
+    
