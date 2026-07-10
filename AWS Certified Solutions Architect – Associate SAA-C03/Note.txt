@@ -1240,7 +1240,6 @@ EC2:
         | Share Between EC2 | Normally No         | Yes                     | Yes (via API)                         |
         | Access Method     | OS Disk Driver      | NFS                     | HTTP/API                              |
         | Typical Use       | OS, Database        | WordPress, Shared Files | Images, Videos, Backups, Logs         |
-
     EBS Volume:
         an EBS(Elastic Block Store) Volume is a network drive.
         Persist:
@@ -3561,4 +3560,134 @@ RDS:
         ❌ No.
         Storage Auto Scaling only increases storage.
         It never automatically decreases it.
-    
+    RDS Custom:
+        Unlike normal RDS:
+            AWS manages almost everything: OS, DB, Backup, Monitoring, Maintenance
+        AWS gives you access to the operating system.
+            Currently, RDS Custom mainly supports:
+            Oracle
+            Microsoft SQL Server
+
+            Not MySQL or PostgreSQL.
+        can connect using ssh or AWS Systems Manager/Session Manager.
+            Configure Settings
+            Install Patches
+
+            Enable Native Features
+            SSH Access
+            Automation Mode
+                Normally,
+
+                RDS Custom still performs some AWS management.
+
+                Imagine AWS is continuously checking:
+
+                Database
+
+                OS
+
+                Configuration
+
+                If AWS notices something unexpected,
+
+                it may try to restore the supported configuration.
+
+                Suppose you want to make major OS changes.
+
+                AWS says:
+
+                Disable Automation
+
+                Now AWS temporarily stops managing the instance.
+
+                You make your changes.
+
+                Example:
+
+                Install Software
+
+                ↓
+
+                Modify OS
+
+                ↓
+
+                Restart Database
+
+                When finished,
+
+                you can enable automation again.
+        Comparison Table:
+            | Feature                 | RDS   | RDS Custom |
+            | ----------------------- | ----- | ---------- |
+            | Managed by AWS          | ✅ Yes | Partial    |
+            | SSH Access              | ❌ No  | ✅ Yes      |
+            | OS Customization        | ❌ No  | ✅ Yes      |
+            | Install Custom Software | ❌ No  | ✅ Yes      |
+            | Oracle Support          | ✅ Yes | ✅ Yes      |
+            | SQL Server Support      | ✅ Yes | ✅ Yes      |
+            | AWS Automation          | Full  | Partial    |
+            | Admin Access            | ❌ No  | ✅ Yes      |
+        Memory Table:
+            | Requirement                                 | Choose       |
+            | ------------------------------------------- | ------------ |
+            | AWS manages everything                      | ✅ RDS        |
+            | Need SSH access                             | ✅ RDS Custom |
+            | Need OS customization                       | ✅ RDS Custom |
+            | Need Oracle/SQL Server with custom settings | ✅ RDS Custom |
+            | Need the easiest managed database           | ✅ RDS        |
+    Amazon Aurora:
+        Aurora is AWS's own database engine.
+            think: 
+                MySQL
+                    ↓
+                AWS improves it
+                    ↓
+                Aurora MySQL
+            or
+                PostgreSQL
+                    ↓
+                AWS improves it
+                    ↓
+                Aurora PostgreSQL
+            Aurora is compatible with MySQL and PostgreSQL, 
+                but AWS redesigned the database engine to work better in the cloud.
+            Performance:
+                5x Faster than RDS MySQL
+                3x Faster than RDS PostgreSQL
+            storage auto growth:
+                AWS automatically grows storage. max: 256 TB
+                Normal RDS may need to increase or use Storage Auto Scaling.
+            Aurora Replicas:
+                very fast, replication lag is less than 15 millisec.
+                support 15 replicas.
+            Instant Failover
+                Normal RDS Multi-AZ
+                    if primary is crash, promote StandBy, DNS update(take some time)
+                Aurora
+                    Writer
+                        ↓
+                    Crash
+                        ↓
+                    Reader becomes Writer
+                        ↓
+                    Almost Immediately
+
+                    AWS calls this:
+                        High Availability
+                        Native
+
+                    Aurora was designed with high availability from the beginning.
+            More expensive:
+                than 20% of Standard RDS.
+            | Feature               | RDS MySQL                     | Aurora                            |
+            | --------------------- | ----------------------------- | --------------------------------- |
+            | AWS Managed           | ✅                             | ✅                                 |
+            | MySQL Compatible      | ✅                             | ✅                                 |
+            | PostgreSQL Compatible | ✅                             | ✅ (Aurora PostgreSQL)             |
+            | Performance           | Normal                        | Up to 5× faster (MySQL workloads) |
+            | Storage Growth        | Manual / Storage Auto Scaling | Automatic (10 GB increments)      |
+            | Maximum Storage       | Lower (depends on engine)     | 256 TB                            |
+            | Read Replicas         | Supported                     | Up to 15 with very low lag        |
+            | Failover              | Multi-AZ                      | Faster, built-in HA               |
+            | Cost                  | Lower                         | Higher (~20% more)                |
