@@ -3680,14 +3680,613 @@ RDS:
                     Aurora was designed with high availability from the beginning.
             More expensive:
                 than 20% of Standard RDS.
-            | Feature               | RDS MySQL                     | Aurora                            |
-            | --------------------- | ----------------------------- | --------------------------------- |
-            | AWS Managed           | ✅                             | ✅                                 |
-            | MySQL Compatible      | ✅                             | ✅                                 |
-            | PostgreSQL Compatible | ✅                             | ✅ (Aurora PostgreSQL)             |
-            | Performance           | Normal                        | Up to 5× faster (MySQL workloads) |
-            | Storage Growth        | Manual / Storage Auto Scaling | Automatic (10 GB increments)      |
-            | Maximum Storage       | Lower (depends on engine)     | 256 TB                            |
-            | Read Replicas         | Supported                     | Up to 15 with very low lag        |
-            | Failover              | Multi-AZ                      | Faster, built-in HA               |
-            | Cost                  | Lower                         | Higher (~20% more)                |
+            6 copies of your data
+                Each AZ has 2 copies.
+                This protects your data if an AZ fails.
+                4 out of 6 Needed for Writes.
+                    imagine: insert new order.
+                        Aurora sends this write to all six storage copies: COPY 1,2,3,4,5,6
+                        Does every copy have to respond?
+                        ❌ No.
+                        Aurora only needs 4 successful acknowledgements. EG: COPY 1,2,3,4
+                        if Four copies succeeded.
+                        Aurora accepts the write.
+                        Why Not Require All 6?
+                        Imagine one server is temporarily slow.
+                        If Aurora waited for all six copies,
+                        every write would become slower.
+                        Instead,
+                        AWS says: "Four successful copies are enough."
+                        This keeps the database both fast and durable.
+                3 out of 6 Needed for Reads
+                    Aurora doesn't need all six copies.
+                    AWS requires 3 healthy copies for reads.
+                Self-Healing
+                    If one Copy corrupted, Aurora automatically repairs it. It copies data from the healthy copies.
+                Peer-to-Peer Replication:
+                    all 6 copies as friends.
+                    If one copy loses some data,
+                    it asks the other healthy copies for the missing data.
+                    It doesn't always need the primary database to repair it.
+                Storage Is Striped Across Hundreds of Volumes
+                    Instead of one huge storage disk,
+                    your data is spread across hundreds of storage volumes.
+                    Imagine you have a very large book.
+                    Instead of storing the whole book in one locker,
+                    you divide it into many small sections.
+                            Book
+                            ↓
+                            Chapter 1
+                            ↓
+                            Chapter 2
+                            ↓
+                            Chapter 3
+                    Each chapter is stored separately.
+                    Aurora does the same thing.
+                One Aurora Writer
+                15 Read Replicas.
+                Automatic Failover (<30 Seconds), Aurora immediately chooses one replica.
+                The Writer and the Read Replicas all use the same distributed storage layer.
+                Unlike standard RDS, Aurora replicas don't each keep a completely separate copy of the database. 
+                They share Aurora's distributed storage, which is one reason replication is much faster.
+                Notice:
+                    Writer Instance = 1
+                    Storage Copies = 6
+                    These are not the same thing.
+                    TWO Layers in Aurora
+                                Application
+                                    │
+                                    ▼
+                        +-------------------------+
+                        | Aurora Writer Instance  |   ← Compute Layer
+                        +-------------------------+
+                                    │
+                                    ▼
+                    +--------------------------------+
+                    | Aurora Storage Layer (6 Copies)|  ← Storage Layer
+                    +--------------------------------+
+
+                    Aurora Writer Instance purpose = execute SQL
+                    Aurora Storage purpose = store data
+                Aurora Cluster:
+                    Unlike RDS, Aurora is not just one database instance.
+                    Aurora groups multiple instances into a Cluster.
+                    Think of a cluster as a team.
+                        Aurora Cluster
+                        ├── Writer Instance (1)
+                        ├── Reader Instance (0~15)
+                        ├── Reader Instance
+                        ├── Reader Instance
+                        └── Shared Storage (6 copies across 3 AZs)
+                    Cluster Architecture:
+                                        Aurora Cluster
+                            -------------------------------------------------
+                                        Writer Endpoint
+                                                │
+                                                ▼
+                                    +------------------+
+                                    |  Writer Instance |
+                                    +------------------+
+                                                │
+                                                │
+                                ---------------------------------------
+                                Shared Aurora Storage (6 Copies)
+                                ---------------------------------------
+                                │             │              │
+                                ▼             ▼              ▼
+                            +-------------+ +-------------+ +-------------+
+                            | Reader #1   | | Reader #2   | | Reader #3   |
+                            +-------------+ +-------------+ +-------------+
+                                    ▲             ▲             ▲
+                                        Reader Endpoint
+
+                        Every instance shares the same storage.
+                        This is different from RDS.
+                    Why is Aurora Replication So Fast?
+                        normal DS Read Replica: must copy all changes. Sometimes: 2 sec, 5 sec lag
+                        Aurora is different.
+                                Writer
+                                    │
+                                    ▼
+                            Shared Storage
+                                    ▲
+                                Readers
+
+                            The Reader doesn't copy the database.
+                            It simply reads from the same distributed storage. replicat lag <10 milliseconds very fast.
+                    Writer Endpoint:
+                        Applications that write data use. eg: DB_HOST=mydb.cluster-xyz.ap-northeast-1.rds.amazonaws.com
+                    Reader Endpoint:
+                        Aurora provides another endpoint. Reader Endpoint. eg: READ_DB_HOST=mydb.cluster-ro-xyz.ap-northeast-1.rds.amazonaws.com
+                        AWS automatically distributes them.
+                            Reader Endpoint
+                                ↓
+                                Reader1
+                                ↓
+                                Reader2
+                                ↓
+                                Reader3
+                        No load balancer needed.
+                    Aurora Auto Scaling:
+                        if Reader Too many read requests, aws automatically create another Reader.
+                        How Does Auto Scaling Decide?
+                            Aurora uses CloudWatch matrics.
+                                eg: Average Reader CPU > 70%
+                                if traffic decreases, aws removes one Reader.
+                        Auto Scaling Only Affects Readers.
+                        It does NOT create another Writer. Writer must only one.
+                    Writer Failover
+                        if the Writer crashes, Aurora promotes one Reader.
+                        Applications continue using the same Writer Endpoint.
+                    Cluster Endpoints:
+                        Writer Endpoint
+                        Reader Endpoint
+                        Instance Endpoint
+                            Each instance also has its own endpoint.
+                        Normally, applications use:
+                            Writer Endpoint
+                            Reader Endpoint
+                            Not the individual instance endpoints.
+                    Aurora Custom Endpoint:
+                        define a subset of Aurora instance as a Custom Endpoint
+                        eg: run analytical queries on specifc replicas
+                            The Problem
+                                Suppose your company has two applications.
+                                Website
+                                    SELECT Product Name
+                                    SELECT Price
+                                    SELECT Reviews
+
+                                These are small, fast queries.
+
+                                Data Analytics Team
+
+                                Every night they run:
+                                    SELECT *
+                                    FROM orders
+                                    JOIN customers
+                                    JOIN products
+                                    JOIN payments
+                                    WHERE ...
+                                This query takes:
+
+                                5 minutes
+                                Uses lots of CPU
+                                Uses lots of memory
+
+                                If this query goes through the Reader Endpoint...
+
+                                Reader Endpoint
+                                ↓
+                                Reader1
+                                ↓
+                                Reader2
+                                ↓
+                                Reader3
+
+                                AWS may randomly choose Reader2.
+
+                                Now Reader2 becomes busy.
+
+                                Unfortunately,
+
+                                normal website users may also be sent to Reader2.
+
+                                Result:
+
+                                Website becomes slower.
+                            Solution: Custom Endpoint
+
+                                Aurora lets you create your own endpoint.
+
+                                Example:
+
+                                Analytics Endpoint
+                                ↓
+                                Reader3
+
+                                Now:
+
+                                Website:
+
+                                Reader Endpoint
+                                ↓
+                                Reader1
+                                ↓
+                                Reader2
+
+                                Analytics:
+
+                                Custom Endpoint
+                                ↓
+                                Reader3
+
+                                Heavy reports never affect website users.
+                            Another Example
+                                    Suppose your cluster:
+                                        Writer
+
+                                        Reader1
+
+                                        Reader2
+
+                                        Reader3
+
+                                        Reader4
+
+                                    You decide:
+
+                                        Reader1 + Reader2
+                                        ↓
+                                        Website
+
+                                        Reader3 + Reader4
+                                        ↓
+                                        Business Intelligence Team
+
+                                    Create:
+
+                                    Website Endpoint
+                                    ↓
+                                    Reader1
+                                    Reader2
+
+                                    and
+
+                                    Analytics Endpoint
+                                    ↓
+                                    Reader3
+                                    Reader4
+
+                                    Each team gets its own Readers.
+                        reader endpoint is generally not used after defining custom endpoints.
+                            It means:
+
+                                Instead of:
+
+                                Everyone
+
+                                ↓
+
+                                Reader Endpoint
+
+                                companies often use:
+
+                                Web Application
+
+                                ↓
+
+                                Web Endpoint
+
+                                Analytics
+
+                                ↓
+
+                                Analytics Endpoint
+
+                                Reporting
+
+                                ↓
+
+                                Report Endpoint
+
+                                More control.
+                    Aurora Serverless:
+                        Instead of choosing instance size,
+                        AWS adjusts capacity automatically.
+                        Everything happens automatically.
+                        No Capacity Planning
+                            Normal Aurora
+                            You ask:
+                                How many CPUs?
+                                How much RAM?
+                                Which instance size?
+
+                            Aurora Serverless
+                            AWS decides.
+                            No planning.
+                        Pay Per Second
+                    Global Aurora:
+                        Unlike Aurora stores data across 3 AZs, this is for entire Region.
+                            if the entire Tokyo Region has a major outage, all AZs(6 copies) will unavailable.
+                            Solution: Another Region.
+                                Option 1: Aurora Cross-Region Read Replica
+                                    Primary Region handles reads and writes.
+                                    Secondary Region is read-only.
+                                    Good for disaster recovery.
+                                        Example
+                                            Suppose your customers are only in Japan.
+
+                                            Users
+                                            ↓
+                                            Tokyo Aurora
+
+                                            You also create:
+
+                                            Singapore: Read Replica
+
+                                            Normally: Nobody uses Singapore.
+
+                                            It's just waiting.
+                                            If Tokyo fails,
+                                            you can promote the Singapore replica.
+                                    But, Promotion is manual.
+                                Option 2: Aurora Global Database (Recommended)
+                                    Primary Region (read / write)
+                                    Secondary Regions Only no Writing. supports up to 16 Aurora Read Replicas.
+                                    Helps for decreasing latency
+                                    replication lag is less than second
+                                    Promoting another region (for disaster recovery) has an RTO of < 1 minute
+                                    Typical cross-region replication takes less than I second
+                                        RTO: Recovery Time Objective
+                                            How long does it take to recover the service?
+                                        RPO: Recovery Point Objective
+                                            How much data might be lost?
+                                Cross-Region Read Replica vs Global Database
+                                    | Feature            | Cross-Region Read Replica | Aurora Global Database         |
+                                    | ------------------ | ------------------------- | ------------------------------ |
+                                    | Disaster Recovery  | ✅                         | ✅                              |
+                                    | Cross-Region Reads | ✅                         | ✅                              |
+                                    | Replication        | Standard cross-region     | Optimized global replication   |
+                                    | Replication Lag    | Higher                    | Usually < 1 second             |
+                                    | Failover           | Manual promotion          | Faster promotion (RTO < 1 min) |
+                                    | Recommended by AWS | Sometimes                 | ✅ Yes                          |
+                    Aurora Machine Learning:
+                        eg:
+                            Normally, what does a database do?
+
+                            It stores data.
+
+                            Example:
+
+                            SELECT * FROM users;
+
+                            INSERT INTO orders;
+
+                            UPDATE products;
+
+                            Simple CRUD operations.
+
+                            Now imagine an e-commerce website.
+
+                            Customer buys:
+
+                            iPhone
+                            AirPods
+                            Apple Watch
+
+                            The website wants to answer:
+
+                            "What product should we recommend next?"
+
+                            Can SQL answer that?
+
+                            ❌ No.
+
+                            This is a Machine Learning (ML) problem.
+                        Without Aurora Machine Learning,
+                            The application has to:
+                                Read from Aurora
+                                Call another ML service
+                                Receive prediction
+                                Show result
+                                Many steps.
+                        With Aurora Machine Learning,
+                            Aurora can directly communicate with AWS Machine Learning services
+                                Aurora can call AWS ML services using SQL.
+                                Think of it like:
+                                    SELECT predict(...);
+
+                                Aurora sends the data to an AWS ML service behind the scenes.
+                                The application simply receives the prediction.
+                        Amazon SageMaker:
+                            Need your model.
+                            Suppose your company created an AI model.
+                            Aurora can send transaction data to SageMaker.
+                                SageMaker replies:
+                                Fraud Probability: 98%
+                        Amazon Comprehend:
+                            No model trainning required.
+                            This service understands text.
+                            Example:
+                            Customer review:
+
+                            "This phone is amazing!"
+
+                            Comprehend analyzes it.
+
+                            Result: Positive
+
+                            Another review:
+
+                            "The product is terrible."
+
+                            Result: Negative
+
+                            This is called: Sentiment Analysis.
+                    Babelfish:
+                        Babelfish helps Microsoft SQL Server applications run on Aurora PostgreSQL
+                        with little or no application code changes.
+                        Babelfish is the translator.
+                            eg scenairo:
+                                First, The Problem
+                                    Imagine a company has an old application.
+
+                                    Company System
+                                    ↓
+                                    Microsoft SQL Server
+
+                                    The application was developed many years ago.
+
+                                    It uses:
+                                        SQL Server Driver
+                                        T-SQL (Transact-SQL)
+                                        SQL Server connection
+
+                                    Example:
+
+                                        SELECT TOP 10 * FROM Customers;
+
+                                    Notice:
+
+                                    TOP 10
+
+                                    This is T-SQL, a Microsoft SQL Server syntax.
+
+                                    Problem
+
+                                    The company wants to migrate to AWS.
+
+                                    Instead of:
+
+                                    Microsoft SQL Server
+
+                                    they want:
+
+                                    Aurora PostgreSQL
+
+                                    Why?
+                                        Lower cost
+                                        Better scalability
+                                        AWS managed service
+
+                                    But...
+
+                                    Aurora PostgreSQL normally understands PostgreSQL syntax.
+
+                                    Example:
+
+                                        SELECT * FROM customers LIMIT 10;
+
+                                    Notice:
+
+                                    LIMIT
+
+                                    instead of:
+
+                                    TOP
+
+                                    These are different SQL dialects.
+
+                                    Without Babelfish
+
+                                    Application sends:
+
+                                        SELECT TOP 10 * FROM Customers;
+
+                                    Aurora PostgreSQL receives:
+
+                                    ❌ ERROR
+
+                                    Because PostgreSQL doesn't understand:
+
+                                    TOP
+                                    With Babelfish
+
+                                    Now install Babelfish.
+
+                                    Application still sends:
+
+                                        SELECT TOP 10 * FROM Customers;
+
+                                    Babelfish translates it internally.
+
+                                    Application
+                                    ↓
+                                    Babelfish
+                                    ↓
+                                    Aurora PostgreSQL
+
+                                    Internally it becomes:
+
+                                        SELECT * FROM Customers LIMIT 10;
+
+                                    Aurora understands it.
+
+                                    Application works.
+                        The same applications can be used after a migration of your database (using AWS SCT and DMS)
+                            SCT: Schema Conversion Tool
+                                Purpose: Convert database schema.
+                                    Example:
+                                        SQL Server
+                                        ↓
+                                        PostgreSQL
+
+                                    Converts:
+                                        Tables
+                                        Views
+                                        Stored Procedures (where possible)
+                                        Data types
+                            DMS: Database Migration Service
+                                Purpose: Move the data.
+                                    Example:
+                                        SQL Server
+                                        ↓
+                                        DMS
+                                        ↓
+                                        Aurora PostgreSQL
+
+                                    Copies:
+                                        Customer data
+                                        Orders
+                                        Products
+                            Complete Migration Process
+                                Suppose you have:
+                                SQL Server
+
+                                Step 1 Use: WS SCT
+                                Convert schema.
+
+                                Step 2 Use: AWS DMS
+                                Copy data. 
+
+                                Step 3 Enable: Babelfish
+
+                                Application still speaks SQL Server language.
+                                Everything works.
+                            What Babelfish Does and Doesn't Do?
+                                ✔ It Does
+                                    Understands many T-SQL commands.
+                                    Lets SQL Server applications communicate with Aurora PostgreSQL.
+                                    Reduces code changes during migration.
+                                ✘ It Doesn't
+                                    Convert every SQL Server feature perfectly.
+                                    Replace AWS SCT or AWS DMS.
+                                    Turn Aurora PostgreSQL into Microsoft SQL Server.
+                            Babelfish is a compatibility layer, not a full SQL Server implementation.
+
+
+
+
+                Summary:
+                    | Feature               | RDS MySQL                     | Aurora                            |
+                    | --------------------- | ----------------------------- | --------------------------------- |
+                    | AWS Managed           | ✅                             | ✅                                 |
+                    | MySQL Compatible      | ✅                             | ✅                                 |
+                    | PostgreSQL Compatible | ✅                             | ✅ (Aurora PostgreSQL)             |
+                    | Performance           | Normal                        | Up to 5× faster (MySQL workloads) |
+                    | Storage Growth        | Manual / Storage Auto Scaling | Automatic (10 GB increments)      |
+                    | Maximum Storage       | Lower (depends on engine)     | 256 TB                            |
+                    | Read Replicas         | Supported                     | Up to 15 with very low lag        |
+                    | Failover              | Multi-AZ                      | Faster, built-in HA               |
+                    | Cost                  | Lower                         | Higher (~20% more)                |
+
+                    | Question says...                 | Answer                    |
+                    | -------------------------------- | ------------------------- |
+                    | INSERT/UPDATE/DELETE             | Writer Endpoint           |
+                    | SELECT queries                   | Reader Endpoint           |
+                    | Increase read performance        | Add Aurora Read Replicas  |
+                    | Automatically add/remove readers | Aurora Auto Scaling       |
+                    | Writer crashes                   | Reader promoted to Writer |
+                    | One shared storage               | Aurora Cluster            |
+                    | 6 copies across 3 AZs            | Aurora Storage            |
+
+                    | Feature               | RDS                                              | Aurora                                                |
+                    | --------------------- | ------------------------------------------------ | ----------------------------------------------------- |
+                    | Storage               | Each instance has its own storage                | All instances share one distributed storage layer     |
+                    | Read Replication      | Replicas copy data from the primary              | Readers share the same storage, so lag is very low    |
+                    | Writer                | 1                                                | 1                                                     |
+                    | Read Replicas         | Supported (engine-dependent limits)              | Up to 15                                              |
+                    | Reader Load Balancing | Application or custom solution                   | Built-in Reader Endpoint                              |
+                    | Auto Scaling          | Auto Scaling Group is for EC2, not RDS instances | Can automatically add/remove **Aurora Read Replicas** |
+

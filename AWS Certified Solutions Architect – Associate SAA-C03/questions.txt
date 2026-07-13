@@ -108,6 +108,88 @@ ans: 2. Migrate the health check to HTTP.
 because, 2. NLB support HTTP health check as well as TCP and HTTPS
 1 would work, but, not necessary.
 ----------------------------------------------
+Question:
+
+A company has:
+
+Website traffic
+Analytical queries
+
+Analytical queries slow down website users.
+
+Best solution?
+
+Answer:
+
+✅ Aurora Custom Endpoint
+
+Not:
+❌ Another Cluster
+❌ ELB
+❌ Route53
+----------------------------------------------
+A startup launches a new application.
+Traffic is completely unpredictable.
+They don't want to estimate database capacity.
+
+Answer:
+
+✅ Aurora Serverless
+----------------------------------------------
+A company runs heavy analytics.
+They don't want those queries affecting normal users.
+
+Answer:
+
+✅ Aurora Custom Endpoint
+----------------------------------------------
+A small internal application is used only a few hours each day.
+Minimize database costs.
+
+Answer:
+
+✅ Aurora Serverless
+----------------------------------------------
+A company wants disaster recovery in another AWS Region.
+No strict recovery time requirement.
+
+Answer:
+
+✅ Aurora Cross-Region Read Replica
+----------------------------------------------
+A company requires:
+
+Global users
+Lowest read latency
+Fast regional failover
+Recovery in under one minute
+
+Answer:
+
+✅ Aurora Global Database
+----------------------------------------------
+A Japanese application now has many customers in Europe.
+How can read latency be reduced?
+
+Answer:
+
+✅ Add a secondary Region to Aurora Global Database so European users read from a nearby Region.
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
 ----------------------------------------------
 
 
