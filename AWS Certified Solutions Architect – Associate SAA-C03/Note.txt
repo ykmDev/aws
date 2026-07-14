@@ -3907,11 +3907,8 @@ RDS:
                                         Writer
 
                                         Reader1
-
                                         Reader2
-
                                         Reader3
-
                                         Reader4
 
                                     You decide:
@@ -3945,17 +3942,13 @@ RDS:
                                 Instead of:
 
                                 Everyone
-
                                 ↓
-
                                 Reader Endpoint
 
                                 companies often use:
 
                                 Web Application
-
                                 ↓
-
                                 Web Endpoint
 
                                 Analytics
@@ -4254,10 +4247,197 @@ RDS:
                                     Replace AWS SCT or AWS DMS.
                                     Turn Aurora PostgreSQL into Microsoft SQL Server.
                             Babelfish is a compatibility layer, not a full SQL Server implementation.
+                    RDS Backup:
+                        Two Types of Backup:
+                            Automated backup: (AWS automatically)
+                                daily full backup
+                                    But What Happens Between backup time and Tomorrow?
+                                    If AWS only backed up once a day,
+                                    all these changes would be lost.
+                                    That's why AWS also saves:
+                                Transaction Logs
+                                    Every 5 minutes, daily full backup, RDS backs up the database transaction logs.
+                                    Because of Point-in-Time Restore (PITR).
+                                        Imagine this timeline:
+                                        2:00 AM
+                                        Daily Backup
+                                        ↓
+                                        9:00 AM
+                                        Customer A created
+                                        ↓
+                                        11:30 AM
+                                        Customer B created
+                                        ↓
+                                        3:00 PM
+                                        Someone deleted all data
 
+                                        Oops!
 
+                                        Can we restore?
 
+                                        Yes.
 
+                                        Not just to:
+                                        2:00 AM
+                                        We can restore to:
+                                        2:59 PM
+                                        Just before the mistake.
+                                        That's called: Point-in-Time Restore
+                                Retention Period:
+                                    1~35 days. AWS Keeps your choosen days.
+                                    if Retention = 0, AWS disables Automated Backups. No PITR. No automatic recovery.
+                            Manual DB Snapshots: (You manually create)
+                                AWS never creates it automatically.
+                                    You click: Create Snapshot
+                                        Example: Before Upgrading Database
+                                Retention is foreover.
+                            Which One Supports PITR?
+                                Automated Backup ✅ Yes
+                                Manual Snapshot ❌ No
+                            If you Stopped RDS -> Still pay storage.
+                                any beginners think: "I stopped my database, so I pay nothing."
+                                ❌ Wrong.
+                                You still pay for:
+                                    Storage (EBS)
+                                    Backup storage (if applicable)
+                                You only stop paying for the DB instance compute.
+                                So, just create snapshot, and then delete RDS.
+                                pay only for Snapshot storage cost. very cheap.
+                                    flow:
+                                        Create Snapshot
+                                            ↓
+                                        Delete Database
+
+                                        Now: You only pay for: Snapshot Storage
+                                    Example
+                                            Bad:
+
+                                            Stop RDS
+
+                                            ↓
+
+                                            6 months
+
+                                            ↓
+
+                                            Still paying storage
+
+                                            Better:
+
+                                            Snapshot
+
+                                            ↓
+
+                                            Delete RDS
+
+                                            ↓
+
+                                            6 months
+
+                                            ↓
+
+                                            Restore Snapshot
+
+                                            Lower cost.
+                        | Feature                        | Automated Backup                              | Manual Snapshot                              |
+                        | ------------------------------ | --------------------------------------------- | -------------------------------------------- |
+                        | Created automatically          | ✅ Yes                                         | ❌ No                                         |
+                        | Created manually               | ❌ No                                          | ✅ Yes                                        |
+                        | Supports Point-in-Time Restore | ✅ Yes                                         | ❌ No                                         |
+                        | Uses transaction logs          | ✅ Every 5 minutes                             | ❌ No                                         |
+                        | Retention                      | 1–35 days                                     | Until you delete it                          |
+                        | Best for                       | Disaster recovery and accidental data changes | Long-term backup, before upgrades/migrations |
+                    Restoring/Migrate a RDS/Aurora Backup:
+                        Important: when restore RDS snapshot, AWS does not overwrite the existing database.
+                        Restore MySQL RDS from snapshot:
+                                AWS create new database from backup snapshot.
+                                so, Both databases exist.
+                                    Why?
+                                    Because AWS wants to prevent accidental overwrites.
+
+                                    Imagine:
+                                        Current Database
+                                        ↓
+                                        Restore Wrong Snapshot
+                                        ↓
+                                        Everything Lost
+
+                                    That would be dangerous.
+
+                                    Instead AWS creates a new database instance.
+
+                                    You decide later:
+                                        Compare data
+                                        Test
+                                        Switch applications
+                        Restore MySQL RDS from S3:
+                            AWS simply imports from: s3 directly.
+                                scenario:
+                                    our office want to import On-Premises MySQL db.
+                                    first, upload to s3 using mysqldump.
+                                    and then import on rds from s3.
+                                    Fast and reliable.
+                        Restore Aurora MySQL from S3:
+                            Aurora is a little different.
+                                AWS recommends using: Percona XtraBackup
+                                    Percona XtraBackup:
+                                        instead of mysqldump.
+                                        Think of it as: Professional MySQL Backup Tool
+                                        Advantages:
+                                            Faster
+                                            Better for large databases
+                                            Hot backups (backup without stopping the database)
+                                        Why Doesn't Aurora Use mysqldump?
+                                            Imagine database size: 5 TB
+
+                                            Using: mysqldump
+
+                                            Very slow.
+                                            Percona XtraBackup is optimized for enterprise-scale MySQL databases.
+                                Upload to S3.
+                                Create Aurora Cluster.
+                                choose restore from s3.
+                        Comparison Note:
+                            | RDS MySQL                | Aurora MySQL                    |
+                            | ------------------------ | ------------------------------- |
+                            | Import from S3           | Import from S3                  |
+                            | Usually uses mysqldump   | Usually uses Percona XtraBackup |
+                            | Creates new RDS instance | Creates new Aurora cluster      |
+                Aurora Database Cloning:
+                    scenair: 
+                        if want to test staging env from prod db 10TB.
+                        normal flow: prd db -> create snapshot -> restore snapshot -> staging db
+                        problem is take time, Storage, money because 10 TB.
+                        Aurora Cloning is fixed for this problem.
+                    AWS do: "Both databases can share the same storage for now."
+                    Architecture:
+                            Production Cluster
+                                    │
+                    ========================================
+                    Shared Aurora Storage (10 TB)
+                    ========================================
+                                    ▲
+                                    │
+                            Clone Cluster
+
+                    No data is copied.
+                    Creation is almost immediate.
+                    Why Is It So Fast?
+                        No copying needed.
+                    Copy-on-Write (CoW):
+                        after Clone, Storage still only 100 GB.(same of Prod db 100GB, not 200 GB.)
+                        Developer updates the Clone.(update xxx sql),
+                        Should Production also change?
+                        ❌ No. Production must stay safe.
+                        Production is untouched. Without risking Production.
+                        AWS now copies only the changed data.
+                        After update:
+                            Shared Storage 100 GB
+                            +
+                            Changed Blocks 2 MB
+                        that is Copy-on-Write (CoW).
+                        When finished,
+                            delete the Clone. Simple.
                 Summary:
                     | Feature               | RDS MySQL                     | Aurora                            |
                     | --------------------- | ----------------------------- | --------------------------------- |

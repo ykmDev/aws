@@ -175,8 +175,26 @@ Answer:
 
 ✅ Add a secondary Region to Aurora Global Database so European users read from a nearby Region.
 ----------------------------------------------
+A company accidentally deleted records at 3:15 PM.
+They want to restore to 3:14 PM.
+
+Answer:
+✅ Point-in-Time Restore
+Not:
+❌ Manual Snapshot
 ----------------------------------------------
+Need to keep RDSA backup: 5 years
+
+Answer:
+✅ Manual Snapshot
 ----------------------------------------------
+Database won't be used for: 8 months
+Lowest cost?
+
+Answer:
+✅ Snapshot → Delete DB → Restore later
+Not:
+❌ Stop RDS for 8 months
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
