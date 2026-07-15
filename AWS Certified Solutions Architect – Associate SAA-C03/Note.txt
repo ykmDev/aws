@@ -3414,17 +3414,13 @@ RDS:
                 If needed, AWS lets you promote a Read Replica.
 
                 Primary
-
                 ↓
-
                 Failure
 
                 You can promote:
 
                 Replica
-
                 ↓
-
                 New Primary
 
                 ⚠️ This is usually a manual action.
@@ -3454,9 +3450,7 @@ RDS:
                 Normally:
 
                 Applications
-
                 ↓
-
                 Primary
 
                 Standby is not used.
@@ -3464,9 +3458,7 @@ RDS:
                 If AZ-A fails:
 
                 Primary
-
                 ↓
-
                 Fail
 
                 AWS automatically switches to:
@@ -3474,10 +3466,10 @@ RDS:
                 Standby
 
                 Users usually notice little or no interruption.
-
                 This is Disaster Recovery (DR).
             Synchronous Replication:
-                eg: If a customer places an order, return a success response after both(AZs) databases have the data.
+                eg: If a customer places an order, return a success response after both(AZs)
+                databases have the data.
             Unlike Asynchronous Replication:
                 eg: If a customer places an order, return a success response after Primary db saved. 
                 later, copy to Replica. there can be a delay.
@@ -3512,7 +3504,6 @@ RDS:
                             No configuration changes.
         Read Replica VS Multi-AZ
             | Read Replica               | Multi-AZ                           |
-            
             | -------------------------- | ---------------------------------- |
             | 🚀 Improve performance     | 🛡️ Improve availability |
             | Handles read traffic       | Waits as a standby       |
@@ -3523,8 +3514,7 @@ RDS:
             | Read traffic               | Disaster recovery                  |
             | Can serve queries          | Cannot serve queries while standby |
             | Can have multiple replicas | One standby copy                   |
-            | Manual promotion if needed | Automatic failover                 |
-        Rasy Remember:
+        Easy Remember:
             Read Replica = Performance
             Multi-AZ = High Availability
             Read Replica helps your database work faster. Multi-AZ helps your database survive failures.
@@ -3582,11 +3572,9 @@ RDS:
 
                 Imagine AWS is continuously checking:
 
-                Database
-
-                OS
-
-                Configuration
+                    Database
+                    OS
+                    Configuration
 
                 If AWS notices something unexpected,
 
@@ -3605,17 +3593,12 @@ RDS:
                 Example:
 
                 Install Software
-
                 ↓
-
                 Modify OS
-
                 ↓
-
                 Restart Database
 
                 When finished,
-
                 you can enable automation again.
         Comparison Table:
             | Feature                 | RDS   | RDS Custom |
@@ -4031,22 +4014,18 @@ RDS:
                             It stores data.
 
                             Example:
-
-                            SELECT * FROM users;
-
-                            INSERT INTO orders;
-
-                            UPDATE products;
+                                SELECT * FROM users;
+                                INSERT INTO orders;
+                                UPDATE products;
 
                             Simple CRUD operations.
 
                             Now imagine an e-commerce website.
 
                             Customer buys:
-
-                            iPhone
-                            AirPods
-                            Apple Watch
+                                iPhone
+                                AirPods
+                                Apple Watch
 
                             The website wants to answer:
 
@@ -4438,6 +4417,120 @@ RDS:
                         that is Copy-on-Write (CoW).
                         When finished,
                             delete the Clone. Simple.
+                Aurora Security:
+                    at-rest encryption:
+                        at-rest means: Data stored on disk.
+                            Imagine your database:
+                                Customer
+                                Orders
+                                Payments
+                                Product
+                            These files are stored on storage (EBS for RDS, Aurora's distributed storage for Aurora).
+                            This is called: Data At Rest.
+                        AWS uses KMS Key.
+                        Must be defined at launch time
+                        cannot directly encrypt an existing db.
+                            instead, 
+                            first create snapshot -> restore snapshot with enable encryption
+                            now AWS creates: production-db-encrypted
+                        Read Replica Rule:
+                            if Primary is unencrypted, Read Replica cannot encrypt.
+                            they must match.
+                    in-flight encryption:
+                        In-flight: means network.
+                        using TLS/SSL.
+                        Memory Trick:
+                            📦At-rest = Lock the box.
+                            🚚In-flight = Lock the delivery truck.
+                    iam Database authentication:
+                        Use IAM Role to connect db
+                            instead: normal username and password
+                        IAM Role -> Temporary authentication Token.
+                            EC2 instance can connect without storing a database password.
+                            No permanent password in your application.
+                    security groups:
+                        Need to control which EC2 instances can access Aurora.
+                    no ssh available:
+                        normal RDS cannot get ssh access.
+                        Only RDS Custom, can access ssh or SSM Session Manager.
+                    audit logs can be enabled:
+                        Enable:
+                            Audit Logs
+                        aws records user, timee, sql, ip, etc.. sent them to CloudWatch Logs.
+                        Architecture:
+                            Aurora
+                                ↓
+                            Audit Logs
+                                ↓
+                            CloudWatch Logs
+                    Memory:
+                        | Requirement                   | AWS Feature                      |
+                        | ----------------------------- | -------------------------------- |
+                        | Encrypt stored database data  | ✅ KMS (At-rest Encryption)       |
+                        | Encrypt data over the network | ✅ TLS/SSL (In-flight Encryption) |
+                        | Remove database passwords     | ✅ IAM Database Authentication    |
+                        | Restrict network access       | ✅ Security Groups                |
+                        | Need SSH access to DB host    | ✅ RDS Custom                     |
+                        | Keep audit history            | ✅ Audit Logs → CloudWatch Logs   |
+                RDS Proxy:
+                    RDS cannot support unlimited connections.
+                        eg:  RDS Maximum Connections : 100
+                            But Lambda creates: 10,000 Connections
+                            result: Connection Timeout, Database Busy, Application Errors
+                            Why Are DB Connections Expensive?
+                                Opening a connection is not free.
+                                Every connection uses:
+                                    CPU
+                                    RAM
+                                    Database threads
+                                Example:
+                                    Connection 1: 5 MB RAM
+                                    1000 connections: 5000 MB RAM
+                                Huge waste.
+                            Solution → RDS Proxy
+                                lambda -> RDS Proxy -> RDS
+                    Connection Pooling
+                        Without Proxy: 1000 Lambdas -> 1000 Connections -> RDS
+                        With Proxy: 1000 Lambdas -> 20 Connections -> RDS
+                    Lambda Special:
+                        lambda is difference from ec2.
+                            ec2 -> always running.
+                                maybe 10 ec2 servers
+                                10 connections.
+                            lambda -> start/stop very quickly. so AWS recommend: RDS Proxy.
+                    Failover Improvement:
+                        if primary crash, proxy reconnect New Primary behind the scenes. less distruption.
+                    Serverless:
+                        aws manages everything.
+                        RDS Proxy automatically scales.
+                    Highly Available:
+                        Like RDS Multi-AZ.
+                        Proxy runs across multiple AZs.
+                        If one AZ fails,
+                        Proxy continues.
+                    Secrets Manager:
+                        instead storing password in app's coding, use "AWS Secrets Manager".
+                        RDS Proxy retrieves it automatically.
+                    Supported Databases
+                        RDS Proxy works with:
+                            RDS:
+                                MySQL
+                                PostgreSQL
+                                MariaDB
+                                SQL Server
+
+                            Aurora:
+                                MySQL
+                                PostgreSQL
+                    Inside VPC Only
+                        RDS Proxy has: Private IP.
+                        Only resources inside the VPC 
+                        (or connected through VPN/Direct Connect, etc.) can access Proxy.
+                    Why No Code Changes?
+                        Your application still connects to: Database Endpoint
+                        Instead of: RDS Endpoint
+                        you simply use: RDS Proxy Endpoint
+                        Minimal changes.
                 Summary:
                     | Feature               | RDS MySQL                     | Aurora                            |
                     | --------------------- | ----------------------------- | --------------------------------- |
@@ -4469,4 +4562,325 @@ RDS:
                     | Read Replicas         | Supported (engine-dependent limits)              | Up to 15                                              |
                     | Reader Load Balancing | Application or custom solution                   | Built-in Reader Endpoint                              |
                     | Auto Scaling          | Auto Scaling Group is for EC2, not RDS instances | Can automatically add/remove **Aurora Read Replicas** |
+    Amazon ElasticCache:
+        Cache:
+            Cache Miss: fist user when cache not have state.
+            Cache Hit: later user when cache have.
+            why Cache So Fast?
+                RDS stores data on storage devices.
+                Even SSDs are slower than RAM.
+                ElastiCache stores data: RAM (Memory)
+                RAM is much faster.
+        managed service for: Redis or Memcached.
+            Redis and Memcached are the database engines.
+            ElastiCache is the AWS managed service.
+                Amazon ElastiCache
+                    │
+                    ├── Redis
+                    └── Memcached
+            think like RDS,
+                RDS is a managed database service.
+                Inside RDS, you choose a database engine.
+                    Amazon RDS
+                        │
+                        ├── MySQL
+                        ├── PostgreSQL
+                        ├── MariaDB
+                        ├── Oracle
+                        └── SQL Server
+        in-memory db with high performance, low latency
+        Read-Intensive Workloads
+        Stateless Applications
+            state means: Current information that must be remembered.
+            statefull: System/Server က State ကို ကိုယ်တိုင် မှတ်ထားတယ်။
+                e.g: stores login sessions locally. Depend on EC2.
+            stateless: Server က ဘာမှ မမှတ်ထားဘူး။ လိုရင် Shared Storage(Redis) သွားကြည့်မယ်။
+                e.g: stores login sessinons in Redis. Not depend on EC2, EC2 are stateless.
+        aws takes care of OS Maintenance/patching, 
+            optimizations, setup, configuration, 
+            monitoring, failure recovery Just like RDS.
+        Only frequently accessed ("hot") data is stored in cache.
+        Why Does ElastiCache Require Code Changes?
+            Cache Flow:
+                Application
+                    ↓
+                    Check Cache
+                    ↓
+                    Hit?
+                    ↓
+                    Yes
+                    ↓
+                    Return
+                    ------------
+                    No
+                    ↓
+                    Read Database
+                    ↓
+                    Store in Cache
+                    ↓
+                    Return
+            This is called the Cache-Aside Pattern
+        Cache Engine:
+            Redis:
+                feature rich cache.
+                Multi AZ with Auto-Failover
+                Read Replicas to scale reads and have high availability
+                Data Durability using AOF persistence
+                    e.g: when electricity goes off, everything lost
+                    Redis solves this using AOF.
+                    AOF : Append Only File. 
+                    Redis က Command တွေကို File ထဲမှာ တစ်ကြောင်းချင်း မှတ်ထားတယ်။
+                        Every command
+                            SET name Yan
 
+                            Redis writes
+
+                                SET name Yan
+
+                            into a file.
+
+                            Later
+
+                                SET age 30
+
+                            Again
+
+                            saved.
+
+                            File becomes
+
+                                SET name Yan
+                                SET age 30
+                                SET city Tokyo
+
+                            If Redis crashes
+                            AWS restarts Redis.
+                            Redis reads the file.
+
+                                SET name Yan
+                                SET age 30
+                                SET city Tokyo
+
+                            Everything comes back.
+                Backup and restore features
+                    Redis supports Snapshot Exactly like RDS Snapshot.
+                Supports Sets and Sorted Sets
+                    Redis isn't just: key=value
+                    It supports:
+                        String
+                        List
+                        Set
+                        Sorted Set
+                        Hash
+                        Queue
+                        Pub/Sub
+                        Streams
+                Use Cases:
+                    Gaming Leaderboards, Online Shop, Music App.
+                        use Sorted Set (ZSET)
+                            Redis automatically keeps them sorted by score.
+                            You don't need to manually sort after every update.
+                            Sorted Sets guarantee uniqueness.
+            Memcached:
+                simple/High-Speed Cache.
+                Store data in RAM as fast as possible.
+                Multi-node for partitioning of data (sharding)
+                    Suppose you have
+                        1 Million Products
+                        One Memcached server may not have enough RAM.
+                        So AWS lets you create multiple Memcached nodes.
+
+                        Example:
+
+                        Node 1
+                        ↓
+                        Product 1 ~ 300,000
+
+                        Node 2
+                        ↓
+                        Product 300,001 ~ 600,000
+
+                        Node 3
+                        ↓
+                        Product 600,001 ~ 1,000,000
+
+                        This is called: Sharding
+                        or
+                        Partitioning.
+
+                        Instead of storing everything on one server,
+                        we split it across multiple servers.
+                No high availability (replication)
+                    Redis
+                        Primary
+                        ↓
+                        Replica
+
+                        If Primary dies,
+                        Replica becomes Primary.
+
+                    Memcached
+                        Node
+                        No replica.
+                        If server dies
+                        Cache Lost
+                Non persistent
+                    stores only RAM
+                    If machine restarts
+                    Everything Lost
+                    No recovery.
+                Backup and restore (Serverless)
+                    Traditional Memcached → ❌ No persistence
+                    Traditional Memcached → ❌ No backup
+                    Redis → ✅ Persistence + Backup
+                Multi-threaded architecture
+                    Unlike redis, redis is use One Core -> Processes Commands.
+                    Memcached:
+                        CPU 1
+                        CPU 2
+                        CPU 3
+                        CPU 4
+                    All can process requests simultaneously.
+            When Should I Choose Memcached?
+                Suppose
+                    Requirements:
+                        Just cache
+                        Extremely fast
+                        No replication needed
+                        No backup needed
+                        No persistence needed
+                    Choose ✅ Memcached.
+                Suppose
+                    Requirements:
+
+                    Session storage
+                    Replication
+                    Failover
+                    Persistence
+                    Backup
+
+                    Choose ✅ Redis.
+        Cache Security:
+            layer 1: Security Group like building gate.
+                check: "Who is allowed to enter the building?"
+            layer 2: Redis AUTH like room guard.
+                The office door asks Password?
+                can use IAM Authentication without embedding long-live password.
+            IAM Policy:
+                controls AWS API operations like CRUD. not can read cache data.
+            SSL Encryption:
+                Network ပေါ်က Data ကိ Encryption လုပ်ပေးတာ။
+            Memcached Authentication:
+                use SASL(Simple Authentication and Security Layer) unlike Redis use AUTH
+            Note:
+                Security Group က "အဆောက်အဦထဲ ဝင်လို့ရမရ" ကိုစစ်တယ်။
+                Redis AUTH က "Redis ကို သုံးခွင့်ရှိမရှိ" ကိုစစ်တယ်။
+                IAM Authentication သုံးရင် Password မရေးတော့ဘူး။ 
+                EC2 ရဲ့ IAM Role ကို အသုံးပြုနိုင်တယ်။ ပိုလုံခြုံတယ်။
+                IAM Policy က Redis Data ကို ကာကွယ်တာ မဟုတ်ဘူး။ 
+                IAM Policy က AWS Resource ကို CRUD access.
+                EXAM Trick:
+                    Who can create or delete an ElastiCache cluster? => IAM Policy
+                    Need network restriction? => Security Group
+                    Need password for Redis? => Redis Auth Token
+                    Need encrypted communication? => SSL/TLS
+                    Need authentication for Memcached? => SASL
+        Caching Pattern:
+            Lazy Loading (Cache Aside):
+                Don't put everything into Redis.
+                Only cache data when someone requests it.
+                လိုတဲ့အချိန်မှ Cache ထဲ ထည့်တာ။
+                ဘာလို့ "Lazy" လို့ခေါ်လဲ?
+                    ဘာမှ မကြိုလုပ်ဘူး။
+                    User တောင်းမှ လုပ်တယ်။
+                    အဲ့ဒါကြောင့် Lazy။
+                One Problem is have:
+                    Redis ထဲက Data က Database နဲ့ မတူတော့ဘူး။
+                    ဒါကို Stale Cache(Data အဟောင်း) လို့ခေါ်တယ်။
+                    Suppose Admin changes
+                        Price
+
+                        1000$
+                        ↓
+                        900$
+
+                        RDS updated.
+
+                        Redis
+
+                        still has
+
+                        1000$
+
+                        Oops!
+
+                        Old data.
+                        This is called: Stale Data
+            Write Through:
+                Whenever database changes,
+                Update Redis too.
+                Database ထဲ Update လုပ်တဲ့အချိန် Redis ကိုလည်း တစ်ခါတည်း Update လုပ်တာ။
+            Session Store:
+                Session ကို EC2 ထဲ မသိမ်းဘူး။ Redis ထဲသိမ်းတယ်။ => Stateless
+                TTL(Time To Live) => session have expire time, 
+                    Data ဘယ်လောက်ကြာရင် အလိုလိုဖျက်မလဲ
+                    Redis က အလိုလို Delete လုပ်ပေးတယ်။
+            famous joke among programmers:
+                Cache Invalidation:
+                    "Redis ထဲက Data အဟောင်းကို ဘယ်အချိန်မှာ ဖျက်မလဲ?" ဆိုတဲ့ ပြဿနာ။
+                    ဥပမာ...
+                        Shopee မှာ
+                            iPhone
+                            1000$
+                        ကို Cache လုပ်ထားတယ်။
+                        Admin က
+                        900$
+                        ပြောင်းလိုက်တယ်။
+
+                        အခု
+                        Redis ထဲမှာ
+
+                        1000$
+
+                        ကျန်နေတယ်။
+
+                        မေးခွန်းက
+
+                        ဘယ်အချိန် Update လုပ်မလဲ?
+
+                        ချက်ချင်းလား?
+
+                        ၁ မိနစ်နေရင်လား?
+
+                        Redis ကို Delete လုပ်မလား?
+
+                        TTL ကုန်တဲ့အထိ စောင့်မလား?
+
+                        ဒါကို ဆုံးဖြတ်ရတာ
+                        တကယ်ခက်တယ်။
+                        အဲ့ဒါကို Cache Invalidation Problem လို့ခေါ်တယ်။
+                Naming Things:
+                    in Programming: difficult to Choose good names for variables, functions, classes, 
+                        APIs, databases, tables, etc.
+            | Pattern                        | Myanmar Meaning                              | Best For                     |
+            | ------------------------------ | -------------------------------------------- | ---------------------------- |
+            | **Lazy Loading (Cache Aside)** | User တောင်းမှ Cache ထဲသိမ်း                  | Read-heavy systems           |
+            | **Write Through**              | Database Update လုပ်တာနဲ့ Cache ကိုပါ Update | Data consistency             |
+            | **Session Store**              | User Session ကို Redis ထဲသိမ်း               | Load Balancer + Auto Scaling |
+        Ports Note:
+            Important ports:
+                FTP: 21
+                SSH: 22
+                SFTP: 22 (same as SSH)
+                HTTP: 80
+                HTTPS: 443
+            vs RDS Databases ports:
+                PostgreSQL: 5432
+                MySQL: 3306
+                Oracle RDS: 1521
+                MSSQL Server: 1433
+                MariaDB: 3306 (same as MySQL)
+                Aurora: 5432 (if PostgreSQL compatible) or 3306 (if MySQL compatible)
+
+
+            

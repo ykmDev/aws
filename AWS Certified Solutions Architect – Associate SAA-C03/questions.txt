@@ -196,10 +196,50 @@ Answer:
 Not:
 ❌ Stop RDS for 8 months
 ----------------------------------------------
+Which RDS (NOT Aurora) feature when used does not require you to change the SQL connection string?
+1. Multi-AZ
+2. Read Replica
+
+ans: a. Multi-AZ
 ----------------------------------------------
+You would like to create a disaster recovery strategy for your RDS PostgreSQL database 
+so that in case of a regional outage the database can be quickly made available 
+for both read and write workloads in another AWS Region. 
+The DR database must be highly available. What do you recommend?
+
+1. Create a Read Replica in the same region and enable Multi-AZ on the main database
+2. Create a Read Replica in a different region and enable Multi-AZ on the Read Replica
+3. Create a Read Replica in the same region and enable Multi-AZ on the Read Replica
+4. Enable Multi-Region option on the main database.
+
+ans: 2.
 ----------------------------------------------
+Which of the following statement is true regarding replication in both RDS Read Replicas and Multi-AZ?
+1. Read Replica uses Asynchronous Replication and Multi-AZ uses Asynchronous Replication.
+2. Read Replica uses Asynchronous Replication and Multi-AZ uses Synchronous Replication.
+3. Read Replica uses Synchronous Replication and Multi-AZ uses Synchronous Replication.
+4. Read Replica uses Synchronous Replication and Multi-AZ uses Asynchronous Replication.
+
+ans: 2
 ----------------------------------------------
+
+Amazon Aurora supports both .......................... databases.
+
+1. Mysql and MariaDB
+2. Mysql and PostgreSQL
+3. Oracle and MariaDB
+4. Oracle and MS SQL Server
+
+ans: 
 ----------------------------------------------
+You need to store long-term backups for your Aurora database for disaster recovery and audit purposes. 
+What do you recommend?
+
+1. Enable Automated Backups
+2. Perform On Demand Backups
+3. Use Aurora Database Cloning
+
+ans: 2.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
