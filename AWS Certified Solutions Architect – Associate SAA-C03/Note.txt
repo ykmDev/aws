@@ -4881,6 +4881,135 @@ RDS:
                 MSSQL Server: 1433
                 MariaDB: 3306 (same as MySQL)
                 Aurora: 5432 (if PostgreSQL compatible) or 3306 (if MySQL compatible)
+Route 53:
+    AWS's DNS Service.
+        Route 53 simply answers:
+            "The IP address of www.myshop.com is 18.100.20.30"
+    Why is it called Route 53?
+        DNS uses
+            Port: 53
+
+            Both
+                UDP 53
+            and
+                TCP 53
+
+            That's why
+            AWS named it: Route53.
+    DNS:
+        domain name system
+            translate the human friendly hostname into the machine IP addresses.
+            www.google.com => 172.217.18.36
+            the backbone of internet
+            hierarchical naming structure.
+        terminnologies:
+            Domain Registrar: sell domain names.
+            DNS Record: A rule that tells DNS what to do.
+                www.myshop.com => 18.100.20.30
+            Zone File: all DNS Records stored
+            Name Server: DNS Question တွေကိုဖြေပေးတဲ့ Server
+                Browser က www.myshop.com ရဲ့ IP ဘာလဲ? လို့မေးတယ်။
+                Name Server က 18.100.20.30လို့ပြန်ဖြေတယ်။
+            Authoritative vs Non-Authoritative:
+                Authoritative: Original Domain Owner
+                Non-Authoritative: Copied Answer.
+                    Your ISP, Google DNS.
+                        may already remember the answer by caching it. 
+                        but, doesn't own the domain.
+            top-level domains (TLDs) : .com/.net/.org
+                last part of domain.
+            Second Level Domain (SLD): SLD ဆိုတာ သင်ဝယ်တဲ့ Domain Name
+            FQDN: Fully Qualified Domain Name
+            http/https: protocol
+    Highly Available:
+        Route 53 has many DNS servers around the world.
+        Route53
+            ├── USA
+            ├── Japan
+            ├── Singapore
+            ├── Europe
+            └── Australia
+
+            If one server dies,
+            another answers immediately.
+    Scalable:
+        User 100 ယောက်ပဲဖြစ်ဖြစ်
+        User 10 သန်းဖြစ်ဖြစ်
+        Route53 က
+        အလိုအလျောက် Handle လုပ်နိုင်တယ်။
+    Fully Managed:
+        AWS does everything.
+        You only create DNS records.
+    Authoritative DNS:
+        You can update DNS records when changing IP.
+    Domain Registrar:
+        domain seller.
+    Health Checks
+        coolecst Route 53 features.
+        Every 30 seconds
+        Route53 checks
+        Is EC2 alive? if Unhealthy, Route53 change to another server.
+    100% Availability SLA:
+        AWS Service တွေထဲမှာ 100% SLA ပေးတဲ့ တစ်ခုတည်းသော Service
+    Records:
+        think Route53 as an address book,
+        each entry is called a Record.
+        your domain may have many records.
+        contains:
+            name: domain/subdomain
+            record type:
+                A means IPv4 address, 
+                AAAA means IPv6 address, 
+                CNAME means one domain to another domain. no IP.
+                    Why CNAME is usefull?
+                        if 100 subdomains all point to one server.
+                            without CNAME, need to add every A record when IP changes
+                            with CNAME, change one one A Record only. Much easier.
+                    cannot create CNAME with same of Root Domain(Zone Apex)
+                        e.g: Root Domain is myshop.com.
+                        cannot create CNAME with myshop.com. but, can create : www.myshop.com, etc
+                NS means Authoritative Name Servers
+                advanced:
+                    | Record | Purpose                                                          |
+                    | ------ | ---------------------------------------------------------------- |
+                    | MX     | Mail Server                                                      |
+                    | TXT    | Verification / SPF / DKIM                                        |
+                    | CAA    | Which CA can issue SSL certificates                              |
+                    | SOA    | Zone information                                                 |
+                    | PTR    | Reverse DNS (IP → Domain)                                        |
+                    | DS     | DNSSEC                                                           |
+                    | NAPTR  | SIP/VoIP services                                                |
+                    | SPF    | Legacy email sender policy (today usually stored in TXT records) |
+            value: answer of Route53 returns.
+            routing policy: which server should Route53 returns?
+            TTL(time to live): how long should they remember it?
+                e.g: 300 sec(5 min)
+                The resolver can cache the answer for 5 minutes.
+                Suppose
+                    Route53
+                    www.myshop.com
+                    ↓
+                    18.100.20.30
+
+                    TTL: 300 sec
+
+                    Google DNS asks.
+                    Route53 replies.
+                    Google DNS remembers it.
+
+                    For 5 minutes
+
+                    Next user asks
+                    www.myshop.com
+                    Google DNS doesn't ask Route53 again.
+                    It answers directly.
+                    Much faster.
+                    After 5 minutes
+                    Cache expires.
+                    Google DNS asks Route53 again.
+                Hosted Zones:
+
+
 
 
             
