@@ -4985,6 +4985,36 @@ Route 53:
             TTL(time to live): how long should they remember it?
                 e.g: 300 sec(5 min)
                 The resolver can cache the answer for 5 minutes.
+                High TTL: e.g: 24hr
+                    less traffic on Route 53
+                Less TTL: e.g, 60 sec.
+                    More traffic on Route 53, more costs.
+                Except of Alias records, TTL is mandatory for each dns record.
+                    Alias Record မှာ TTL ကို User က သတ်မှတ်လို့မရဘူး။
+                    ဘာကြောင့်လဲ?
+                    AWS Resource တွေက
+                    IP Address ပြောင်းနိုင်တယ်။
+                    ဥပမာ
+                        ALB
+
+                        Today
+                        ↓
+                        54.10.20.30
+
+                        Tomorrow
+
+                        AWS က
+
+                        ALB Infrastructure ပြောင်းလိုက်တယ်။
+                        ↓
+                        18.200.100.50
+
+                        ဆိုရင်
+
+                        AWS က DNS Cache ကိုလည်း
+                        အလိုအလျောက် Handle လုပ်ပေးရမယ်။
+                        ဒါကြောင့်
+                        TTL ကို AWS ကပဲ စီမံတယ်။
                 Suppose
                     Route53
                     www.myshop.com
@@ -5008,6 +5038,286 @@ Route 53:
                     Cache expires.
                     Google DNS asks Route53 again.
                 Hosted Zones:
+                    A Zone File stores DNS records.
+                    Public Hosted Zone:
+                        Anyone on the Internet can access it.
+                        Anyone can query the DNS
+                    Private Hosted Zone:
+                        Internet အတွက် မဟုတ်ဘူး။ VPC အတွင်းမှာပဲ အသုံးပြုတဲ့ DNS
+                        Internet က မမြင်ရဘူး။ VPC ထဲက EC2 တွေပဲ DNS Resolve လုပ်နိုင်
+                        Internal System တွေအတွက် အသုံးပြု
+                Check domain:
+                    nslookup:
+                        nslookup domain.top level
+                        if nslookup not found: sudo yum install -y bind-utils
+                    dig:
+                        to query DNS server, Domain Information Groper: dig command
+                        Basic Lookup: Check the IP address of a domain.
+                            dig example.com
+                        Check Specific Records: Query things like TXT, MX, or NS records.
+                            dig example.com MX
+            CNAME vs Alias:
+                CNAME record:
+                    Points a hostname to another hostname.
+                    Domain → Domain
+                    CNAME can point anywhere: external domain: Google, Facebook, GitHub.
+                    eg: api.myshop.com
+                        ↓
+                        my-alb-123456.ap-northeast-1.elb.amazonaws.com
+                    CNAME Limitation:
+                        CNAME cannot be used for Root Domain / Zone Apex.
+                        it only work for sub domain.
+                    return hostname.
+                        CNAME
+                            www.example.com
+                            ↓
+                            my-alb.amazonaws.com
+
+                            Browser receives
+
+                            my-alb.amazonaws.com
+
+                            Then it performs another DNS lookup.
+
+                            www.example.com
+                            ↓
+                            CNAME
+                            ↓
+                            my-alb.amazonaws.com
+                            ↓
+                            A Record
+                            ↓
+                            52.xxx.xxx.xxx
+
+                            Two steps.
+                Alias record:
+                    free.
+                    Why did AWS create Alias?
+                    Everyone wants to point their root domain to an AWS service.
+                    It is not a standard DNS record.
+                    It exists only in Route 53.
+                        AWS Resource တွေကိုပဲ ညွှန်နိုင်တယ်။
+                        Google, Facebook, GitHub
+                        စတဲ့ External Domain တွေကို မညွှန်နိုင်ဘူး။
+                    Native Health Check
+                        AWS Resource နဲ့
+                        Native Integration ရှိတယ်။
+                        ALB, CloudFront, S3 တို့ရဲ့
+                        Health ကို Route53 က တိုက်ရိုက်သိနိုင်တယ်။
+                    Alias record is always of type: A/AAAA for aws resources(IPv4/IPv6)
+                        Alias Record က
+                        ALB ကိုညွှန်ထားပေမယ့် Browser ကို ALB Hostname ပြန်မပေးဘူး။
+                        Route53 က ALB ရဲ့ IP Address ကို အရင်ရှာပြီး
+                        Browser ကို IP Address ပဲ ပြန်ပေးတယ်။
+                        Suppose you create:
+                            example.com
+                            ↓
+                            Alias
+                            ↓
+                            my-alb.amazonaws.com
+
+                            When a client asks: example.com ?
+
+                            Route53 doesn't return
+                                my-alb.amazonaws.com
+                            Instead, Route53 first resolves the ALB hostname itself.
+
+                            my-alb.amazonaws.com
+                            ↓
+                            52.193.xxx.xxx
+                            Then Route53 returns the IP Address.
+                    Alias record targets:
+                        ELB, CloudFront Distributions, API Gateway, Elastic Beanstalk, S3 websites, VPC interface endpoints, 
+                        Global accelerator,
+                        route 53 record in same hosted zone.
+                        You cannot set an Alias record for an EC2 DNS name.
+                Differences:
+                    | Feature                      | CNAME                      | Alias                                     |
+                    | ---------------------------- | -------------------------- | ----------------------------------------- |
+                    | Standard DNS                 | ✅ Yes                      | ❌ AWS-only                                |
+                    | Points to any hostname       | ✅                          | ❌ AWS resources only                      |
+                    | Works for Root Domain        | ❌                          | ✅                                         |
+                    | Works for Subdomain          | ✅                          | ✅                                         |
+                    | AWS Health Check Integration | ❌                          | ✅                                         |
+                    | Route53 Query Charge         | Standard DNS query charges | ✅ Free for Alias queries to AWS resources |
+                    | TTL                          | You specify                | AWS manages automatically                 |
+    Routing Policy:
+        Route53 must decide which answer to return.
+        Route53 never sends traffic.
+            Route53 က Traffic ကို လမ်းမညွှန်ဘူး။
+            သူလုပ်တာက "ဒီ Domain အတွက်
+            ဘယ် IP ကို သွားရမလဲ?" ဆိုတဲ့ Question ကို ဖြေပေးတာပဲ။
+            ပြီးရင် Browser က IP ကို တိုက်ရိုက်သွားတယ်။
+        different decision rules:
+            Simple Routing:
+                Always return one resource.
+                ဘာမှ မစဉ်းစားဘူး။
+                User မေးရင် Record ထဲမှာ ရှိတာကို
+                ပြန်ပေးလိုက်တာပဲ။
+                eg:
+                    www.myshop.com
+                    ↓
+                    18.100.20.30
+                    No intelligence.
+                    No failover.
+                    No weighting.
+                Can specify multiple values in the same record.
+                    If multiple values are returned, a random one is chosen by the client.
+                    Is this Load Balancing?
+                    Many beginners think
+                    "Wow, that's Load Balancing."
+                    ❌ Not really.
+                    Because
+                        No health check
+                        No traffic percentage
+                        No intelligent routing
+
+                    It's just
+                    multiple IPs.
+                    The client decides.
+                When Alias enabled, specify only one AWS resource.
+                cannot be associated with Health Checks.
+            Weighted Routing:
+                Instead of
+                    Every user goes to Server A
+                You can say
+                    70% → Server A
+                    30% → Server B
+                Return records based on percentage.
+                    traffic(%) = weight for a specific record/sum of all weights for all records.
+                    Weights don't need to sum up to 100.
+                    Any numbers are okay. AWS only cares about the ratio.
+                DNS records must have same name and type(A/AAAA,etc).
+                Can be associated with Health Checks.
+                If all records have weight 0, Everyone(server) becomes equal.
+                Traffic ကို ရာခိုင်နှုန်းအလိုက် ခွဲပေးတာ
+                Deployment strategies:
+                    Current version:  1.0
+                        Running on EC2 A
+                        Customers are using it every day.
+                        Now your developer finishes Version 2.0
+                        Question:
+                        How do you release it?
+                        Strategy 1: Blue/Green Development
+                            Current website
+                            Blue Environment
+                            EC2 Blue
+                            ↓
+                            Version 1
+
+                            Now, deploy Version 2
+                            to another server.
+                            Green Environment
+                            ↓
+                            EC2 Green
+                            ↓
+                            Version 2
+                            Notice
+                            Both servers exist at the same time.
+                                        Customers
+                                            │
+
+                                    Route53 / ALB
+
+                                    │       │
+
+                                    Blue     Green
+
+                                Version1  Version2
+                            After testing
+                                Change DNS or Load Balancer
+                                ↓
+                                100%
+                                ↓
+                                Green
+                                Blue becomes backup.
+                            If something goes wrong?
+                                Green Bug
+                                ↓
+                                Switch back
+                                ↓
+                                Blue
+                                Very easy rollback.
+                        Strategy 2: Canary Deployment.
+                            Canary is different.
+                            Instead of switching everyone, only a few users receive the new version.
+                            Version အသစ်ကို Customer အားလုံးကို မပေးသေးဘူး။
+                            ဥပမာ
+                                1000 ယောက်ရှိရင်
+                                950
+                                ↓
+                                Old Version
+                                50
+                                ↓
+                                New Version
+                                အရင်စမ်းကြည့်တယ်။
+                                Bug မရှိရင် Traffic ကို တဖြည်းဖြည်းတိုးတယ်။
+                            Why called "Canary"?
+                                Interesting history 😊
+
+                                Long ago,
+                                miners carried a
+                                Canary bird
+                                into coal mines.
+
+                                Mine
+                                ↓
+                                Canary
+
+                                If poisonous gas leaked,
+                                the canary died first.
+                                Workers escaped.
+                                The bird became the "early warning."
+                                Software copied this idea.
+                                Instead of risking
+                                all users,
+                                risk only
+                                a few users.
+                                That's why it's called Canary Deployment.
+            Failover Routing:
+                Primary Server ပျက်ရင် Backup Server ကို ပြောင်းပေးတယ်။
+                Disaster Recovery အတွက် သုံးတယ်။
+            Latency Routing:
+                Latency ဆိုတာ Request တစ်ခု ပို့ပြီး Response ပြန်ရတဲ့ အချိန် ဖြစ်ပါတယ်။
+                return lowest latency. Network အမြန်ဆုံး Region.
+                Can be associated with Health Checks.
+                Japan User
+                    ↓
+                    Tokyo Server
+                USA User
+                    ↓
+                Virginia Server
+                ဘယ် Region က Response Time ပိုမြန်လဲ အဲဒီကို DNS ဖြေပေးတယ်။
+            Geolocation Routing:
+                Geolocation က Latency မကြည့်ဘူး။
+                User ဘယ်နိုင်ငံကလဲ အဲဒါကိုပဲ ကြည့်တယ်။
+                Japan
+                    ↓
+                Japanese Website
+
+                Myanmar
+                    ↓
+                Myanmar Website
+            Multi-Value Answer:
+                Route53 က Healthy ဖြစ်တဲ့ IP အများကြီး ပြန်ပေးတယ်။
+                Browser က တစ်ခုရွေးပြီး Connect လုပ်တယ်။
+            Geoproximity:
+                uses Actual Distance plus Bias.
+                Mostly used with Traffic Flow.
+            Summary:
+                Simple => Always answer the same
+                Weighted => Split by %
+                Failover => Primary → Backup
+                Latency => fastest region
+                Geolocation => country
+                Multi Value => return multiple healthy IPS
+                Geoproximity => nearest region + Bias
+
+         
+
+
+                    
+
 
 
 

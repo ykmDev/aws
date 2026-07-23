@@ -241,7 +241,29 @@ What do you recommend?
 
 ans: 2.
 ----------------------------------------------
+Which Route53 record type does NOT require you to specify TTL?
+✅ Alias Record
+Note:
+| Record Type | TTL                                |
+| ----------- | ---------------------------------- |
+| A           | ✅ You specify                      |
+| AAAA        | ✅ You specify                      |
+| CNAME       | ✅ You specify                      |
+| MX          | ✅ You specify                      |
+| TXT         | ✅ You specify                      |
+| **Alias**   | ❌ **AWS manages it automatically** |
+
 ----------------------------------------------
+You want
+
+api.example.com
+↓
+CloudFront
+
+Best Answer?
+✅ Alias (AWS resource, free, health-aware)
+
+(CNAME would also work for a subdomain, but AWS generally recommends Alias for AWS resources.)
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
