@@ -265,6 +265,12 @@ Best Answer?
 
 (CNAME would also work for a subdomain, but AWS generally recommends Alias for AWS resources.)
 ----------------------------------------------
+Which routing policies commonly use Health Checks?
+
+✅ Failover
+✅ Weighted
+✅ Latency
+✅ Multi-Value Answer
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------

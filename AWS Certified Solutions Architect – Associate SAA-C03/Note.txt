@@ -5312,6 +5312,87 @@ Route 53:
                 Geolocation => country
                 Multi Value => return multiple healthy IPS
                 Geoproximity => nearest region + Bias
+    Health Checks:
+        Health Check ဆိုတာ Route53 က Server ကို အမြဲစစ်နေတဲ့ Doctor လိုပါပဲ။
+        are only for public resources. 
+            Route53 Health Checker က Internet ပေါ်ကလာတာပါ။ ဒါကြောင့် Public IP ရှိတဲ့ Server ကိုပဲ စစ်နိုင်တယ်။
+            Health Checkers are AWS services running outside your VPC. 
+            They need to access your endpoint through the Internet.
+            e.g: if Private EC2, internet to Private EC2 is Impossible because no public IP.
+        CloudWatch Alarm Health Check
+            health check use cloudwatch, it cannot be checked directly to Private RDS.
+                because CloudWatch already monitors CPU, Free Storage, Connections, metrics.
+        Calculated Health Checks
+            Instead of checking a server, Route53 check other health checks.
+                e.g:
+                    Health Check A => Healthy
+                    Health Check B => Healthy
+                    Health Check C => Dead
+                    ↓
+                    Calculated Health Check
+                    ↓
+                    Healthy
+            combine the results of multiple health checks into a single Health check.
+            we can use OR, AND or NOT(Reverse the result).
+                real world example:
+                    Suppose
+                        you own: shop.com
+                        Website needs
+                        3 services.
+                            Web Server
+                            API Server
+                            Database Proxy
+
+                        Each has Health Check.
+
+                        If all must work
+                        ↓
+                        Use AND.
+
+                        Visual:
+                            Web => Healthy
+                            API => Healthy
+                            DB => Healthy
+                            ↓
+                            Website => Healthy.
+
+                            If API fails
+                            ↓
+                            Website => Fail.
+                NOT(Reverse the result):
+                    Server က မပျက်ဘူး။ ဒါပေမယ့် Maintenance Mode ဝင်နေတယ်။
+                    User က အသုံးမပြုနိုင်ဘူး။
+                    ဒါကြောင့် Healthy ဖြစ်နေပေမယ့် Business အတွက် Unhealthy ဖြစ်ချင်တယ်။
+                    အဲဒီအချိန် NOT အသုံးဝင်တယ်။
+            can monitor up to 256 Child Health Checks.
+            perform maintenance without causing all health checks to fail.
+            ဥပမာ 
+                Server ၂ လုံးရှိတယ်။ Server A ကို Upgrade လုပ်မယ်။ Upgrade လုပ်နေချိန် Health Check Fail ဖြစ်မယ်။
+                ဒါပေမယ့် Server B ကောင်းနေသေးတယ်။
+                Calculated Health Check မှာ At least 1 လို့ထားရင် Website တစ်ခုလုံး Healthy လို့ပဲ သတ်မှတ်နေမယ်။
+                User တွေ Website ကို ဆက်သုံးလို့ရတယ်။
+        Integrated with CloudWatch
+            Every Health Check produces CloudWatch Metrics.
+            in CloudWatch Dashboard, we can see Healthy, Unhealthy, Response Time, Failures.
+        Monitor and Endpoint:
+            15 global health checkers will check the endpoint health
+                Route53 Health Check ဆိုတာ Server ကို Computer တစ်လုံးတည်းက စစ်တာ မဟုတ်ဘူး။ 
+                    AWS က ကမ္ဘာအနှံ့မှာရှိတဲ့ Health Checker ၁၅ ခုလောက်က တစ်ပြိုင်တည်းစစ်ပါတယ်။
+            Threshold default: 3
+                တစ်ခါကောင်းရုံနဲ့ Healthy မဖြစ်ဘူး။ ၃ ကြိမ်ဆက်တိုက် အောင်မှ Healthy ဖြစ်တယ်။
+            Interval default: 30 sec
+                lower sec > much faster check -> but, more aws costs
+            18% Rule:
+                If >18% of health checkers report healthy.
+                e.g: 3 Healthy, 12 Dead of 15 Global Checkers, 25% > 18%, So, Healthy.
+                Health Checker ၁၅ ခုရှိတယ်ဆိုရင် ၃ ခုလောက်က "Server ကောင်းတယ်" လို့ပြောရင် Healthy လို့ သတ်မှတ်နိုင်တယ်။
+            all 2xx and 3xx are health status.
+            Text Matching:
+                Instead of checking only HTTP 200, Route53 can also check specific text: e.g: Application Ready
+                because sometime website is live, but, db is die, but, http return 200. it doesnot know.
+                so, this specific matching will solved.
+            Firewall Rule:
+                firewall can block AWS Health Checker IP. So, AWS ရဲ့ Health Checker IP ranges ကို allow လုပ်ထားရပါတယ်။
 
          
 
