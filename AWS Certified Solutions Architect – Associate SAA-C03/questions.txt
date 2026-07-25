@@ -272,6 +272,8 @@ Which routing policies commonly use Health Checks?
 ✅ Latency
 ✅ Multi-Value Answer
 ----------------------------------------------
+Which routing policy requires Route 53 Traffic Flow?
+ans: Geoproximity Routing
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
