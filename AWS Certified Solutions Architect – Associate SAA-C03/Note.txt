@@ -3527,7 +3527,7 @@ RDS:
             | Want AWS to manage the database | ✅ RDS                   |
             | Need OS access (SSH)            | ✅ Database on EC2       |
             | Improve read performance        | ✅ Read Replica          |
-            | Automatic failover              | ✅ Multi-AZ              |
+            | Automatic failover              |  Multi-AZ              |
             | Restore to a specific second    | ✅ Point-in-Time Restore |
             | High Availability               | ✅ Multi-AZ              |
             | Disaster Recovery               | ✅ Multi-AZ              |
@@ -5393,165 +5393,287 @@ Route 53:
                 so, this specific matching will solved.
             Firewall Rule:
                 firewall can block AWS Health Checker IP. So, AWS ရဲ့ Health Checker IP ranges ကို allow လုပ်ထားရပါတယ်။
-        Route 53 Resolver:
-            Every VPC has a built-in DNS server(Route53 Resolver)
-            EC2 အချင်းချင်း Hostname နဲ့ ခေါ်နိုင်တာ Route53 Resolver ကြောင့် ဖြစ်ပါတယ်။
-            By default, it resolves:
-                EC2 internal hostnames
-                Private Hosted Zone records
-                Public DNS names
-        Then why do we need Hybrid DNS?
-            Hybrid DNS:
-                many companies already have their own DNS servers.
-                    eg: Company Office => Windows DNS => 192.168.1.10
-                AWS also has Route53 Resolver.
-                Now both need to communicate.
-                    AWS ထဲမှာ Route53 Resolver ရှိတယ်။ Office ထဲမှာ Windows DNS ရှိတယ်။ နှစ်ခု တစ်ယောက်နဲ့တစ်ယောက် မသိဘူး။
-                    ဒါကြောင့် Hybrid DNS လိုလာတယ်။
-                Networks can be:
-                    VPC itself / Peered VPC
-                    On-premises Network (connected through
-                    Direct Connect or AWS VPN)
-                Why VPN or Direct Connect?
-                    AWS cannot directly access your office.
-                    Need a network connection.
-                    Usually
-                        Site-to-Site VPN
-                        or
-                        AWS Direct Connect
-                Note:
-                    Hybrid means
-                        Two different environments working together.
-                Inbound Endpoint:
-                    Used when on-premises DNS servers need to resolve AWS private DNS names.
-                    Requires:
-                        VPN or Direct Connect
-                        Security Group allowing UDP/TCP port 53
-                        Endpoints deployed in at least two subnets/AZs for high availability
-                    What is an Inbound Endpoint?
-                        Allows your on-premises DNS resolver to resolve DNS records inside AWS.
-                        Or simply:
-                        Outside → AWS
-                    Inbound Endpoint ဆိုတာ အပြင် (On-Premises) ကနေ AWS ထဲက Private Hosted Zone EC2 Hostnameတို့ကို
-                        လာမေးနိုင်အောင် လုပ်ပေးတဲ့ "DNS Door"ဖြစ်ပါတယ်။
-                    Inbound means: into AWS
-                    flow:
-                        Office DNS
-                        asks
-                        Inbound Endpoint
-                        Inbound Endpoint asks
-                        Route53 Resolver
-                        Route53 Resolver replies
-                        10.0.2.50
-                        Office receives
-                        the answer.
-                    Why can't Office contact Route53 Resolver directly?
-                        Route53 Resolver is managed internally by AWS. It has no public interface.
-                        AWS exposes special ENIs(Elastic Network Interfaces) called Inbound.
-                    High availability:
-                        When creating
-                            an Inbound Endpoint
-                            AWS asks
-                            for
-                                Subnet A
-                                Subnet B
-                        Why?
-                            High Availability.
-                            If one AZ dies, the other still answers DNS queries.
-                    Security Group:
-                        Inbound Endpoint is inside of VPC, SG must allow DNS traffic.
-                Outbound Endpoint:
-                    AWS ---> Outside
-                    Allows Route 53 Resolver to forward DNS queries from AWS to your on-premises DNS server.
-                    AWS ထဲက EC2, Lambda စတဲ့ Resources တွေက
-                    On-Premises DNS ကို မေးချင်တဲ့အခါ အသုံးပြုတဲ့ DNS Door ဖြစ်ပါတယ်။
-                    Flow:
-                        Suppose EC2 runs
-                            ping printer.office.local
-                            Step 1
-                                EC2
-                                ↓
-                                Route53 Resolver
-                            Step 2
-                                Resolver says
+    Geolocation Routing:
+        Geolocation Routing ဆိုတာ User ဘယ်နိုင်ငံ၊ ဘယ်တိုက်၊ ဘယ်ပြည်နယ်က လာတာလဲဆိုတာကို ကြည့်ပြီး
+        DNS Record ကို ရွေးပေးတာ ဖြစ်ပါတယ်။
+        Internet Speed (Latency) ကို မကြည့်ဘူး။
+        Restrict Content Distribution:
+            ဒီနိုင်ငံမှာပဲ ကြည့်ခွင့်ရှိတယ် ဆိုတဲ့ Content Restriction လုပ်ဖို့ Geolocation Routing သုံးနိုင်တယ်။
+        Most Precise Rule Win:
+            Rule ၂ ခုရှိတယ်။
+                Asia(Continent-တိုက်ကြီး)
+                ↓
+                Singapore
 
-                                "I don't know."
+                Japan
+                ↓
+                Tokyo
 
-                                But
+                Japan က Asia ထဲမှာ ပါတယ်။
 
-                                there is
+                ဒါပေမယ့် Country Rule က ပိုတိကျတဲ့အတွက်
 
-                                a forwarding rule.
+                Tokyo ကိုပဲ ရွေးမယ်။
+        Real World Usages:
+            Netflix, Amazon, GOV web site
+        Default Record:
+            Rule မရှိတဲ့ နိုင်ငံက User လာရင် ဘယ်ကိုပို့မလဲ? ဒါကြောင့် Default Record လိုတယ်။
+            Suppose
+                Rules
+                    Japan
+                    Singapore
+                    USA
+                Then
+
+                a user comes from Brazil.
+
+                No rule.
+
+                Without Default
+                ↓
+                DNS fails.
+                Instead
+                    Create
+                        Default
+                        ↓
+                        Virginia
+                    Now
+
+                    Brazil
+                    ↓
+                    Virginia
+        | Latency Routing          | Geolocation Routing                 |
+        | ------------------------ | ----------------------------------- |
+        | Uses network latency     | Uses user's location                |
+        | Chooses fastest Region   | Chooses configured Region           |
+        | Performance optimization | Localization and regional rules     |
+        | Germany may go to US     | Germany follows Germany/Europe rule |
+    Comparison:
+        | Routing Policy  | Decision Based On                              | Best Use Case                                  |
+        | --------------- | ---------------------------------------------- | ---------------------------------------------- |
+        | **Simple**      | One resource (or random among multiple values) | Basic DNS                                      |
+        | **Weighted**    | Configured weights                             | Blue/Green, Canary deployments                 |
+        | **Latency**     | Lowest network latency                         | Best performance                               |
+        | **Geolocation** | User's continent/country/state                 | Language, legal restrictions, regional content |
+        | **Failover**    | Health Check status                            | Disaster Recovery                              |
+        | **Multi-Value** | Healthy endpoints                              | Simple DNS load distribution                   |
+    Geoproximity Routing:
+        If we have two server, aws draw a boundary on between.
+        Unlike Geolocation, AWS lets you manually change each server's geographic influence.
+            Geoproximity Routing ဆိုတာ User နဲ့ Serverဘယ်သူက
+            မြေပုံအရ ပိုနီးလဲဆိုတာကိုကြည့်ပြီးရွေးပေးတာ။
+            ဒါပေမယ့် Boundary ကို ကိုယ်တိုင် ပြောင်းလို့ရတယ်။
+            ဒါက Geolocation နဲ့ မတူတဲ့အချက်ပါ။
+        What is Bias?
+            AWS lets you say
+                I want Tokyo to serve more users.
+                or
+                I want Singapore to serve fewer users.
+
+                This is called Bias.
+            Positive Bias (+):
+                expand(1 to 99), more traffic, larger boundary, more user will get.
+                Coverage Area ကို ချဲ့လိုက်တာ။ ပိုများတဲ့ User တွေသွားမယ်။
+            Negative Bias (-):
+                Shrink (-1 to -99), less traffic,
+                Coverage ကို ကျုံ့လိုက်တာ။ ဒါကြောင့် User နည်းသွားမယ်။
+        Non-AWS Resources:
+            if we own DataCenter, AWS cannot know Geolocation, So need to set Latitude and longitude.
+        Why use Geoproximity?
+            Suppose
+                Tokyo Server is expensive.
+
+                Singapore is cheaper.
+
+                You want more users to go Singapore.
+
+                Set: Singapore => Bias +60
+
+                Singapore serves more users.
+        Traffic Flow:
+            Must use Route53 Traffic Flow.
+            Geoproximity Routing ကို
+            Route53 Console မှာ Simple, Weighted, Latency, Geolocation toe lo
+            Record တစ်ခုထည့်သလို မလုပ်နိုင်ဘူး။
+            Route 53 Traffic Flow ဆိုတဲ့ Advanced Feature ကို သုံးရပါတယ်။
+    IP-based Routing:
+        Based on user's IP address (CIDR)
+            More control than Geolocation.
+            Useful when users from the same country should be routed differently.
+            Can optimize traffic for known ISP networks.
+    Multi-Value Routing:
+        maximum return: 8 healthy records although 20 healthy server.
+        Multi-Value is not a substitute for having an ELB
+            Not Like ELB:
+                Route53 က IP Address တွေ ပြန်ပေးရုံပဲ။ 
+                ဘယ် Server ကို တကယ်သွားမလဲဆိုတာ Client (Browser / OS)က ဆုံးဖြတ်တာ။
+                AWS က မထိန်းချုပ်ဘူး။
+            ELB: 
+                The Load Balancer makes the decision.
+                It continuously monitors the servers and distributes requests.
+                Request တစ်ခုချင်းစီကို Load Balancer ကိုယ်တိုင် Server ရွေးပေးတာ။
+        When should we use Multi-Value?
+            Good for
+                Small websites
+                Simple redundancy
+                Multiple EC2 instances
+                Basic availability
+            Not good for
+                Thousands of requests
+                Sticky Sessions
+                WebSockets
+                Path-based routing
+                Cookie-based routing
+                Advanced load balancing.
+    Route 53 Resolver:
+        Every VPC has a built-in DNS server(Route53 Resolver)
+        EC2 အချင်းချင်း Hostname နဲ့ ခေါ်နိုင်တာ Route53 Resolver ကြောင့် ဖြစ်ပါတယ်။
+        By default, it resolves:
+            EC2 internal hostnames
+            Private Hosted Zone records
+            Public DNS names
+    Then why do we need Hybrid DNS?
+        Hybrid DNS:
+            many companies already have their own DNS servers.
+                eg: Company Office => Windows DNS => 192.168.1.10
+            AWS also has Route53 Resolver.
+            Now both need to communicate.
+                AWS ထဲမှာ Route53 Resolver ရှိတယ်။ Office ထဲမှာ Windows DNS ရှိတယ်။ နှစ်ခု တစ်ယောက်နဲ့တစ်ယောက် မသိဘူး။
+                ဒါကြောင့် Hybrid DNS လိုလာတယ်။
+            Networks can be:
+                VPC itself / Peered VPC
+                On-premises Network (connected through
+                Direct Connect or AWS VPN)
+            Why VPN or Direct Connect?
+                AWS cannot directly access your office.
+                Need a network connection.
+                Usually
+                    Site-to-Site VPN
+                    or
+                    AWS Direct Connect
+            Note:
+                Hybrid means
+                    Two different environments working together.
+            Inbound Endpoint:
+                Used when on-premises DNS servers need to resolve AWS private DNS names.
+                Requires:
+                    VPN or Direct Connect
+                    Security Group allowing UDP/TCP port 53
+                    Endpoints deployed in at least two subnets/AZs for high availability
+                What is an Inbound Endpoint?
+                    Allows your on-premises DNS resolver to resolve DNS records inside AWS.
+                    Or simply:
+                    Outside → AWS
+                Inbound Endpoint ဆိုတာ အပြင် (On-Premises) ကနေ AWS ထဲက Private Hosted Zone EC2 Hostnameတို့ကို
+                    လာမေးနိုင်အောင် လုပ်ပေးတဲ့ "DNS Door"ဖြစ်ပါတယ်။
+                Inbound means: into AWS
+                flow:
+                    Office DNS
+                    asks
+                    Inbound Endpoint
+                    Inbound Endpoint asks
+                    Route53 Resolver
+                    Route53 Resolver replies
+                    10.0.2.50
+                    Office receives
+                    the answer.
+                Why can't Office contact Route53 Resolver directly?
+                    Route53 Resolver is managed internally by AWS. It has no public interface.
+                    AWS exposes special ENIs(Elastic Network Interfaces) called Inbound.
+                High availability:
+                    When creating
+                        an Inbound Endpoint
+                        AWS asks
+                        for
+                            Subnet A
+                            Subnet B
+                    Why?
+                        High Availability.
+                        If one AZ dies, the other still answers DNS queries.
+                Security Group:
+                    Inbound Endpoint is inside of VPC, SG must allow DNS traffic.
+            Outbound Endpoint:
+                AWS ---> Outside
+                Allows Route 53 Resolver to forward DNS queries from AWS to your on-premises DNS server.
+                AWS ထဲက EC2, Lambda စတဲ့ Resources တွေက
+                On-Premises DNS ကို မေးချင်တဲ့အခါ အသုံးပြုတဲ့ DNS Door ဖြစ်ပါတယ်။
+                Flow:
+                    Suppose EC2 runs
+                        ping printer.office.local
+                        Step 1
+                            EC2
+                            ↓
+                            Route53 Resolver
+                        Step 2
+                            Resolver says
+
+                            "I don't know."
+
+                            But
+
+                            there is
+
+                            a forwarding rule.
+                            ↓
+                            Forward to
+
+                            Outbound Endpoint
+                        Step 3
+                            Outbound Endpoint
+
+                            sends
+
+                            the query
+
+                            over VPN.
+                            ↓
+                            Office DNS.
+                        Step 4
+                            Office DNS replies
+
+                            192.168.1.50
+                        Step 5
+                            EC2 gets the answer.
+                            Done.
+                    Why do we need Forwarding Rules?
+                        Outbound Endpoint
+                        does NOT automatically know
+                        which domains should go to Office.
+                        You must create a forwarding rule.
+                        e.g:
+                            Example
+                                office.local
                                 ↓
                                 Forward to
 
-                                Outbound Endpoint
-                            Step 3
-                                Outbound Endpoint
+                                192.168.1.10
 
-                                sends
+                                Now
 
-                                the query
+                                Every time
 
-                                over VPN.
+                                AWS sees
+
+                                *.office.local
                                 ↓
+                                Forward
+
+                                to
+
                                 Office DNS.
-                            Step 4
-                                Office DNS replies
+                    Why not just use Public DNS?
+                    Security Group:
+                        lives inside your VPC. allow UDP 53, TCP 53
+                    Two Subnets:
+                        for High Availability.
+            Important:
+                Ask yourself:
+                    "Who is asking the DNS question?"
 
-                                192.168.1.50
-                            Step 5
-                                EC2 gets the answer.
-                                Done.
-                        Why do we need Forwarding Rules?
-                            Outbound Endpoint
-                            does NOT automatically know
-                            which domains should go to Office.
-                            You must create a forwarding rule.
-                            e.g:
-                                Example
-                                    office.local
-                                    ↓
-                                    Forward to
-
-                                    192.168.1.10
-
-                                    Now
-
-                                    Every time
-
-                                    AWS sees
-
-                                    *.office.local
-                                    ↓
-                                    Forward
-
-                                    to
-
-                                    Office DNS.
-                        Why not just use Public DNS?
-                        Security Group:
-                            lives inside your VPC. allow UDP 53, TCP 53
-                        Two Subnets:
-                            for High Availability.
-                Important:
-                    Ask yourself:
-                        "Who is asking the DNS question?"
-
-                    If the question comes from
-                        On-Premises → Inbound Endpoint
-                        AWS (EC2/Lambda/etc.) → Outbound Endpoint
-
-
-    
-
-         
+                If the question comes from
+                    On-Premises → Inbound Endpoint
+                    AWS (EC2/Lambda/etc.) → Outbound Endpoint
 
 
                     
-
-
-
-
-
             

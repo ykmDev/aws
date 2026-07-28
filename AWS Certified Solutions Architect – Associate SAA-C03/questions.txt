@@ -272,6 +272,9 @@ Which routing policies commonly use Health Checks?
 ✅ Latency
 ✅ Multi-Value Answer
 ----------------------------------------------
+Which routing policy requires Route 53 Traffic Flow?
+ans: Geoproximity Routing
+----------------------------------------------
 Which of the following are NOT valid Route 53 Health Checks?
 1. Health Check that monitor SQS Queue
 2. Health Check that monitors an Endpoint
