@@ -272,6 +272,13 @@ Which routing policies commonly use Health Checks?
 ✅ Latency
 ✅ Multi-Value Answer
 ----------------------------------------------
+Which of the following are NOT valid Route 53 Health Checks?
+1. Health Check that monitor SQS Queue
+2. Health Check that monitors an Endpoint
+3. Health Check taht monitors other Health Checks
+4. Health Check that monitor CloudWatch Alarms
+
+ans. 1.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------

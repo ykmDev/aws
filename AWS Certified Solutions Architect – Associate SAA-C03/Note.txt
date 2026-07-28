@@ -4964,7 +4964,7 @@ Route 53:
                     Why CNAME is usefull?
                         if 100 subdomains all point to one server.
                             without CNAME, need to add every A record when IP changes
-                            with CNAME, change one one A Record only. Much easier.
+                            with CNAME, change one A Record only. Much easier.
                     cannot create CNAME with same of Root Domain(Zone Apex)
                         e.g: Root Domain is myshop.com.
                         cannot create CNAME with myshop.com. but, can create : www.myshop.com, etc
@@ -5393,6 +5393,157 @@ Route 53:
                 so, this specific matching will solved.
             Firewall Rule:
                 firewall can block AWS Health Checker IP. So, AWS ရဲ့ Health Checker IP ranges ကို allow လုပ်ထားရပါတယ်။
+        Route 53 Resolver:
+            Every VPC has a built-in DNS server(Route53 Resolver)
+            EC2 အချင်းချင်း Hostname နဲ့ ခေါ်နိုင်တာ Route53 Resolver ကြောင့် ဖြစ်ပါတယ်။
+            By default, it resolves:
+                EC2 internal hostnames
+                Private Hosted Zone records
+                Public DNS names
+        Then why do we need Hybrid DNS?
+            Hybrid DNS:
+                many companies already have their own DNS servers.
+                    eg: Company Office => Windows DNS => 192.168.1.10
+                AWS also has Route53 Resolver.
+                Now both need to communicate.
+                    AWS ထဲမှာ Route53 Resolver ရှိတယ်။ Office ထဲမှာ Windows DNS ရှိတယ်။ နှစ်ခု တစ်ယောက်နဲ့တစ်ယောက် မသိဘူး။
+                    ဒါကြောင့် Hybrid DNS လိုလာတယ်။
+                Networks can be:
+                    VPC itself / Peered VPC
+                    On-premises Network (connected through
+                    Direct Connect or AWS VPN)
+                Why VPN or Direct Connect?
+                    AWS cannot directly access your office.
+                    Need a network connection.
+                    Usually
+                        Site-to-Site VPN
+                        or
+                        AWS Direct Connect
+                Note:
+                    Hybrid means
+                        Two different environments working together.
+                Inbound Endpoint:
+                    Used when on-premises DNS servers need to resolve AWS private DNS names.
+                    Requires:
+                        VPN or Direct Connect
+                        Security Group allowing UDP/TCP port 53
+                        Endpoints deployed in at least two subnets/AZs for high availability
+                    What is an Inbound Endpoint?
+                        Allows your on-premises DNS resolver to resolve DNS records inside AWS.
+                        Or simply:
+                        Outside → AWS
+                    Inbound Endpoint ဆိုတာ အပြင် (On-Premises) ကနေ AWS ထဲက Private Hosted Zone EC2 Hostnameတို့ကို
+                        လာမေးနိုင်အောင် လုပ်ပေးတဲ့ "DNS Door"ဖြစ်ပါတယ်။
+                    Inbound means: into AWS
+                    flow:
+                        Office DNS
+                        asks
+                        Inbound Endpoint
+                        Inbound Endpoint asks
+                        Route53 Resolver
+                        Route53 Resolver replies
+                        10.0.2.50
+                        Office receives
+                        the answer.
+                    Why can't Office contact Route53 Resolver directly?
+                        Route53 Resolver is managed internally by AWS. It has no public interface.
+                        AWS exposes special ENIs(Elastic Network Interfaces) called Inbound.
+                    High availability:
+                        When creating
+                            an Inbound Endpoint
+                            AWS asks
+                            for
+                                Subnet A
+                                Subnet B
+                        Why?
+                            High Availability.
+                            If one AZ dies, the other still answers DNS queries.
+                    Security Group:
+                        Inbound Endpoint is inside of VPC, SG must allow DNS traffic.
+                Outbound Endpoint:
+                    AWS ---> Outside
+                    Allows Route 53 Resolver to forward DNS queries from AWS to your on-premises DNS server.
+                    AWS ထဲက EC2, Lambda စတဲ့ Resources တွေက
+                    On-Premises DNS ကို မေးချင်တဲ့အခါ အသုံးပြုတဲ့ DNS Door ဖြစ်ပါတယ်။
+                    Flow:
+                        Suppose EC2 runs
+                            ping printer.office.local
+                            Step 1
+                                EC2
+                                ↓
+                                Route53 Resolver
+                            Step 2
+                                Resolver says
+
+                                "I don't know."
+
+                                But
+
+                                there is
+
+                                a forwarding rule.
+                                ↓
+                                Forward to
+
+                                Outbound Endpoint
+                            Step 3
+                                Outbound Endpoint
+
+                                sends
+
+                                the query
+
+                                over VPN.
+                                ↓
+                                Office DNS.
+                            Step 4
+                                Office DNS replies
+
+                                192.168.1.50
+                            Step 5
+                                EC2 gets the answer.
+                                Done.
+                        Why do we need Forwarding Rules?
+                            Outbound Endpoint
+                            does NOT automatically know
+                            which domains should go to Office.
+                            You must create a forwarding rule.
+                            e.g:
+                                Example
+                                    office.local
+                                    ↓
+                                    Forward to
+
+                                    192.168.1.10
+
+                                    Now
+
+                                    Every time
+
+                                    AWS sees
+
+                                    *.office.local
+                                    ↓
+                                    Forward
+
+                                    to
+
+                                    Office DNS.
+                        Why not just use Public DNS?
+                        Security Group:
+                            lives inside your VPC. allow UDP 53, TCP 53
+                        Two Subnets:
+                            for High Availability.
+                Important:
+                    Ask yourself:
+                        "Who is asking the DNS question?"
+
+                    If the question comes from
+                        On-Premises → Inbound Endpoint
+                        AWS (EC2/Lambda/etc.) → Outbound Endpoint
+
+
+    
 
          
 
