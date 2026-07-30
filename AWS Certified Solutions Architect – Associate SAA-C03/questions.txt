@@ -283,8 +283,21 @@ Which of the following are NOT valid Route 53 Health Checks?
 
 ans. 1.
 ----------------------------------------------
+If the exam asks:
+"An e-commerce application runs on an Auto Scaling Group. Users must not lose their shopping carts."
+
+The best answer is almost always:
+
+✅ Store session/cart data in Amazon ElastiCache (Redis)
 ----------------------------------------------
+As a Solutions Architect, you're planning to migrate a complex ERP software suite to AWS Cloud. You're planning to host the software on a set of Linux EC2 instances managed by an Auto Scaling Group. The software traditionally takes over an hour to set up on a Linux machine. How do you recommend you speed up the installation process when there's a scale-out event?
+1. Use a Golden AMI.
+2. Bootstrap using EC2 User Data
+3. Store the application in Amazon RDS
+
+ans: 1.Use a Golden AMI.
 ----------------------------------------------
+
 ----------------------------------------------
 ----------------------------------------------
 

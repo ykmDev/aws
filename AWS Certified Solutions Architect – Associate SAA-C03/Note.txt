@@ -5673,7 +5673,259 @@ Route 53:
                 If the question comes from
                     On-Premises → Inbound Endpoint
                     AWS (EC2/Lambda/etc.) → Outbound Endpoint
+Architecture Thinking Framework
+    1. What is the application?
+    2. What data must be persistent?
+    3. What data must be shared?
+    4. What needs to scale?
+    5. What cannot be lost?
+    6. What needs to be fast?
+    7. How do we make it Highly Available?
 
+    WhatIsTheTime.com
+        requirements:
+            ✓ Shows the current time
+            ✓ No database
+            ✓ Start small
+            ✓ Downtime is acceptable
+            ✓ Later: vertically and horizontally scalable
+            ✓ Eventually: No downtime
+        Architecture:
+                        Users
+                            │
+                    Route53
+                            │
+                    CloudFront
+
+                            │
+                    Application Load Balancer
+                            │
+                Auto Scaling Group
+                    │              │
+                EC2            EC2
+                    │              │
+                    (Stateless App)
+    Stateful Web App: MyClothes.com
+        Requirement:
+            • Shopping website
+            • Hundreds of concurrent users
+            • Need horizontal scalability
+            • Keep web application stateless
+            • Shopping cart must not be lost
+            • User details stored in database
+        Breakdown:
+            | Requirement               | Keyword                        |
+            | ------------------------- | ------------------------------ |
+            | Shopping website          | Web Application                |
+            | Hundreds of users         | Scalability                    |
+            | Horizontal scalability    | Multiple servers               |
+            | Stateless web application | Session cannot stay inside EC2 |
+            | Shopping cart not lost    | External session storage       |
+            | User profile              | Database                       |
+        Normal Architecture:
+                            Users
+                                │
+                                ▼
+                        Application Load Balancer
+
+                                │
+                    Auto Scaling Group (EC2)
+                    │                     │
+                EC2-1                 EC2-2
+                    │                     │
+                    ├────────────┐
+                    ▼            ▼
+            ElastiCache      Amazon S3
+
+            Shopping Cart       Images
+                    │
+                    ▼
+                Amazon RDS
+
+            User Information
+        Better Architecture:
+                            Users
+                                │
+                            Route53 DNS
+                                │
+                            AWS WAF
+                                │
+                            CloudFront
+                                │
+                ┌────────────────────────┐
+
+                │   Application Load      │
+                │      Balancer           │
+                └────────────────────────┘
+                                │
+                        Auto Scaling Group
+                    ┌──────────┴──────────┐
+                    EC2                  EC2
+                    │                     │
+                    ├──────────┬──────────┤
+                    ▼          ▼          ▼
+                ElastiCache      S3        CloudWatch
+                (Shopping Cart) (Images)   (Monitoring)
+                    │
+                    ▼
+                Amazon RDS Multi-AZ
+                │
+                Read Replica
+        Midset:
+            | Requirement                | AWS Service               | Why?                                         |
+            | -------------------------- | ------------------------- | -------------------------------------------- |
+            | Many users                 | ALB + Auto Scaling        | Distribute traffic and scale horizontally    |
+            | Stateless app              | EC2 without local session | Any instance can handle any request          |
+            | Shopping cart              | ElastiCache Redis         | Fast shared session storage                  |
+            | User information           | Amazon RDS                | Persistent relational data                   |
+            | Product images             | Amazon S3                 | Durable object storage shared by all servers |
+            | Fast global image delivery | CloudFront                | Cache content close to users                 |
+            | High availability          | Multi-AZ                  | Survive AZ failures                          |
+            | Database read scaling      | Read Replica              | Offload read traffic                         |
+            | Protection                 | AWS WAF                   | Block common web attacks                     |
+            | Monitoring                 | CloudWatch                | Observe system health                        |
+        How to think:
+            Where does the traffic enter? → Route 53 → CloudFront (if needed) → ALB
+            How does the application scale? → Auto Scaling Group
+            Can any EC2 instance handle any request? If not, move session/state outside the instance.
+            What data must survive a reboot or instance replacement? → RDS, S3, EFS depending on the data type.
+            What needs to be extremely fast but doesn't require permanent storage? → ElastiCache.
+            How do we make every layer highly available? → Multi-AZ, health checks, redundancy.
+            How do we improve security and monitoring? → Security Groups, IAM, WAF, CloudWatch.
+    Stateful Web App: MyWordPress.com
+        Requirements:
+            ✓ Fully scalable
+            ✓ WordPress
+            ✓ Picture uploads
+            ✓ MySQL database
+        Breakdown:
+            | Requirement     | Technical Problem             |
+            | --------------- | ----------------------------- |
+            | Fully scalable  | Multiple WordPress servers    |
+            | Picture uploads | Uploaded files must be shared |
+            | MySQL           | Central database              |
+            | WordPress       | PHP application               |
+        Normal Architecture:
+                                Users
+                                    │
+                                Route53
+                                    │
+                                CloudFront
+                                    │
+                                    ALB
+                                    │
+                        Auto Scaling Group
+                        │                  │
+                    WordPress          WordPress
+                        │                  │
+                        └────────┬─────────┘
+                                │
+                            Amazon EFS
+                                │
+                            Uploaded Images
+                                │
+                                ▼
+                        Amazon RDS MySQL
+        Midset:
+            | Requirement        | Solution           | Why                                     |
+            | ------------------ | ------------------ | --------------------------------------- |
+            | Many users         | ALB + Auto Scaling | Horizontal scaling                      |
+            | WordPress files    | EFS                | Shared filesystem for all EC2 instances |
+            | Blog database      | RDS MySQL          | Managed, durable relational database    |
+            | High availability  | Multi-AZ RDS       | Automatic failover                      |
+            | Fast images        | CloudFront         | Global caching                          |
+            | Huge media library | S3 (optional)      | Durable, low-cost object storage        |
+        How to Think:
+            What needs to scale? → Web servers → ALB + Auto Scaling
+            What data must be shared between all web servers? → Uploaded files → EFS
+            What data must be persistent? → Posts, users, comments → RDS MySQL
+            What content is read frequently? → Images → CloudFront (and possibly S3 for media offloading)
+    Summary:
+        | Project    | Biggest Problem | AWS Solution               |
+        | ---------- | --------------- | -------------------------- |
+        | WhatIsTheTime  | Shopping Cart   | ElastiCache Redis      |
+        | MyClothes  | Shopping Cart   | ElastiCache Redis          |
+        | WordPress  | Uploaded Files  | Amazon EFS                 |
+    rsync:
+        rsync = Remote Sync
+        to synchronize files and folders between two locations.
+        but only copies the differences, making it much faster than copying everything every time unlike normal: cp.
+        rsync -avz \
+            /home/app/uploads/ \
+            ubuntu@10.0.0.5:/home/app/uploads/
+        It uses SSH, so the transfer is encrypted.
+    Instantiating Applications quickly:
+        EC2 instance:
+            golden ami:
+                ami: A snapshot/template of an EC2 instance.
+                Running EC2
+                    ↓
+                Create AMI
+                    ↓
+                Golden AMI
+                Why is it called "Golden"?
+                    perfect pre-configured server.
+                    Everything is already installed.
+            User Data:
+                Imagine: every server needs a different hostname.
+                    e.g: Server-1 => API_URL=prod, Server-2 => API_URL=dev, we cannot put on ami.
+                    User Data solves this.
+            Hybrid:
+                best practice: Golden AMI + User Data.(Elastic Beanstalk)
+                Golden AMI already contains all software.
+                User Data only does small changes.
+        RDS Database:
+            RDS Snapshot
+        RDS Volume:
+            EBS Snapshot
+    Developer Problem on AWS:
+        Most web app have the same Infrastructure(ALB + ASG)
+        want to do single way of deplopment.
+        that problem solved by called Elastic Beanstalk.
+Elastic Beanstalk:
+    PAAS.
+    developer centric view of deploying app.
+    Managed service:
+        automatically handles capacity provisioning, lb, scaling, application health monitoring. instance configuration...
+        just app code is responsibility of developer.
+    full control over the configuration
+    Beanstalk is free but pay for underlying instances.
+    When Not to use Elastic Beanstalk?
+        | Scenario                        | Better Service                         |
+        | ------------------------------- | -------------------------------------- |
+        | Run individual functions        | AWS Lambda                             |
+        | Run containers at large scale   | Amazon ECS / Amazon EKS                |
+        | Static React/Vue website        | Amazon S3 + CloudFront or AWS Amplify  |
+        | Fully customized infrastructure | EC2 + CloudFormation / CDK / Terraform |
+    components:
+        application(Top Level):
+            simply a container that groups everything together.
+            collection of components: environments, versions, configurations, ...
+        application version: an iteration of you app code.
+            Every deployment creates a new version.
+            Usually they're stored in S3 behind the scenes.
+        environment:
+            A running copy of one Application Version.
+            One environment always runs one version.
+            Environment = Infrastructure
+            Each Environment owns AWS resources.Completely separate.
+        Environment Tier:
+            Web Server Tier:
+                common, Handles HTTP, HTTPS requests.
+            Worker Tier:
+                No users connect directly.
+                Instead
+                messages come from SQS.
+        Note:
+            Application = Project
+            Application Version = Your code release
+            Environment = A deployed, running copy of one version
+            Environment Tier = How the application runs (Web Server or Worker)
+
+
+
+
+        
 
                     
             
