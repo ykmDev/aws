@@ -297,6 +297,47 @@ As a Solutions Architect, you're planning to migrate a complex ERP software suit
 
 ans: 1.Use a Golden AMI.
 ----------------------------------------------
+Is the file accessed every day?
+
+↓
+
+✅ Standard
+
+Rarely accessed, but needs immediate access?
+
+↓
+
+✅ Standard-IA
+
+Rarely accessed and losing one AZ is acceptable?
+
+↓
+
+✅ One Zone-IA
+
+Archive, but immediate retrieval is still required?
+
+↓
+
+✅ Glacier Instant Retrieval
+
+Archive and waiting minutes or hours is okay?
+
+↓
+
+✅ Glacier Flexible Retrieval
+
+Archive for many years at the lowest storage cost?
+
+↓
+
+✅ Glacier Deep Archive
+
+Don't know the access pattern?
+
+↓
+
+✅ Intelligent Tiering
 
 ----------------------------------------------
 ----------------------------------------------

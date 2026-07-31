@@ -5921,6 +5921,348 @@ Elastic Beanstalk:
             Application Version = Your code release
             Environment = A deployed, running copy of one version
             Environment Tier = How the application runs (Web Server or Worker)
+s3:
+    one of main building blocks of AWS.
+    infinitely scaling storage.
+    many websites use Amazon S3 as backbone.
+    for backup and storage.
+    disaster recovery, archive, Hybrid cloud storage, application storage, 
+    media hosting, data lakes & big data analysic
+    software delivery, static website
+    Buckets:
+        directories to store objects(files)
+        region level. s3 look like a global service but, buckets are created in a region.
+        Naming:
+            shared global namespace: globally unique name. Nobody cannot create same.
+            account regional namespace: allows for reuse of same bucket name across regions
+        Naming constraints:
+            no uppercase, no underscore.
+            not an ip, must start with lowercase or number.
+            must not start with a prefix xn--
+            must not end with a suffix minus -s3alias.
+    Objects:
+        have a Key.
+        Key is everything after the bucket name.
+            eg: s3://my-bucket/my_file.txt.
+                part of [my_file.txt.] is Key.
+            eg: s3://my-bucket/my_folder/another_folder/my_file.txt.
+                part of [my_folder/another_folder/my_file.txt.] is Key.
+        composed of prefix + object name.
+            eg: s3://my-bucket/my_folder/another_folder/my_file.txt.
+                part of [my_folder/another_folder/] is prefix.
+                part of [my_file.txt] is object name.
+        no concept of 'directories' within buckets.
+            Why do I see folders?
+            Actually
+                There are no real folders.
+                S3 only stores one string.
+                The / is just a character. AWS Console pretends it is a folder 
+                    to make it easier for humans.
+        Max: 50 TB.
+            if >50 GB, must use 'multi-part upload'
+        Metadata:
+            list of text key/value pairs.
+        Tags:
+            unicode key/value pair
+        Version ID: if versioning is enabled.
+    Security:
+        User-Based:
+            IAM Policies:
+                လူကို Permission ပေးတာ
+                which API calls should be allowed for a specifc user from IAM.
+        Resource-Based:
+            Bucket Policies:
+                Permission ကို Bucket မှာရေးတာ ဖြစ်တယ်။
+                mose used.
+                bucket wide rules from the s3 console - allows cross account.
+                structure:
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                            "Effect": "Allow",
+                            "Principal": "...",
+                            "Action": "...",
+                            "Resource": "..."
+                            }
+                        ]
+                    }
+                    Resource: Which bucket or object does this policy apply to?
+                        All objects inside the bucket. eg: arn:aws:s3:::study-files/*
+                    Effect: Allow or Deny.
+                    Action: Which S3 API operations are allowed?
+                    Principal: Who gets this permission?
+                        One AWS account: 
+                            "Principal": {
+                                "AWS": "arn:aws:iam::111122223333:root"
+                            }
+                        Everyone:
+                            "Principal": "*"
+                        Usecase:
+                            Cross-Account Access:
+                                Company A owns the bucket.
+                                Company B needs to upload files.
+                                Instead of creating IAM users in Company A,
+                                Bucket Policy says:
+                                Principal
+                                ↓
+                                Company B Account
+
+                                Now Company B can access.
+                            Only One IAM User:
+                                Principal
+                                    ↓
+                                    John
+                    Policy Generator:
+                        https://awspolicygen.s3.amazonaws.com/policygen.html
+            Object Access Control list(ACL):
+                Object-level special permissions
+                older feature, rarely used.
+                    AWS recommends Disable ACLs and use Bucket Policy.
+            Bucket Access Control list(ACL):
+                less common (can be disabled)
+            Bucket settings for Block Public Access:
+                created to prevent company data leaks. safety switch.
+                    Even if the Bucket Policy says:
+                    Allow everyone
+                    Block Public Access says:
+                    ❌ Ignore that. Keep the bucket private.
+        Note:
+            AWS checks
+                IAM Policy OR Bucket Policy If either allows -> Access.
+                BUT there is another rule.
+                Someone is DENY, result -> Deny.
+                AWS က Permission စစ်တဲ့အချိန်
+                    ဒီလိုစဉ်းစားတယ်။
+                    IAM မှာ Allow ရှိလား?
+                    ဒါမှမဟုတ်
+                    Bucket Policy မှာ Allow ရှိလား?
+                    တစ်ခုခုမှာ Allow ရှိရင် ဝင်လို့ရတယ်။
+                    ဒါပေမယ့် တစ်နေရာရာမှာ Deny ရှိသွားရင် အားလုံးကို ပယ်လိုက်တယ်။
+                    ဒါကို AWS မှာ Explicit Deny Overrides Allow
+            If there is NO Allow anywhere, the result is DENY.
+                AWS has two types of deny:
+                    Implicit Deny (default) ← very common
+                    Explicit Deny ← overrides everything
+                    | IAM Policy | Bucket Policy | Result  | Reason                      |
+                    | ---------- | ------------- | ------- | --------------------------- |
+                    | Nothing    | Nothing       | ❌ DENY  | Implicit Deny (default)     |
+                    | Allow      | Nothing       | ✅ ALLOW | IAM grants access           |
+                    | Nothing    | Allow         | ✅ ALLOW | Bucket Policy grants access |
+                    | Allow      | Allow         | ✅ ALLOW | Either Allow is sufficient  |
+                    | Allow      | Deny          | ❌ DENY  | Explicit Deny overrides     |
+                    | Deny       | Allow         | ❌ DENY  | Explicit Deny overrides     |
+                    | Deny       | Deny          | ❌ DENY  | Explicit Deny               |
+            Final Access = (IAM Allow OR Bucket Policy Allow)
+                            AND
+                            No Explicit Deny
+            | Security Method | Attached To         | Typical Use                                            |
+            | --------------- | ------------------- | ------------------------------------------------------ |
+            | IAM Policy      | User / Group / Role | Control what identities in your account can do         |
+            | Bucket Policy   | Bucket              | Cross-account access, public access, bucket-wide rules |
+            | Object ACL      | Individual object   | Legacy, fine-grained object permissions                |
+            | Bucket ACL      | Bucket              | Legacy, rarely used
+        Encryption: encrypt object in s3 using encryption key.
+    Static Website:
+        can host static website
+        web url depending on the region.
+        error.html will show not have route calling.
+        http://bucket-name.s3-website-aws-region.amazonaws.com
+    Versioning:
+        enabled at bucket level.
+            without versioning, old file will lost and replace by new.
+            with versioning, nothing lost. every upload -> become new version.
+            before versioning enabled Uploaded file, will set VersionID: null.
+            when delete file, add 'delete markers' on file.
+            if undo, delete the 'delete markers' file.
+        Suspend:
+            after enable, later change to Suspend,
+                AWS never delete all versions. previous version still available.
+                Only new uploads stop receiving new version IDs. null will set.
+    Replicaton:
+        Replication means:
+            Automatically copy objects from one S3 bucket to another.
+        two types:
+            CRR: cross-region replicaton.
+                Source and destination are in different AWS Regions.
+                Why use CRR?
+                    Disaster Recovery
+                    Lower Latency
+                    Compliance
+            SRR: same-region replication.
+                Source and destination buckets are in the same AWS Region.
+                e.g: Log Aggregation
+                    Application uploads logs.
+                            App
+                            ↓
+                            logs bucket
+                            ↓
+                            Replicate
+                            ↓
+                            Analytics bucket
+
+                            Now another team can analyze logs without touching the production bucket.
+                            This is called Log Aggregation.
+        requirements:
+            must enable versioning on source and destination buckets.
+            must grant the necessary IAM permissions.
+        Asynchronous:
+            Does AWS copy it immediately?
+                Not exactly.
+                There may be a short delay.
+            Asynchronous flow:
+                AWS does this:
+                    Upload File
+                    ↓
+                    Upload Success ✅
+                    ↓
+                    (Background)
+                    ↓
+                    Replicate to Singapore
+                    Your upload finishes immediately.
+                    Replication happens later in the background.
+            Batch Replicaton:
+        Buckets can be in different AWS accounts
+            Source Bucket in account A => Destination Bucket in account B.
+        IMPORTANT:
+            Only new objects uploaded after replication is enabled are replicated.
+                Replication ဖွင့်ပြီးမှ အသစ် Upload လုပ်တဲ့ File တွေကိုပဲ AWS က Copy လုပ်ပေးတယ်။
+                Replication မဖွင့်ခင်က ရှိပြီးသား File တွေကို အလိုအလျောက် မကူးဘူး။
+            For Existing Objects,
+                S3 Batch Replication:
+                    Replicate everything that already exists.
+                S3 Batch Replication also retries failures:
+                    Suppose
+                        photo1.jpg
+                        failed to replicate yesterday.
+                        You can ru S3 Batch Replication
+                        again.
+                        AWS will retry those failed objects.
+
+                | Object Type         | Normal Replication | Batch Replication |
+                | ------------------- | ------------------ | ----------------- |
+                | New Objects         | ✅ Yes              | ✅ Yes             |
+                | Existing Objects    | ❌ No               | ✅ Yes             |
+                | Failed Replications | ❌ No               | ✅ Yes             |
+        DELETE Operations:
+            Some companies want:
+                Delete in Production
+                ↓
+                Delete in Backup
+            Others want:
+                Delete in Production
+                ↓
+                Keep Backup
+            AWS lets you choose.
+            AWS intentionally does not replicate version-specific deletes.
+                AWS က Backup ကို ကာကွယ်ချင်တယ်။
+                တစ်ယောက်ယောက်က Source Bucket မှာ Version ID နဲ့ Permanent Delete လုပ်လိုက်ရင်
+                Destination Bucket ကို မလိုက်ဖျက်ဘူး။ ဒီလိုမှ Backup Copy ကျန်မယ်။
+            | Delete Type                       | Replicated? |
+            | --------------------------------- | ----------- |
+            | Delete Marker                     | ✅ Optional  |
+            | Permanent Delete using Version ID | ❌ No        |
+        Chaining Replication:
+            Replication is not transitive (no chaining).
+            AWS intentionally avoids replication loops.
+            Suppose
+                Bucket A
+                ↓
+                Replicate
+                ↓
+                Bucket B
+                ↓
+                Replicate
+                ↓
+                Bucket C
+
+                Question: Upload to Bucket A.
+                Will it automatically reach Bucket C?
+                    If after B -> stops -> doesnot continue to Bucket C.
+                AWS intentionally avoids replication loops.
+                    Imagine
+                        A → B
+                        B → C
+                        C → A
+
+                        Without this protection:
+                        A
+                        ↓
+                        B
+                        ↓
+                        C
+                        ↓
+                        A
+                        ↓
+                        B
+                        ↓
+                        C
+
+                        ∞
+
+                        Infinite replication!
+                        AWS prevents this.
+    Durability:
+        Same for all storage class.
+        High durability 11 9's of objects across multiple AZs.
+    Availability:
+        varies depending on storage class
+        eg: S3 Standard has 99.99% availability = not available 53 minutes a year.
+    Storage Class:
+        Minimum storage duration is from the upload date to current date.
+        Amazon S3 Standard - General Purpose.
+            နေ့တိုင်း အသုံးများတဲ့ File တွေအတွက်။
+            default, think: I use this file all times.
+            99.99 % availability,
+            low latency, high thoughput.
+            sustain 2 concurrent facility failures.
+            use case:
+                Big Data Analytics, mobile & gaming apps, content distribution...
+        Amazon S3 Standard-Infrequent Access (IA)
+            IA = Infrequent Access
+            Files are rarely accessed
+            use Cases: Disaster recovery, backups.
+        Amazon S3 One Zone-Infrequent Access
+            like Standard-IA, but, for only one AZ.
+        Amazon S3 Glacier Instant Retrieval
+            think like: Archive Storage. Not everyday files.
+        Amazon S3 Glacier Flexible Retrieval
+            retrieval: Minutes to hours
+            min storage duration of 90 days.
+        Amazon S3 Glacier Deep Archive
+            min storage duration of 180 days.
+        Amazon S3 Intelligent Tiering
+            moves object automatically between Access Tiers based on usage to low-cost.
+        Note:
+            | Storage Class        | Access Frequency  | Retrieval Speed                                        | Cost                        | Multi-AZ |
+            | -------------------- | ----------------- | ------------------------------------------------------ | --------------------------- | -------- |
+            | Standard             | Frequent          | Immediate                                              | Highest                     | ✅        |
+            | Standard-IA          | Rare              | Immediate                                              | Lower                       | ✅        |
+            | One Zone-IA          | Rare              | Immediate                                              | Even Lower                  | ❌        |
+            | Glacier Instant      | Very Rare         | Immediate                                              | Low                         | ✅        |
+            | Glacier Flexible     | Archive           | Minutes to Hours                                       | Very Low                    | ✅        |
+            | Glacier Deep Archive | Long-term Archive | Hours (up to ~12+ hours depending on retrieval option) | Lowest                      | ✅        |
+            | Intelligent Tiering  | Unknown           | Immediate                                              | AWS optimizes automatically | ✅        |
+
+        Don't forget the minimum storage duration:
+        | Storage Class              | Retrieval Speed      | Minimum Storage | Typical Use                         |
+        | -------------------------- | -------------------- | --------------- | ----------------------------------- |
+        | Glacier Instant Retrieval  | Milliseconds         | 90 days         | Archive but immediate access needed |
+        | Glacier Flexible Retrieval | 1 minute to 12 hours | 90 days         | Backup and archives                 |
+        | Glacier Deep Archive       | 12–48 hours          | 180 days        | Very long-term archive              |
+    Life Cycle:
+        help automatically save money.
+        An automatic schedule that tells S3 what to do with objects as they get older.
+
+
+        
+
+            
+
+
+
+
+
 
 
 
