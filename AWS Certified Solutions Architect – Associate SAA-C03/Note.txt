@@ -3793,7 +3793,7 @@ RDS:
                     Aurora Auto Scaling:
                         if Reader Too many read requests, aws automatically create another Reader.
                         How Does Auto Scaling Decide?
-                            Aurora uses CloudWatch matrics.
+                            Aurora uses CloudWatch Metrics.
                                 eg: Average Reader CPU > 70%
                                 if traffic decreases, aws removes one Reader.
                         Auto Scaling Only Affects Readers.
@@ -5973,17 +5973,17 @@ s3:
         Resource-Based:
             Bucket Policies:
                 Permission ကို Bucket မှာရေးတာ ဖြစ်တယ်။
-                mose used.
+                more used.
                 bucket wide rules from the s3 console - allows cross account.
                 structure:
                     {
                         "Version": "2012-10-17",
                         "Statement": [
                             {
-                            "Effect": "Allow",
-                            "Principal": "...",
-                            "Action": "...",
-                            "Resource": "..."
+                                "Effect": "Allow",
+                                "Principal": "...",
+                                "Action": "...",
+                                "Resource": "..."
                             }
                         ]
                     }
@@ -6252,7 +6252,435 @@ s3:
         | Glacier Deep Archive       | 12–48 hours          | 180 days        | Very long-term archive              |
     Life Cycle:
         help automatically save money.
+        moving Between Storage Class.
         An automatic schedule that tells S3 what to do with objects as they get older.
+        Transition Actions:
+            configure objects to transition to another storage class
+        Expiration actions:
+            configure objects to expire(delete)
+        Rules can be created for certain prefix or objects tags
+        Scenario 1:
+            Your application on EC2 creates images thumbnails after profile photos are uploaded to Amazon S3. 
+            These thumbnails can be easily recreated, and only need to be kept for 60 days. 
+            The source images should be able to be immediately retrieved for these 60 days, 
+            and afterwards, the user can wait up to 6 hours. How would you design this?
+            thinking way:
+                Source images (original profile photos)
+                    First 60 days => fast retrieval => So, S3 Standard.
+                    After 60 days -> up to 6 hours -> reduce cost -> S3 Glacier Flexible Retrieval
+                Thumbnails (generated images)
+                    Important words:
+                        easily recreated
+                        only need to be kept for 60 days.
+                        This means: They are not critical data. They are disposable. ec2 can create again and again.
+                        Don't need the same durability requirement as original images
+                        so, One Zone IA. not Standard-IA because reduce cost.
+                        Architecture:
+                                 User
+                                    |
+                                    |
+                            Upload Profile Photo
+                                    |
+                                    ↓
+                            +----------------+
+                            | Original Image |
+                            +----------------+
+                                    |
+                                    ↓
+                                S3 Standard
+                                    |
+                                60 days later
+                                    |
+                                    ↓
+                        Glacier Flexible Retrieval
+
+                                    |
+                                    |
+                                    ↓
+                                EC2
+                            Generate Thumbnail
+                                    |
+                                    ↓
+
+                            +----------------+
+                            |   Thumbnail    |
+                            +----------------+
+                                    |
+                                    ↓
+                            S3 One Zone-IA
+                                    |
+                                60 days later
+                                    |
+                                    ↓
+                                Delete
+        Scenario 2:
+            A rule in your company states that you should be able to recover your deleted S3 objects 
+            immediately for 30 days, although this may happen rarely. After this time, 
+            and for up to 365 days, deleted objects should be recoverable within 48 hours
+            Architecture:
+                            Object created
+                                |
+                                |
+                                ↓
+
+                            S3 Standard
+                            (current version)
+
+
+                            User deletes object
+                                |
+                                |
+                                ↓
+
+                            Delete Marker created
+
+                            Old version becomes:
+
+                            Noncurrent Version
+
+
+                            Day 0 - Day 30
+
+                            S3 Standard
+                            (immediate recovery)
+
+
+                            Day 30+
+
+                            S3 Standard-IA
+                            (immediate but cheaper)
+
+
+                            Later
+
+                            Glacier Deep Archive
+                            (up to 48 hours)
+
+
+                            Day 365
+
+                            Delete permanently
+        Noncurrent Version:
+            Before delete:photo.jpg
+                Version 1
+                (current)
+
+            After delete: photo.jpg
+                Delete Marker
+                (current)
+
+                Version 1
+                (noncurrent)
+    Storage Class Analysis:
+        help you decide to transition object.
+        report is updated daily.
+        recommendations for Standard and Standard IA.
+            not work for One Zone IA or Glacier.
+    Express One Zone:
+        maximum performance, not maximum availability across multiple AZs.
+        only signle AZ class. similar in concept to One Zone-IA.
+        Directory Bucket:
+            Unlike normal s3 uses: Bucket -> photos/ documents/ videos/
+                S3 doesn't have directories (folders).
+            introduces a special type called a Directory Bucket.
+            as a bucket optimized for high-performance directory-style access.
+            AWS က AI, EMR, Athena, SageMaker တို့လို Directory ပုံစံနဲ့ File သန်းချီပြီး
+            အလုပ်လုပ်တဲ့ Application တွေအတွက် Storage Engine အသစ်တစ်ခု ဖန်တီးထားတယ်။
+            ဒါကို Directory Bucket လို့ခေါ်တယ်။
+        10x Better Performance
+        50% Lower Request Costs
+        Co-locate your storage and compute resources in the same AZ (reduces latency)
+        Use cases: latency-sensitive apps, data-intensive apps, 
+            Al & ML training, financial modeling, media processing, HPC...
+        Best integrated with SageMaker Model Training, Athena, EMR, Glue, ...
+        Do you need Directory Bucket?
+            For 95% of applications, the answer is No.
+            For example:
+                Company website
+                User profile images
+                PDFs
+                Videos
+                Static website hosting
+                Backups
+            Use: ✅ Standard Bucket
+
+            Use a Directory Bucket only when you need things like:
+                AI model training
+                HPC(High Performance Computing)
+                Massive analytics
+                Financial modeling
+                Very low latency
+                Hundreds of thousands of requests per second
+    Requester Pays:
+        In general,The person who owns the S3 bucket pays everything.
+            The bucket owner pays:
+                Storage cost
+                Request cost (GET, PUT, LIST, etc.)
+                Data transfer cost
+        With Requester Pays buckets Enabled, 
+            Requester pays:
+                ✓ GET requests
+                ✓ Data transfer
+                ✓ Data retrieval costs
+            Bucket owner pays:
+                ✓ Storage
+        Helpful when you want to share large datasets with other accounts
+        The requester must be authenticated in AWS (cannot be anonymous)
+        Important:
+            cannot be anonymous!! Internet User cannot do. AWS cannot identify.
+    Event Notifications:
+        sometimes we want: When something happens in S3, automatically do something.
+        eg: When a user uploads a profile picture, automatically create a thumbnail.
+        this is called event-driven architecture.
+        Types of S3 Events:
+            Object Created:
+                Triggered when:
+                    Upload object
+                    Copy object
+                    Multipart upload completed
+            Object Removed:
+                Triggered when:
+                    Delete object
+                    Delete multiple objects
+            Object Restore:
+                Used with Glacier.
+            Replication Events:
+                related to CRR, SRR.
+        S3 Event Notifications can trigger:
+            Lambda, SNS, SQS
+                when doing on SQS event lab,
+                    need to edit to on SQS Policy using policy generator.
+                    e.g:
+                        {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "Statement1",
+                                    "Effect": "Allow",
+                                    "Principal": "*", // for everyone
+                                    "Action": [
+                                        "sqs:SendMessage" // for send msg api
+                                    ],
+                                        "Resource": "arn:aws:sqs:us-east-1:754660694887:demos3Queue01"
+                                    }
+                                ]
+                            }
+        Object Name Filtering: Suffix: *.jpg
+        Delivery Timing:
+            It is near real-time, but not guaranteed instantly.
+        Asynchronous.
+        Usage:
+            Image Processing, Large File Processing,Multiple Consumers(Lambda/SQS/SNS)
+        Event Notifications vs S3 Lifecycle
+        |         | Event Notification | Lifecycle       |
+        | ------- | ------------------ | --------------- |
+        | Purpose | Trigger actions    | Manage storage  |
+        | Timing  | Seconds            | Days/months     |
+        | Example | Create thumbnail   | Move to Glacier |
+        | Service | Lambda/SQS/SNS     | S3 itself       |
+    Baseline Performance:
+        Performance scales per prefix, and there is no limit to the number of prefixes
+        s3 automatically scales.
+            we don't need to add servers, disks, LBs.
+        AWS guarantees that each prefix:
+            | Operation                  | Requests/sec (per prefix) |
+            | -------------------------- | ------------------------: |
+            | PUT / COPY / POST / DELETE |                 **3,500** |
+            | GET / HEAD                 |                 **5,500** |
+        Prefix:
+            remember: Key = Prefix + Object Name
+        Why does AWS care about prefixes?
+            Imagine you store everything in one prefix.
+                my-bucket
+
+                photos/
+                    photo1
+                    photo2
+                    photo3
+                    photo4
+                    ...
+
+                All requests hit:
+                photos/
+                Maximum baseline:
+                GET
+                5,500/sec
+                Now imagine you organize them:
+                    photos-us/
+                    photos-japan/
+                    photos-europe/
+                    photos-asia/
+
+                Now AWS can scale each prefix independently.
+        GET vs HEAD:
+            HEAD is like asking:
+            without downloading the file.
+                Does this object exist?
+                How big is it?
+                What's its Content-Type?
+        Important:
+            Performance scales per prefix, and there is no limit to the number of prefixes
+                if 20,000 GET requests per second in one prefix, s3 can handle.
+                    but not AWS only guarantees at least 5,500 GET/HEAD requests per second per prefix.
+                    As a Solutions Architect, your job is not to hope AWS scales.
+                    Your job is to design based on AWS guarantees.
+            images/thumbnail/ and images/ are different prefixes.
+    Performance:
+        Multi-Part upload:
+            > 100 MB, must use files > 5 GB
+            Maximum S3 object size: 5 TB.
+            Failure Handling Benefit
+                This is one of the biggest advantages.
+                Example:
+                10 GB upload.
+                Without multipart:
+                9.9 GB uploaded
+                Network failure
+                Restart from 0 GB
+                Painful.
+                With multipart:
+                    Part 1 ✅
+                    Part 2 ✅
+                    Part 3 ✅
+                    Part 4 ❌ failed
+                    Part 5 ✅
+                Only retry:
+                Part 4
+                Not the whole file.
+        S3 Transfer Acceleration:
+            increase transfer speed by transferring file to AWS edge location.
+            compatible with multi-part upload.
+        Multipart Upload vs S3 Transfer Acceleration:
+            Multipart Upload
+                Improves:
+                    Large file upload
+                by:
+                    parallel parts
+            Transfer Acceleration:
+                Improves:
+                    Distance between user and S3
+                by:
+                    CloudFront Edge Locations
+        Byte-Range Fetch:
+            Request only a specific part (byte range) of an object.
+                Instead of:
+                    Download everything
+                    you say:
+                    Give me bytes 0 - 1000
+                    or:
+                    Give me bytes 5GB - 6GB
+            Use Case 1: Parallelize Downloads
+                Similar to Multipart Upload.
+        Important:
+            Upload large file
+                    ↓
+            Multipart Upload
+
+            Download large file
+                    ↓
+            Byte-Range Fetch
+    S3 Batch Operations:
+        Run one operation on millions/billions of existing S3 objects without writing your own script.
+        job:
+            consists of a list of objects, the action to perform, and optional parameters.
+                Manifest(object list): 
+                    list of objects to process.
+                    Where Does the Object List Come From?
+                        Option 1: Provide Your Own Manifest.
+                        Option 2: Use S3 Inventory
+                            S3 Inventory creates reports.
+                            and then 
+                                S3 Inventory
+                                        |
+                                        |
+                                        ▼
+
+                                    Athena Query
+
+                                        |
+                                        |
+                                    Filter objects
+
+                                        |
+                                        |
+                                    S3 Batch Operations
+                            Athena can query S3 Inventory.
+                Operation:
+                    What should AWS do: copy objects, Encrypt objects, etc..
+                Parameters: extra configuration.
+            Use Case: Encrypt Existing Objects,
+                    Copy Objects Between Buckets, 
+                    Modify Metadata, Modify Tags, 
+                    Restore Glacier Objects
+            Batch Operartions VS Life Cycle:
+                |                   | S3 Lifecycle                  | S3 Batch Operations           |
+                | ----------------- | ----------------------------- | ----------------------------- |
+                | Automatic?        | Yes                           | Manual job                    |
+                | Existing objects? | Yes                           | Yes                           |
+                | Purpose           | Storage management            | Bulk actions                  |
+                | Example           | Move to Glacier after 90 days | Encrypt 1 million objects now |
+                | Frequency         | Continuous                    | One-time or scheduled         |
+            Batch Operations vs Event Notifications:
+                |               | Event Notification  | Batch Operations  |
+                | ------------- | ------------------- | ----------------- |
+                | Trigger       | New event           | Manual job        |
+                | Object timing | New objects         | Existing objects  |
+                | Example       | New upload → Lambda | Process old files |
+    Storage Lens:
+        A dashboard and analytics tool to see how your S3 storage is being used, 
+        where costs are coming from, and whether your data protection practices are good.
+        collects:
+            Storage usage
+            Object count
+            Request activity
+            Cost-related metrics
+            Data protection metrics
+        Scope: Organization Level.
+            Entire AWS Organization
+                all accounts, all regions, all buckets.
+        Metrics: 
+            summary Metrics, cost-optimization Metrics, Data-Protection Metrics, Access-management Metrics.
+            event Metrics, Performance Metrics, activity Metrics,
+            Detailed Status Code Metrics
+            free Vs Paid:
+                Free Metrics:
+                    automatically available for all customers,
+                    contains around 28 usage metrics.
+                    data is available for 14 days.
+                Paid Metrics:
+                    advanced additional paid metrics and features.
+                    data is available for 15 months.
+        Discover Anomalies:
+            normal growth: +10 GB/days, suddenly, yesterday: +5 TB.
+            storage lens can help identify: why did storage suddenly increase?
+                Possible cause:
+                    Application bug
+                    Backup mistake
+                    Large file uploads
+        Can be configured to export metrics daily to an S3 bucket (CSV, Parquet)
+        Default Dashboard:
+            show multi-region and multi-account data.
+            preconfigured by s3
+            can't be deleted, but, can be disabled.
+        Storage Lens vs S3 Inventory
+            |           | Storage Lens                | S3 Inventory         |
+            | --------- | --------------------------- | -------------------- |
+            | Purpose   | Analyze storage usage       | List objects         |
+            | Level     | Organization/account/bucket | Object level         |
+            | Metrics   | Storage + activity          | Object metadata      |
+            | Frequency | Dashboard + daily export    | Daily/weekly         |
+            | Example   | "Which bucket costs most?"  | "Which files exist?" |
+        Storage Lens vs CloudWatch
+            |         | Storage Lens         | CloudWatch             |
+            | ------- | -------------------- | ---------------------- |
+            | Focus   | S3 storage analytics | AWS service monitoring |
+            | Scope   | S3 organization view | Metrics/alarms         |
+            | Example | Storage growth       | Request errors         |
+
+
+
+
+
 
 
         

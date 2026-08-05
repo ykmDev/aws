@@ -340,7 +340,87 @@ Don't know the access pattern?
 ✅ Intelligent Tiering
 
 ----------------------------------------------
-----------------------------------------------
+You have updated an S3 bucket policy to allow IAM users to read/write files in the S3 bucket, 
+but one of the users complain that he can't perform a PutObject API call.
+What is a possible cause for this? 
+1. The s3 bucket policy must be wrong. 
+2. The user is lacking permissions 
+3.The IAM user must have an explicit DENY in the attached IAM Policy. 
+4. You need to contact AWS Support to lift this limit.
 
+ans: 3.
+explain: Explicit DENY in an IAM Policy will take precedence over an s3 bucket policy.
+AWS checks:
+    IAM Policy
+    +
+    Bucket Policy
+    +
+    ACL (if enabled)
+    +
+    Other Policies (SCP, Permission Boundary, etc.)
+Suppose Bucket Policy:
+    {
+    "Effect": "Allow",
+    "Action": "s3:PutObject",
+    "Principal": "*"
+    }
+
+This means Everyone may upload.
+Now suppose the IAM Policy attached to Bob is:
+    {
+        "Effect": "Deny",
+        "Action": "s3:PutObject",
+        "Resource": "*"
+    }
+
+AWS evaluates:
+    Bucket Policy
+    ALLOW
+    +
+    IAM Policy
+    DENY
+
+Result: DENY
+
+because: Explicit DENY always wins.
+----------------------------------------------
+Which of the following is NOT a Glacier Flexible retrieval mode?
+
+1. Instant (10 sec)
+2. Expedited (1 - 5 minutes)
+3. Standard (3-5 hours)
+4. Bulk (5-12 hours)
+
+ans: 1.
+----------------------------------------------
+You are looking to get recommendations for S3 Lifecycle Rules. 
+How can you analyze the optimal number of days to move objects between different storage tiers?
+1. S3 Inventory
+2. S3 Analytics
+3. S3 Lifecycle Rules advisor
+
+ans: 2.
+specially: S3 Storage Class Analysis (S3 Analytics)
+
+| Feature                       | Purpose                                           |
+| ----------------------------- | ------------------------------------------------- |
+| **S3 Inventory**              | Get object list and metadata                      |
+| **S3 Storage Class Analysis** | Analyze access patterns and recommend transitions |
+| **S3 Lifecycle Rules**        | Automatically transition/delete objects           |
+| **S3 Intelligent-Tiering**    | Automatically moves objects based on access       |
+
+----------------------------------------------
+You have a 25 GB file that you're trying to upload to S3 but you're getting errors. 
+What is a possible solution for this?
+1. file size limit on s3 is 5 GB.
+2. Update your bucket policy to allow the larger file.
+3. Use Multi-part upload when uploading files larger than 5 GB.
+4. Encrypt the file.
+
+ans: 3.
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
 
 
