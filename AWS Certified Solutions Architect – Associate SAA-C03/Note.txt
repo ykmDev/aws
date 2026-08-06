@@ -6676,6 +6676,204 @@ s3:
             | Focus   | S3 storage analytics | AWS service monitoring |
             | Scope   | S3 organization view | Metrics/alarms         |
             | Example | Storage growth       | Request errors         |
+    S3 Encryption:
+        encrypt objects in s3 buckets.
+        Encryption in transit(SSL/TLS):
+            called SSL/TLS.
+            two endpoints: HTTP, HTTPS(recommend).
+            force encryption in transit:
+                Force everyone to use HTTPS instead of HTTP when accessing your S3 bucket.
+                on S3 BucketPolicy:
+                    aws:SecureTransport: true
+                    sample:
+                        {
+                            "Effect": "Deny",
+                            "Principal": "*",
+                            "Action": "s3:*",
+                            "Resource": [
+                                "arn:aws:s3:::my-bucket",
+                                "arn:aws:s3:::my-bucket/*"
+                            ],
+                            "Condition": {
+                                "Bool": {
+                                "aws:SecureTransport": "false"
+                                }
+                            }
+                        }
+                exam point:
+                    Force HTTPS
+                    Encrypt data in transit
+                    Prevent HTTP access to S3
+                    Only allow SSL/TLS connections
+        At-Rest Encryption:
+                SSE-S3
+                SSE-KMS
+                SSE-C
+                Client-Side Encryption
+        4 methods:
+            SSE(Server side encryption):
+                SSE-S3:
+                    default, keys handled, managed, owned by AWS. AWS does everything.
+                    type: AES-256
+                    must set header: "x-amz-server-side-encryption":"AES256"
+                    enabled by default for new buckets & new object
+                SSE-KMS:
+                    using AWS KMS
+                    keys handled, managed, owned by AWS KMS.
+                    KMS advantages: user access control + audit key usage using CloudTrail
+                    must set header: "x-amz-server-side-encryption":"aws:kms"
+                    if we use SSE-KMS, impacted by KMS limits.
+                        Every upload use: 
+                            GenerateDataKey KMS API.
+                        Every download use:
+                            Decrypt KMS API.
+                    KMS quota per sec (5500, 10000, 30000 req/s based on region)
+                    can request a quota increase using the service quotas console.
+                SSE-C:
+                    S3 never stores your key.
+                    manage by own key. fully managed by customer.
+                        If you lose the key:
+                            Data is gone.
+                        AWS cannot recover it.
+                    HTTPS must be used.
+                    key must provided in HTTPS headers, for every HTTP request made.
+                    flow:
+                        Upload (PUT):
+                            Your File
+                                +
+                            Your Encryption Key
+                                ↓
+                            HTTPS
+                                ↓
+                            S3 encrypts the file
+                                ↓
+                            Stores only the encrypted object
+                                ↓
+                            Discards your key
+
+                        Download (GET):
+                            Encrypted Object
+                                +
+                            You send the SAME key again
+                                ↓
+                            HTTPS
+                                ↓
+                            S3 decrypts temporarily
+                                ↓
+                            Returns plaintext to you
+                                ↓
+                            Discards the key again
+            Client side encryption:
+                S3 never sees plaintext.
+                use client libraries such as S3 Client-Side Encryption library.
+                clients must encrypt data themselves/decrypt data themselves
+                fully managed the keys and encryption cycle.
+            DSSE-KMS:
+                Dual-Layer Server-Side Encryption with AWS KMS keys
+                Two independent encryption layers.
+                    Plain File
+                        │
+                        ▼
+                    Encrypt (Layer 1 using KMS)
+                        │
+                        ▼
+                    Encrypt again (Layer 2)
+                        │
+                        ▼
+                    Stored Object
+                Why was it introduced?
+                    Some organizations (especially government, defense, finance, and regulated industries)
+                    require dual-layer encryption to meet compliance standards.
+            Default Encryption Vs Bucket Policies:
+                SSE-S3 encryption is automatically applied to new objects.
+                can 'force encrytion' using Bucket Policy, must be use SSE-S3 default.
+                Bucket Policy are evaluated before 'Default encryption'.
+    CORS:
+        Cross-Origin Resource Sharing:
+            Origin = Protocol + Domain + Port
+                Example:
+                    https://www.example.com
+                    means
+                        Protocol: HTTPS
+                        Host:     www.example.com
+                        Port:     443 (default)
+                Another example:
+                    http://www.example.com:8080
+
+                    Origin is
+                        Protocol: HTTP
+                        Host: www.example.com
+                        Port: 8080
+                So, If any Protocol or Domain or Port are different, origin are different.
+                So browsers have the: Same-Origin Policy.
+                    Same-Origin Policy (SOP) enabled by default.
+                    Same-Origin Policy (SOP):
+                    The rule:
+                        JavaScript from one origin cannot freely read data from another origin.
+                        if difference origin => blocked.
+                Without CORS:
+                    if difference origin => blocked.
+                With CORS enabled:
+                    if difference origin => allowed.
+                    Suppose:
+                        Frontend: https://mywebsite.com
+
+                        Images stored in: https://my-images.s3.amazonaws.com
+
+                        User opens: https://mywebsite.com
+
+                        JavaScript requests: https://my-images.s3.amazonaws.com/photo.jpg
+
+                        Browser sees:
+                            Origin A
+                            ↓
+                            Origin B
+                            ↓
+                            Different Origin
+
+                        Without CORS: Blocked
+                    CORS Configuration:
+                        [
+                            {
+                                "AllowedOrigins": [
+                                "https://mywebsite.com"
+                                ],
+                                "AllowedMethods": [
+                                "GET"
+                                ]
+                            }
+                        ]
+                    Now S3 responds:
+                        Access-Control-Allow-Origin: https://mywebsite.com
+
+                        Browser says: OK
+                        Allowed
+                        Show image.
+                Important:
+                    Many beginners think:
+                        S3 blocks the request.
+                        Actually:
+                        The request usually reaches S3.
+
+                        It is the browser that blocks JavaScript from accessing the response 
+                        if the required CORS headers are missing.
+                Real-World Example
+                    Your React application:
+                    https://app.company.com
+
+                    Uploads images to:
+
+                    https://mybucket.s3.amazonaws.com
+
+                    Need CORS.
+
+
+
+
+
+            
+
+        
 
 
 
