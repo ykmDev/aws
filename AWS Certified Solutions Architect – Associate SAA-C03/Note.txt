@@ -6866,34 +6866,238 @@ s3:
                     https://mybucket.s3.amazonaws.com
 
                     Need CORS.
+    MFA:
+        muli-factor authentication:
+        force users to generate a code on a device.
+        MFA will required to 
+            permanently delete a object version.
+            Suspend versioning on bucket.
+        MFA won't required:
+            enable versioning, list deleted versions.
+        To use MFA delete, Versioning must be enabled on bucket.
+        Only bucket owner can enable/disabled MFA Delete.
+            Bucket Owner:
+                is the AWS Account, not an IAM user.
+                eg: 
+                    AWS Account (123456789012)
+                        │
+                        ├── Root User
+                        │
+                        ├── IAM User: Alice
+                        │
+                        ├── IAM User: Bob
+                        │
+                        └── IAM Role: AdminRole
+                    Notice: There is only one AWS Account.
+                    Inside the account can be many IAM users and roles.
+    S3 Access Logs:
+        for audit purpose, want to log all access to S3 buckets.
+        any request made to S3
+        target loggging bucket must be in same AWS region.
+        not stored in CloudWatch. store on another s3 Bucket: Logging Bucket.
+        And, logging bucket is not same target bucket.
+        Warning:
+            do not set your logging bucket to monitored bucket.
+            it will create logging loop and your bucket will grow exponentially.
+            Infinite Logging Loop:
+                Suppose:
+                    Bucket A
+                    ↓
+                    Stores logs
+                    ↓
+                    Bucket A
 
+                    Same bucket.
 
+                    Someone downloads a file: GET photo.jpg
+                    S3 creates a log: PUT access-log-1.txt
+                    But writing that log is also an S3 request.
+                    So S3 logs it too: PUT access-log-2.txt
+                    Writing that log creates another request: PUT access-log-3.txt
 
+                    Then: PUT access-log-4.txt
+                    ...
+                    This continues repeatedly, causing unnecessary log growth and storage costs.
+        Important:
+            Logging bucket:
+                must not be the same Application bucket.
+                must be the same Region.
+            | Service                      | What it logs                                                            |
+            | ---------------------------- | ----------------------------------------------------------------------- |
+            | **S3 Server Access Logging** | Requests made **to a specific S3 bucket**                               |
+            | **CloudTrail**               | AWS API calls (e.g., `CreateBucket`, `DeleteBucket`, `PutBucketPolicy`) |
+            | **CloudWatch Logs**          | Application and system logs from services like EC2, Lambda, ECS         |
+    Pre-Signed URLs:
+        temporarily access for Private Bucket without requiring AWS credentials.
+        as like temporary permission ticket.
+        Permissions Inheritance:
+            A Pre-Signed URL does not create new permissions.
+            It only gives a temporary way to use the permissions that 
+            the URL creator already has.
+                if URL's Creator has GetObject permission, this Pre-Signed URL also too GetObject permission 
+                called Permissions Inheritance.
+        Expiration Time:
+            URL is temporary. after it expires.
+        AWS supports generating it using:
+            S3 Console
+            AWS CLI
+            AWS SDK (Java, PHP, Python, Node.js, etc.)
+        Why not make the bucket public?
+            Suppose the bucket is public.
+                Anyone can access:
+                https://bucket/file.pdf
 
+                Forever.
 
-            
+                No expiration.
+                No control.
 
+                Pre-Signed URL:
+
+                Access
+                ↓
+                Only this file
+                ↓
+                Only this operation
+                ↓
+                Only until expiration
+
+                Much more secure.
+        Note:
+            | Requirement                 | Solution           |
+            | --------------------------- | ------------------ |
+            | Temporary download          | Pre-Signed GET URL |
+            | Temporary upload            | Pre-Signed PUT URL |
+            | No AWS credentials for user | Pre-Signed URL     |
+            | URL expires automatically   | Expiration time    |
+            | Permission comes from       | Creator of the URL |
+            Before expire URL, admin delete inheritance IAM user acc or permission,
+            URL will stop working.
+                | Situation                             | Existing Pre-Signed URL              |
+                | ------------------------------------- | ------------------------------------ |
+                | URL expires                           | ❌ Stops working                      |
+                | Object deleted                        | ❌ Stops working                      |
+                | Bucket policy denies                  | ❌ Stops working                      |
+                | IAM user permission removed           | Usually ❌ stops                      |
+                | IAM user deleted                      | Usually ❌ stops                      |
+                | IAM Role temporary credential changes | May continue until credential expiry |
+    S3 Glacier Vault Lock:
+        Data ကို တစ်ခါရေးပြီးရင် နောက်ထပ် ပြင်လို့မရ၊ 
+        ဖျက်လို့မရအောင် lock လုပ်ထားတဲ့ compliance feature ဖြစ်ပါတယ်။
+        Adopt a WORM (Write Once Read Many) model
+        create a Vault lock Policy
+            Vault:
+                a container for Glacier archives.
+        lock the policy for future edits
+            (can no longer be changed or deleted)
+        What problem does Glacier Vault Lock solve?
+            Many companies have compliance requirements:
+            Examples:
+                Financial records must be kept for 7 years
+                Medical records cannot be modified
+                Legal documents must not be deleted
+            The problem: An administrator might accidentally change/delete archived data.
+            AWS provides Vault Lock to prevent this.
+        Vault Lock: Prevent modification/deletion.
+        Exam Keyword:
+            A company needs immutable storage for compliance.
+    Object Lock:
+        S3 Object တစ်ခုချင်းစီကို သတ်မှတ်ထားတဲ့အချိန်အတွင်း ဖျက်မရ၊ ပြင်မရအောင် lock လုပ်ခြင်း။
+        Adopt a WORM (Write Once Read Many) model
+        for special object only, not bucket level.
+            Individual object version protection
+        Retention mode:
+            two Object Lock modes:
+                Governance Mode:
+                    normal user cannot delete, but, special user with s3:BypassGovernanceRetention can delete.
+                Compliance Mode:
+                    Object versions can't be overwritten or deleted by any user.
+                        including root user.
+                    Object retention modes can't be changed, and 
+                        retention periods can't be shortened.
+                            e.g: 10 years to 1 yr. result: Denied.
+        Rentention Period:
+            protect object for fixed period, can be extended.
+                2 yrs => 5 yrs : can extend.
+                5 yrs => 1 yr : violate WORM protection.
+        Legal Hold:
+            no expiration date.
+            locked forever until removed.
+            until someone manually removes the legal hold.
+            Removing Legal Hold:
+                can be freely placed and removed using s3:PubObjectLegalHold IAM permission.
+        Important:
+            "Prevent deletion even by root user" => Object Lock: Compliance Mode.
+            "Some administrators can delete if necessary" => Object Lock: Governance Mode.
+            "Immutable storage for compliance" => WORM => Object Lock / Vault Lock
+            A company must prevent deletion of objects during a lawsuit. The duration is unknown. => S3 Object Lock Legal Hold
+            Keep financial records for 7 years. => S3 Object Lock Retention Period
+    S3 Access Points:
+        when Different teams need different access Key path,
+            without Access Point, hard to maintain on Bucket Policy.
+        each access points have own security.
+        Each Access Point has:
+            its own DNS name (Internet Origin or VPC Origin)
+                Access Points can control network access.
+                Internet Origin:
+                    default, user can access via Internet.
+                VPC Origin:
+                    Only allow access from inside a VPC.
+                    Outside users: Block.
+                    must create VPC endpoint, VPC Endpoint Policy must allow access to target Bucket/Access Point.
+            an Access Point policy (similar to bucket policy)
+                Access Point policy does not replace bucket policy.
+            We can define the access point to be accessible only from within the VPC
+            Why AWS created Access Points?
+                simplify security.
+                difference applications use the same bucket.
+                Network restriction
+    S3 Object Lambda:
+        key idea:
+            without changing the original object,
+            allows you to modify an S3 object dynamically before returning it to the requester.
+            think:
+                Normal S3 Access:
+
+                User
+                |
+                |
+                ▼
+                S3 Bucket
+                |
+                |
+                ▼
+                Original Object
+
+                With S3 Object Lambda:
+
+                User
+                |
+                |
+                ▼
+                S3 Object Lambda Access Point
+                |
+                |
+                ▼
+                Lambda Function
+                |
+                |
+                ▼
+                S3 Bucket
+                |
+                |
+                ▼
+                Original Object
+
+                Lambda sits between the user and S3.
+        use case:
+            Redacting PII(Personally Identifiable Information)
+                Production application needs full data.
+                Analytics team should NOT see personal information.
+        Solution: S3 Object Lambda.
+        Create S3 Object Lambda Access Point.
+            an extension of S3 Access Points.
+        Object Lambda vs Normal Access Point:
+            Control access to S3 objects. => Normal Access Point
+            Modify data before returning it. => Object Lambda
         
-
-
-
-
-
-
-
-        
-
-            
-
-
-
-
-
-
-
-
-
-        
-
-                    
-            

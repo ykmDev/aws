@@ -419,6 +419,14 @@ What is a possible solution for this?
 
 ans: 3.
 ----------------------------------------------
+You would like all your files in an S3 bucket to be encrypted by default. 
+What is the optimal way of achieving this?
+S3 bucket ထဲက ဖိုင်အားလုံးကို default အနေနဲ့ encrypt လုပ်ထားစေချင်ပါတယ်။ ဒီလိုလုပ်ဖို့ အကောင်းဆုံးနည်းလမ်းက ဘာလဲ။
+1. Use a bucket policy that forces HTTPS.
+2. Do nothing. automatically encrypt using SSE-S3
+3. Enable Versioning
+
+ans: 2.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------

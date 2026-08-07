@@ -8,3 +8,24 @@ yum install -y httpd
 systemctl start httpd
 systemctl enable httpd
 echo "<h1>Instance 1 from $(hostname -f)</h1>" > /var/www/html/index.html
+
+-----------------------------------
+MFA-Delete
+# generate root access keys
+aws configure --profile root-mfa-delete-demo
+
+# enable mfa delete
+aws s3api put-bucket-versioning --bucket yankyawmin-s3-mfa-delete -versioning-configuration Status=Enabled, MFADelete=Enabled --mfa "arn:aws:iam::754660694887:root 980653" --profile root-mfa-delete-demo
+
+aws s3api put-bucket-versioning \
+  --bucket yankyawmin-s3-mfa-delete \
+  --versioning-configuration Status=Enabled,MFADelete=Enabled \
+  --mfa "arn:aws:iam::754660694887:mfa/Authapp 454757" \
+  --profile root-mfa-delete-demo
+
+# disable mfa delete
+aws s3api put-bucket-versioning \
+  --bucket yankyawmin-s3-mfa-delete \
+  --versioning-configuration Status=Enabled,MFADelete=Disabled \
+  --mfa "arn:aws:iam::754660694887:mfa/Authapp 371814" \
+  --profile root-mfa-delete-demo
