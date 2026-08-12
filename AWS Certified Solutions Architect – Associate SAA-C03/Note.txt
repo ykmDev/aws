@@ -7100,4 +7100,290 @@ s3:
         Object Lambda vs Normal Access Point:
             Control access to S3 objects. => Normal Access Point
             Modify data before returning it. => Object Lambda
-        
+CloudFront & AWS Global Accelerator:
+    Without CloudFront:
+        Origin = Tokyo
+        user is on New York, very long distance => higher latency, slower download.
+    CloudFront:
+        AWS's Content Delivery Network (CDN)
+        delivers content to users from locations close to them.
+        has many Edge Locations / Points of Presence (PoPs) around the world.
+        can become the global front door of your application.
+        map: https://aws.amazon.com/cloudfront/features/
+        Files are cached for a TTL(maybe a day)
+        Edge Location:
+            a location where CloudFront can cache and serve content.
+        Points of Presence(POPs):
+            locations where AWS has infrastructure close to end users.
+            Edge Location / CloudFront location where content can be cached and served.
+            think:
+                PoP
+                │
+                ├── CloudFront Edge Location  ← CloudFront caching/delivery
+                │
+                └── Other AWS network infrastructure
+        Cache Hit vs Cache Miss:
+            for first time user, called Cache Miss:
+                User => CloudFront Edge => Not cached => origin 
+            for 2nd time user, called Cache Hit:
+                User => CloudFront Edge => cached => user
+        What kind of content can CloudFront cache?
+            common examples: static files.
+        CloudFront doesn't replace your origin.
+            is usually in front of an origin.
+                CloudFront = delivery/caching layer
+            not your actual application server.
+            possible origins include:
+                CloudFront
+                    |
+                    +── S3
+                    |
+                    +── ALB
+                    |
+                    +── EC2
+                    |
+                    +── API Gateway
+                    |
+                    +── Custom HTTP server
+        CloudFront + ALB
+            can also put CloudFront in front of your web application.
+            flow:
+                CloudFront
+                    ↓
+                Caching + global delivery
+                    ↓
+                ALB
+                    ↓
+                Load balancing
+                    ↓
+                ASG
+                    ↓
+                Horizontal scalability
+            Using VPC origins
+                CloudFront VPC Origins:
+                    allows CloudFront to connect to origins inside your VPC
+                    without publicly exposed.
+                    ALB doesn't need to be Internet-facing. means private ALB.
+                    CloudFront → private ALB → private EC2 ASG
+                    What about security?
+                        application servers don't need public IP addresses.
+            Using Public Network:
+                CloudFront → Public ALB.
+                CloudFront → Public EC2.
+                Why would we use the Public Network approach?
+                    Your origin is already public.
+                    You have an existing Internet-facing ALB.
+                    You don't need to keep the origin private.
+        DDoS Protection:
+            also helps with DDoS protection.
+            Why?
+            Instead of your origin directly receiving traffic
+            AWS provides infrastructure designed to absorb and mitigate large-scale traffic attacks.
+        CloudFront + AWS Shield:
+            integrates with: AWS Shield
+            Shield provides DDoS protection.
+            includes protection from common network/transport-layer DDoS attacks through AWS Shield Standard.
+        CloudFront + AWS WAF:
+            WAF can inspect HTTP/HTTPS requests and block things such as:
+            SQL injection
+            XSS
+            Malicious IPs
+            Specific countries/regions
+            Suspicious request patterns
+            Bot traffic, depending on configuration
+        CloudFront Geo Restriction:
+            can restrict access distribution.
+            Allowlist: allow users in approved countries.
+            Blacklist: prevent users in banned countries.
+        CloudFront Cache Invalidation:
+            Solve problem: 
+                I updated the origin, but CloudFront is still serving the old cached content.
+            Without invalidation,
+                you normally wait for the cached object to expire according to its cache policy/TTL.
+            Can Invalidate one file or Path using wildcard or everything(/*)
+                Invalidate all cached objects => /*
+                Invalidate only images" => /images/*
+            Important: Invalidation does NOT delete the origin object.
+            Invalidation vs TTL:
+                |                 | TTL                     | Invalidation               |
+                | --------------- | ----------------------- | -------------------------- |
+                | What happens?   | Cache expires naturally | You force cache removal    |
+                | Timing          | Wait until expiry       | Can request immediately    |
+                | Scope           | Based on cache policy   | Specific path or all files |
+                | Example         | 1 hour                  | `/images/*`                |
+                | Origin deleted? | ❌                       | ❌                          |
+        Note:
+            CloudFront = deliver/cache
+            Shield     = DDoS protection
+            WAF        = HTTP/HTTPS request filtering
+            CloudFront vs Route 53:
+                Route 53: DNS / routing
+                CloudFront: content delivery/caching.
+    Global Accelerator:
+        improves the network performance and availability of applications
+        Unlike CloudFront, Global Accelerator is not primarily a caching service.
+        Without Global Accelerator:
+            USA User
+                |
+                | Internet
+                | many networks/hops
+                ▼
+            AWS Tokyo
+                |
+                ▼
+            Application
+            The traffic travels across the public Internet.
+        No caching:
+            biggest difference from CloudFront.
+        Global Accelerator uses static Anycast IP addresses:
+            when create Global Accelerator, get Two static Anycast IPv4 addresses.
+            Unicast: One address → one destination.
+            Anycast:
+                The same IP address is advertised from multiple AWS locations.
+                One static IP can represent multiple AWS network entry points.
+            Users connect to these IP addresses.
+            The same IP addresses are used globally.
+            Anycast IP send traffic directly to Edge Locations.
+            Edge Location as the entry point into AWS's global network.
+            Anycast → Edge → AWS Network.
+        Global Accelerator + ALB:
+            Very common architecture:
+                        Global Users
+                            |
+                            ▼
+                    Global Accelerator
+                            |
+                    AWS Global Network
+                            |
+                            ▼
+                            ALB
+                            |
+                    ┌───────┴───────┐
+                    ▼               ▼
+                    EC2             EC2
+        Global Accelerator + multiple Regions:
+            can route traffic to the appropriate healthy endpoint.
+            Architecture:
+                            Users
+                            |
+                            ▼
+                    Global Accelerator
+                            |
+                ┌──────────┼──────────┐
+                ▼          ▼          ▼
+                Tokyo      Singapore     US
+                ALB          ALB        ALB
+                |            |           |
+                EC2          EC2         EC2
+        Health checks:
+            monitors endpoint health.
+            can stop sending traffic to the unhealthy endpoint.
+        Traffic Dial:
+            can control how traffic is distributed between Regions.
+            Useful for:
+                Blue/green deployments
+                Gradual migration
+                Regional traffic management
+        Why not just use Route 53?
+            Route 53 => DNS-based routing.
+            Global Accelerator provides:
+                Static Anycast IPs + network-level routing through AWS's global network.
+        No issue with client cache(because IP doesn't change)
+        Security:
+            Only 2 IP need to be whitelisted.
+            DDoS protection thanks to AWS Shield.
+        CloudFront vs Global Accelerator:
+            both use AWS global network and its edge location.
+            both integrated with AWS Shield for DDoS protection.
+            CloudFront:
+                Improves performance for both cacheable content (such as images and videos) 
+                Dynamic content (such as API acceleration and dynamic site delivery)
+                Content is served at the edge
+            Global Accelerator:
+                application/network traffic acceleration
+                proxies traffic through AWS's global network.
+                supports applications using: TCP or UDP
+                proxying packets at the edge
+                    proxy:
+                        Client နဲ့ Server ကြားမှာ အလယ်ကနေ traffic ကို လက်ခံပြီး နောက်တစ်ဖက်ကို ပြန်ပို့ပေးတဲ့အရာ
+                            Client က Server ကို တိုက်ရိုက်မသွားဘဲ Proxy ကို အရင်သွားတယ်။   
+                            Proxy က request ကို လက်ခံပြီး Server ဆီ ဆက်ပို့တယ်။
+
+                            Forward Proxy → represents the CLIENT
+                                The proxy represents the client side.
+                                purpose:
+                                    Security: want to control internet access.
+                            Reverse Proxy → represents the SERVER
+                                sits in front of the servers.
+                                client doesn't directly communicate with the backend servers.
+                                Nginx.
+                                    Nginx receive request /users, andthen application server(laravel)
+                                CloudFront acts as a reverse proxy/CDN And it adds caching:
+                    Packet:
+                        Network ပေါ်မှာ data ပို့တဲ့အခါ data ကို သေးသေးလေး အပိုင်းတွေခွဲပြီး ပို့တယ်။ အဲဒီအပိုင်းတွေကို packet လို့ခေါ်
+                    User ရဲ့ network traffic ကို User နဲ့နီးတဲ့ AWS Edge Location မှာ အရင်လက်ခံပြီး၊
+                    အဲဒီကနေ AWS ရဲ့ global network ကိုသုံးပြီး Application ဆီ ဆက်ပို့ပေးတာ
+                static IP addresses
+                Deterministic regional failover
+                    the traffic doesn't need to wait for DNS TTL-based changes.
+                Differences btn CloudFront and Global Accelerator:
+                    |                    | **CloudFront**      | **Global Accelerator**           |
+                    | ------------------ | ------------------- | -------------------------------- |
+                    | Main purpose       | Content delivery    | Network/application acceleration |
+                    | Cache              | ✅ Yes               | ❌ No                             |
+                    | Edge Locations     | ✅                   | ✅                                |
+                    | TCP                | HTTP/HTTPS-oriented | ✅                                |
+                    | UDP                | ❌                   | ✅                                |
+                    | Static content     | ⭐ Excellent         | Not primary                      |
+                    | Dynamic HTTP       | ✅                   | ✅                                |
+                    | Gaming             | Not typical         | ⭐ Excellent                      |
+                    | IoT                | Not typical         | ⭐ Good                           |
+                    | VoIP               | Not typical         | ⭐ Good                           |
+                    | Static Anycast IP  | ❌                   | ✅                                |
+                    | Regional failover  | Good                | ⭐ Very fast/predictable          |
+                    | AWS global network | ✅                   | ✅                                |
+Storage Extras:
+    AWS Snowball:
+        physical Snowball device.
+        purpose:
+            Migrate terabytes/petabytes of data to AWS.
+            Collect and process data at the edge.
+        Is Snowball only for migration?
+        NO.
+        Snowball devices can also be used when data is generated somewhere with limited or no Internet connectivity.
+        unlike s3: not another permanent storage service.
+        What is "Edge Computing"?
+            Normally:
+                Device / Factory
+                    │
+                    │ Internet
+                    ▼
+                AWS Region
+                    │
+                    ▼
+                Compute
+            on Edge Computing:
+                Edge computing = processing data close to where the data is created, 
+                instead of sending everything to a distant cloud/data center.
+                Device / Factory
+                    │
+                    ▼
+                Snowball Edge
+                    │
+                    ▼
+                Process data locally
+        Note:
+            Remote location + limited/no Internet + need to process data locally
+                Snowball
+                    ↓
+                Move data
+
+                Snowball Edge
+                    ↓
+                Move data
+                    +
+                Compute at the edge
+
+
+
+
