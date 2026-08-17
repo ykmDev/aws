@@ -7350,39 +7350,635 @@ Storage Extras:
             Collect and process data at the edge.
         Is Snowball only for migration?
         NO.
-        Snowball devices can also be used when data is generated somewhere with limited or no Internet connectivity.
+        Snowball devices can also be used when data is generated
+            somewhere with limited or no Internet connectivity.
         unlike s3: not another permanent storage service.
-        What is "Edge Computing"?
-            Normally:
-                Device / Factory
-                    │
-                    │ Internet
-                    ▼
-                AWS Region
-                    │
-                    ▼
-                Compute
-            on Edge Computing:
-                Edge computing = processing data close to where the data is created, 
-                instead of sending everything to a distant cloud/data center.
-                Device / Factory
-                    │
-                    ▼
-                Snowball Edge
-                    │
-                    ▼
-                Process data locally
+        Snow Family:
+            by size and purpose.
+            Snowcone:
+                Smallest, think: a small, portable device at a remote edge location.
+            Snowball Edge:
+                What is "Edge Computing"?
+                    Normally:
+                        Device / Factory
+                            │
+                            │ Internet
+                            ▼
+                        AWS Region
+                            │
+                            ▼
+                        Compute
+                    on Edge Computing:
+                        Edge computing = processing data close to where the data is created, 
+                        instead of sending everything to a distant cloud/data center.
+                        Device / Factory
+                            │
+                            ▼
+                        Snowball Edge
+                            │
+                            ▼
+                        Process data locally
+                Snowball Edge Storage Optimized:
+                    think: I need a lot of storage + some compute.
+                Snowball Edge Compute Optimized:
+                    think: I mainly need computing power at the edge.
+            Snowmobile:
+                exabytes, large-scale physical data transfer solution using a shipping container/truck.
         Note:
-            Remote location + limited/no Internet + need to process data locally
-                Snowball
-                    ↓
-                Move data
+            CloudFront "Edge Location" mean Bring content closer to users.
+                AWS's global CDN infrastructure.
+            Snowball "Edge" = remote location 
+                where data is being generated or where computing needs to happen.
+                Physical Snowball device.
+            Snowball cannot import to Glacier directly.
+                must use Snowball -> s3 -> s3 lifecycle policy -> Amazon Glacier.
+            | Device            | Think           | Main use                             |
+            | ----------------- | --------------- | ------------------------------------ |
+            | **Snowcone**      | 🥫 Small        | Small/portable edge data collection  |
+            | **Snowball Edge** | 📦 Medium/Large | TB/PB data transfer + edge computing |
+            | **Snowmobile**    | 🚛 Huge         | Exabyte-scale data transfer          |
+Amazon FSx:
+    File Storage
+    Fully managed file system service on AWS.
+    think: "I need a special/high-performance file system, but I don't want to install, configure, patch, maintain, 
+        and manage the servers myself."
+        not like S3, S3 is object storage
+    4 types:
+        | FSx type                        | Think about                      |
+        | ------------------------------- | -------------------------------- |
+        | **FSx for Lustre**              | 🚀 High-performance computing    |
+        | **FSx for Windows File Server** | 🪟 Windows / SMB                 |
+        | **FSx for NetApp ONTAP**        | 🏢 Enterprise / advanced storage |
+        | **FSx for OpenZFS**             | 🐧 Linux / ZFS                   |
+        Lustre:
+            high-performance distributed file system.
+            AI/ML training + HPC + Big Data = Lustre
+            can integrate with Amazon S3.
+            the name Lustre is derived from Linux and Cluster.
+            Parallel Distributed File System can handle.
+                Distributed = across multiple computer.
+                Parallel = access at same time.
+            Storage options: SSD vs HDD
+                SSD(Solid State Drive):
+                    Low latency / small & random file operations
+                HDD(Hard Disk Drive):
+                    throughput-intensive workloads
+                    large & sequential file operations
+                Think workloads:
+                    | Workload                | Storage |
+                    | ----------------------- | ------- |
+                    | Low latency             | ⚡ SSD   |
+                    | IOPS intensive          | ⚡ SSD   |
+                    | Small/random operations | ⚡ SSD   |
+                    | Throughput intensive    | 💾 HDD  |
+                    | Large files             | 💾 HDD  |
+                    | Sequential operations   | 💾 HDD  |
 
-                Snowball Edge
+                flow:
+                            S3
+                        Training Dataset
+                            ↓
+                    FSx for Lustre
+                            ↓
+                    EC2 / ML servers
+                S3 = store the data
+                Lustre = process the data very fast
+            FSx File System Deployment Options:
+                flow:
+                        FSx for Lustre
+                                │
+                        ┌─────────┴─────────┐
+                        ↓                   ↓
+                    Scratch             Persistent
+                        │                   │
+                    Temporary           Long-term
+                    No replication      Replicated
+                    Very fast burst     More durable
+                    Lower cost          Better for important data
+                Scratch File System:
+                    temporary + cheaper + very fast burst
+                        Scratch မှာ data ကို replicate မလုပ်ထားတဲ့အတွက် file server failure ဖြစ်ရင်
+                        data ပျောက်နိုင်တယ်။ important permanent data အတွက် မသင့်တော်ဘူး။
+                Persistent File System:
+                    long-term + replicated + more durable
+                    Data is replicated within the same AZ
+        Amazon FSx for Windows File Server:
+            Windows file system managed by AWS
+            smb support.
+                SMB = Server Message Block
+                    a protocol used for file sharing, especially in Windows environments.
+                        flow:
+                            Windows PC
+                                ↓
+                            SMB
+                                ↓
+                            FSx for Windows
+                                ↓
+                            Shared folders/files
+            NTFS:
+                NTFS = New Technology File System
+                    Microsoft's file system.
+            can integrate with Microsoft Active Directory
+                ACL = permission control for files/folders
+                User quotas: သုံးနိုင်တဲ့ storage ပမာဏကို ကန့်သတ်ထားတာ
+                eg:
+                    Company မှာ Windows user account တွေကို Active Directory (AD) နဲ့ manage လုပ်ထားတယ်ဆိုပါစို့။
+                    FSx for Windows ကို AD နဲ့ integrate လုပ်ပြီး—
+                    ဘယ်သူက ဘယ် folder ကို access လုပ်ခွင့်ရှိလဲ
+                    ဆိုတာကို control လုပ်နိုင်ပါတယ်
+            can also be accessed/mounte from Linux clients.
+            DFS Namespaces:
+                group files across multiple FS
+                    File system အများကြီးကို user ဘက်ကနေ တစ်နေရာတည်းလို မြင်အောင် စုစည်းပေးတာ
+            Storage options: SSD vs HDD
+                SSD(Solid State Drive):
+                    Low latency / high performance
+                HDD(Hard Disk Drive):
+                    General/cheaper purpose
+            existing on-premises infrastructure can access FSx.
+                using VPN or Direct Connect.
+            keyword:
+                Windows applications
+                SMB
+                Windows file sharing
+                Active Directory
+            Important:
+                don't make this mistake:Windows clients only
+                FSx for Windows = Windows-based file system, primarily using SMB, 
+                    and it can also be accessed from Linux clients.
+        Amazon FSx for NetApp ONTAP:
+            AWS-managed NetApp storage
+            with advanced enterprise file-storage features.
+            think: "I need enterprise-grade shared storage with lots of advanced features."
+            NFS commonly used with: Linux / Unix
+            SMB commonly used with: Windows
+            iSCSI commonly used with: Block storage access
+            Storage shrinks or grows automatically
+            Snapshots
+            Replication
+            Compression
+            Data deduplication
+                remove unnecessary copies → save storage
+                တူညီနေတဲ့ data ကို ထပ်ခါထပ်ခါ အပြည့်အစုံသိမ်းမယ့်အစား
+                duplicate data ကို လျှော့ပြီး storage space ချွေတာတာ
+            Point-in-time instantaneous cloning
+                can create a clone data.
+                    Data ရဲ့ သတ်မှတ်ထားတဲ့အချိန်က state ကို အခြေခံပြီး
+                    test environment တစ်ခုကို အလွန်မြန်မြန် ဖန်တီးတာ
+                    eg: want to test environments from Production data.
+                        Production
+                        10 TB data
+                            │
+                            ↓
+                            Clone
+                            │
+                            ↓
+                        Test workload
+            keyword:
+                Enterprise storage
+                NetApp
+                NFS + SMB
+                Advanced storage management
+                Snapshots / cloning / replication
+                Existing NAS workload migrating to AWS
+        Amazon FSx for OpenZFS:
+            Unix/Linux environments.
+            managed OpenZFS file system for workloads that use NFS, 
+                especially when migrating existing ZFS-based workloads to AWS.
+            ZFS is a file system/storage technology
+                Network ကနေ တခြား server ရဲ့ file/folder ကို
+                ကိုယ့်စက်မှာ local folder လို access လုပ်နိုင်အောင်သုံးတဲ့ protocol
+            IOPS = တစ်စက္ကန့်အတွင်း read/write operation ဘယ်နှစ်ကြိမ်လုပ်နိုင်လဲ
+            Latency = request လုပ်ပြီး response ရဖို့ ဘယ်လောက်ကြာလဲ
+            high IOPS + very low latency workload
+            Snapshots
+            Compression
+            Point-in-time instantaneous cloning
+        OpenZFS vs NetApp ONTAP
+            ZFS → NFS → OpenZFS
+            NetApp → Enterprise NAS → ONTAP
+            | Requirement              | Think          |
+            | ------------------------ | -------------- |
+            | Existing ZFS workload    | 🐧 **OpenZFS** |
+            | NFS + ZFS                | 🐧 **OpenZFS** |
+            | Existing NetApp workload | 🏢 **ONTAP**   |
+            | NetApp ONTAP             | 🏢 **ONTAP**   |
+            | NFS + SMB + iSCSI        | 🏢 **ONTAP**   |
+            | Enterprise NAS features  | 🏢 **ONTAP**   |
+AWS Storage Gateway:
+    bridge between on-premises and cloud.
+    types of storage:
+        S3 file gateway:
+            using NFS or SMB, can configure s3 buckets
+                (without directly to glacier) later can transition to glacier using life cycle policy
+            most recently used data is cached in file gateway.
+            using IAM roles to access bucket.
+        Volume gateway:
+            block storage using iSCSI protocol backed by s3.
+            combines on-premises storage + iSCSI + S3 + EBS snapshots
+            On-premises မှာရှိတဲ့ server/application တွေက iSCSI block storage ကို အသုံးပြုပြီး
+            AWS cloud storage ကို backend အနေနဲ့ အသုံးချနိုင်အောင်လုပ်ပေးတဲ့ service ဖြစ်ပါတယ်။
+            Block storage using iSCSI
+                iSCSI = Internet Small Computer Systems Interface
+                    Network ကနေ remote block storage ကို local disk လို အသုံးပြုနိုင်အောင်လုပ်တဲ့ protocol
+            Backed by Amazon S3
+            two modes:
+                Cached Volumes:
+                    AWS stores the main data, local keeps the frequently/recently accessed data
+                    low latency access to most recent data
+                        Data ရဲ့ အဓိက storage ကို AWS ဘက်မှာထားပြီး 
+                        မကြာသေးခင်က/မကြာခဏအသုံးပြုတဲ့ data ကို on-premises မှာ cache လုပ်ထားတာ
+                Stored Volumes:
+                    entire dataset is on premise
+                    On-premises keeps the main data, AWS keeps backups
+                        Data အားလုံးကို on-premises မှာ အဓိကထားသိမ်းပြီး၊ schedule အတိုင်း AWS/S3 ကို backup လုပ်ပေးတာ
+            can use Amazon EBS snapshots
+                On-premise Volume ရဲ့ အချိန်တစ်ခုမှာရှိတဲ့ state ကို backup အနေနဲ့ သိမ်းထားတာ
+            Note:
+                Cached → Cloud first
+                Stored → On-prem first
+                CACHED
+                    Cloud → Main
+                    Local → Cache
+                STORED
+                    Local → Main
+                    Cloud → Backup
+        Tape gateway:
+            replace physical backup tapes with virtual tapes in AWS, 
+                without changing the company's existing backup process too much.
+                    from:
+                        Company Servers
+                            ↓
+                        Backup Software
+                            ↓
+                        Physical Tape
+                            ↓
+                        📼 Tape Library
+                    to:
+                        Company Servers
+                            ↓
+                        Existing Backup Software
+                            ↓
+                        Tape Gateway
+                            ↓
+                        Virtual Tape
+                            ↓
+                        Amazon S3 / Glacier
+                Company က အရင်က tape နဲ့ backup လုပ်နေတယ်။
+                AWS ကိုပြောင်းချင်ပေမယ့် backup process တစ်ခုလုံးကို ပြန်မပြင်ချင်ဘူး။
+            VTL backed by Amazon S3 and Glacier
+                VTL = Virtual Tape Library
+            Works with leading backup software vendors
+    Note:
+        user/group file share => NFS/SMB => File Gateway => S3 File Gateway -> s3 --> Glacier
+        application Server => iSCSI + Block Storage → Volume Gateway -> s3 --> EBS.
+        Backup application => VTL => Tape Gateway -> s3 tap Library -> tap archive(glacier)
+AWS Transfer Family:
+    A fully-managed service by AWS for file transfers into and out of Amazon S3 or Amazon EFS
+    supported protocol:
+        FTP: File Transfer Protocol.
+        FTPS: FTP over SSL.
+        SFTP: Secure File Transfer Protocol
+    can use:
+        S3 and EFS.
+    Highly Available / Multi-AZ
+    Authentication:
+        Manage credentials itself
+            can store/manage user credentials within the service.
+        Use an existing authentication system
+            with systems such as Microsoft Active Directory
+    Note:
+        "FTP/FTPS/SFTP နဲ့ user/partner တွေက AWS ရဲ့ S3/EFS ထဲကို file upload/download လုပ်ချင်တယ်" → AWS Transfer Family
+        FTP family → Transfer Family
+        NFS/SMB → File Gateway
+        iSCSI/block → Volume Gateway
+        VTL/backup → Tape Gateway
+AWS DataSync:
+    a high-speed data migration and synchronization service.
+        think: moving truck for large amounts of data.
+    Main purpose = Move LARGE amounts of data
+    Important
+        Outside AWS → AWS
+            ↓
+        Agent needed
+
+        AWS → AWS
+            ↓
+        No agent
+    Agent = software/appliance that you deploy close to your on-premises data source.
+    Scheduled replication
+        DataSync ကို တစ်ခါပဲ migration လုပ်တာမဟုတ်ဘဲ schedule ထားပြီး data ကို ထပ်ခါထပ်ခါ synchronize လုပ်နိုင်တယ်။
+    File permissions and metadata are preserved
+        File ကို data တစ်ခုတည်းအဖြစ် ရွှေ့တာမဟုတ်ဘဲ—
+        ဘယ်သူပိုင်လဲ၊ group ဘာလဲ၊ permission ဘယ်လိုလဲ စတဲ့ file metadata/permissions တွေကို preserve လုပ်နိုင်တယ်။
+    One agent task can use 10 Gbps
+        but, you can configure Bandwidth limit.
+            Imagine your office internet connection is:
+                1 Gbps
+                But DataSync tries to use too much bandwidth.
+                You don't want:
+                    DataSync 🚀🚀🚀
+                        ↓
+                    Office Internet
+                        ↓
+                    Other applications ❌
+
+                So you can limit the bandwidth DataSync uses.
+
+                    DataSync
                     ↓
-                Move data
-                    +
-                Compute at the edge
+                    Bandwidth limit = X
+                    ↓
+                    Other applications still have bandwidth
+                DataSync က bandwidth အကုန်မစားသွားအောင် သုံးနိုင်တဲ့ bandwidth ကို limit သတ်မှတ်နိုင်တယ်။
+    Big Different:
+        Transfer Family => "I need FTP/SFTP."
+            Typical use:
+                External partners
+                File exchange
+                FTP/FTPS/SFTP
+                CRM/ERP file transfers
+        DataSync => "I need to move a HUGE amount of data."
+            Typical use:
+                Data migration
+                Large-scale transfer
+                Data synchronization
+                Recurring replication
+        DataSync vs Transfer Family vs Storage Gateway
+            📂 "Users/partners transfer files using FTP/SFTP"
+                        ↓
+                TRANSFER FAMILY
+
+            🚚 "Move/sync a huge amount of data"
+                        ↓
+                    DATASYNC
+
+            💽 "On-premises application needs AWS-backed storage"
+                        ↓
+                STORAGE GATEWAY
+            Transfer Family → File ပို့/ယူဖို့ FTP/SFTP
+            DataSync → Data အများကြီးကို ရွှေ့/Sync လုပ်ဖို့
+            Storage Gateway → On-premises application ↔ AWS storage ကို bridge လုပ်ဖို့
+Storage Comparison:
+    S3: Object Storage
+    S3 Glacier: Object Archival
+    EBS volumes: Network storage for one EC2 instance at a time
+    Instance Storage: Physical storage for your EC2 instance (high lOPS)
+    EFS: Network File System for Linux instances, POSIX filesystem
+    FS for Windows: Network File System for Windows servers
+    FSx for Lustre: High Performance Computing Linux file system
+    FS for NetApp ONTAP: High OS Compatibility
+    FSx for OpenZFS: Managed ZFS file system
+    Storage Gateway: S3 & FS× File Gateway, Volume Gateway (cache & stored), Tape Gateway
+    Transfer Family: FTP, FTPS, SFTP interface on top of Amazon S3 or Amazon EFS
+    DataSync: Schedule data sync from on-premises to AWS, or AWS to AWS
+    Snowcone / Snowball / Snowmobile: to move large amount of data to the cloud, physically
+    Database: for specific workloads, usually with indexing and querying
+Decoupling Application:
+    when deploying multiple applications, they will inevitably need to communicate with one another.
+        inevitably = မလွဲမသွေ
+    two patterns:
+        synchronous communications:
+            eg: buying service => shipping service(directly connect)
+            when a sudden spike of purchases or whatever,
+                synchronous between applications can be a little bit problematic sometimes
+                it's better to decouple your applications.
+        asnchronous/Event Based communications:
+            eg: buying service => queue => shipping service(not directly connect, queue in between)
+            To decouple applications:
+                using SQS: queue model.
+                using SNS: pub/sub model.
+                using Kinesis: real-time streaming model.
+    SQS:
+        Amazon Simple Queue Service
+        Queue:
+            is like a waiting line.
+            The person who comes first is normally served first.
+            FIFO = First In, First Out
+        whatever msg go into the queue,
+        consumers will poll the messages from the queue.
+        Producer:
+            The application that sends messages to the queue.
+            Producing Messages:
+                app => AWS SDK's SendMessage API -> SQS queue
+                The message is persisted in SQS until a consumer deletes it
+                    Producer က message ပို့ပြီးသွားတာနဲ့ ချက်ချင်းပျောက်မသွားဘူး။
+                    Consumer က message ကို receive လုပ်ပြီး process လုပ်ပြီးတဲ့အခါ DeleteMessage လုပ်ရတယ်။
+                    Consumer က message ကို delete မလုပ်သေးရင် SQS က retention period အတွင်း message ကို သိမ်းထားနိုင်တယ်။
+        Consumer:
+            The application that reads/processes messages from the queue.
+            Consuming Messages:
+                Consumer = Queue ထဲက message ကိုယူပြီး အလုပ်လုပ်ပေးတဲ့ application.
+                Consumers can be EC2, servers, Lambda...
+                consumer's job: 
+                    SQS ထဲမှာ message ရှိလား? ရှိရင် ယူပြီး process လုပ်မယ်.
+                Poll SQS for message:
+                    Poll = "message ရှိလား?" လို့ SQS ကို သွားမေးတာ။
+                Receive up to 10 messages at a time.
+                    for Efficiency, တစ်ခါ polling လုပ်တဲ့အခါ up to 10 messages ရယူနိုင်တယ်။
+                Process the messages
+                    Message ကိုရပြီဆိုရင် application က actual work လုပ်တယ်။
+                Receive လုပ်တာနဲ့ Delete မဖြစ်ဘူး
+                    permanent delete မလုပ်သေးဘူး။
+                    အဲဒီအချိန်မှာ SQS ရဲ့ Visibility Timeout
+                    ဥပမာ Consumer က message ကိုယူပြီး process လုပ်နေတုန်း crash ဖြစ်သွားတယ်။
+                        SQS
+                        ↓
+                        Consumer
+                        ↓
+                        💥 EC2 crashes
+
+                        Message ကို Delete မလုပ်ရသေးဘူး။
+                        ဒါကြောင့် SQS က message ကို နောက်ပိုင်းမှာ ပြန်ပေးနိုင်တယ်။
+                        The golden rule:
+                            Receive → Process → Delete
+                        Process မအောင်မြင်သေးရင် Delete မလုပ်သင့်ဘူး။
+        Flow:
+            Producer → SQS Queue → Consumer
+        Visibility Timeout:
+            after receive msg on consumer, SQS doesn't immediately permanently delete it.
+            Instead, the message becomes temporarily invisible to consumers.
+            called Visibility Timeout.
+        SQS absorbs/buffers the spike.
+            buffer:
+                SQS acts as a temporary storage area between the producer and consumer,
+                allowing the consumer to process messages at its own pace.
+            absorb the spike:
+                Instead of the sudden traffic spike directly hitting and overwhelming the consumer,
+                the queue accepts the messages and holds them until the consumer can process them.
+        idea:
+            SQS
+            │
+            └── Order A
+                    │
+                    ↓
+            Shipping Service processing...
+                    │
+                    ├── SUCCESS → Delete message
+                    │
+                    └── FAILURE → message becomes visible again
+                    So the order isn't simply lost.
+        SQS Standard Queue:
+            Oldest offering (over 10 years old)
+            Fully managed service by AWS.
+            Unlimited throughput
+                queue ထဲရှိနိုင်တဲ့ message အရေအတွက်အတွက် unlimited
+                massive scale အတွက် design လုပ်ထားတာ
+            Default Rentention = 4 days, Max: 14 days.
+                Retention: SQS က message တစ်ခုကို ဘယ်လောက်ကြာကြာ သိမ်းထားမလဲ ဆိုတာ။
+                Consumer က Message A ကို မယူဘူးဆိုရင် SQS က forever သိမ်းထားမှာမဟုတ်ဘူး။
+                Retention period ကျော်သွားရင် message ကို SQS က remove လုပ်နိုင်တယ်။
+            Low latency (<10 ms(0.01 sec) on publish and receive):
+            One SQS message can be up to 1,024 KB (1 MB).
+                SQS ≠ S3
+                Large file ကို SQS message ထဲ ထည့်ဖို့ မသင့်တော်ဘူး။
+                ဥပမာ user က:
+                video.mp4 = 500 MB
+                ဆိုရင် SQS ထဲကို video file တစ်ခုလုံးထည့်တာ မလုပ်သင့်ဘူး။
+                SQS message ထဲမှာ reference ပဲထားနိုင်တယ်:
+                    {
+                        "bucket": "my-video-bucket",
+                        "key": "videos/video123.mp4"
+                    }
+
+                    ဒီလို architecture ကို SAA-C03 မှာ အများကြီးတွေ့ရတတ်တယ်။
+                        Large object → S3
+                        Small message / event → SQS
+            at least once delivery
+                SQS က message ကို အနည်းဆုံး တစ်ကြိမ်တော့ deliver လုပ်ပေးမယ် လို့ guarantee ပေးတယ်။
+                ဒါပေမယ့်...
+                တစ်ကြိမ်ထက်ပိုပြီး deliver ဖြစ်နိုင်တယ်။
+                ဒါကြောင့် application က duplicate ဖြစ်ရင် ပြဿနာမဖြစ်အောင် design လုပ်သင့်တယ်။
+            Messages can be many(Duplicate possible).
+            Out of order(Best-effort ordering)
+                Standard Queue က strict ordering ကို မ guarantee လုပ်ဘူး။
+                Best effort = AWS က order ကို ထိန်းထားဖို့ ကြိုးစားတယ်, ဒါပေမယ့် 100% guarantee မပေးဘူး။
+        FIFO Queue:
+        SQS with ASG:
+            Remember:
+                SQS Queue Length → CloudWatch Metric → CloudWatch Alarm → ASG Scaling → More/Fewer EC2 Consumers
+            CloudWatch can monitor the queue and detect:
+                Queue length = messages waiting to be processed
+            Then CloudWatch can trigger an Alarm.
+            Scale OUT.
+            when the spike is over, Scale IN.
+            architecture:
+                 │    Producer   │
+                 └───────┬───────┘
+                         │
+                    SendMessage
+                         │
+                         ▼
+                 ┌───────────────┐
+                 │   SQS Queue   │
+                 │               │
+                 │ 100 messages  │
+                 └───────┬───────┘
+                         │
+                  Queue length
+                         │
+                         ▼
+                 ┌───────────────┐
+                 │  CloudWatch   │
+                 └───────┬───────┘
+                         │
+                  threshold reached
+                         │
+                         ▼
+                 ┌───────────────┐
+                 │ CloudWatch    │
+                 │    Alarm      │
+                 └───────┬───────┘
+                         │
+                   Scaling action
+                         │
+                         ▼
+                 ┌───────────────┐
+                 │      ASG      │
+                 │               │
+                 │ EC2 #1        │
+                 │ EC2 #2        │
+                 │ EC2 #3        │
+                 │ EC2 #4        │
+                 └───────────────┘
+                         │
+                    Process SQS
+                    messages
+        SQS Security:
+            Encryption:
+                In-flight encryption = HTTPS
+                SQS at rest → KMS
+                                SQS
+                                │
+                        ┌─────────┴─────────┐
+                        │                   │
+                In transit            At rest
+                HTTPS/TLS                 KMS
+                Client-side encryption:
+                    You can also encrypt the message before sending it to SQS.
+                    When the consumer receives it, decrypt and then get original message.
+                    need to : your application manages the encryption/decryption.
+            IAM Policies:
+                IAM Policy → controls what an IAM principal can do with SQS.
+            SQS Queue Access Policy:
+                own resource-based policy.
+                    similar to an S3 Bucket Policy.
+                especially useful for cross-account access and AWS services sending messages to the queue.
+                    Allow AWS services to send messages
+            Note:
+                | Requirement                   | Think                      |
+                | ----------------------------- | -------------------------- |
+                | Encrypt SQS communication     | **HTTPS/TLS**              |
+                | Encrypt stored messages       | **KMS / SSE**              |
+                | Client manages encryption     | **Client-side encryption** |
+                | Control IAM user/role access  | **IAM Policy**             |
+                | Cross-account access to queue | **SQS Queue Policy**       |
+                | Allow S3/SNS to send to SQS   | **SQS Queue Policy**       |
+
+        Important:
+            SQS doesn't process the message.
+            SQS itself isn't your business application.
+                It doesn't say: "I'll ship the package."
+                It only says: "I'll safely hold this message until a consumer processes it."
+                So:
+                    Producer
+                    ↓
+                    SQS
+                    ↓
+                    Consumer
+
+                SQS = message storage / waiting line
+                Consumer = does the actual work
+            on AWS management console, 
+                delete = Delete the entire SQS queue itself.
+                purge = completely clean/remove the contents.
+                    Delete all messages inside the queue, but keep the queue itself.
+            | Question says...                            | Think...                          |
+            | ------------------------------------------- | --------------------------------- |
+            | Decouple applications                       | **SQS**                           |
+            | Asynchronous processing                     | **SQS**                           |
+            | Buffer traffic spikes                       | **SQS**                           |
+            | Queue messages                              | **SQS**                           |
+            | Producer and consumer                       | **SQS**                           |
+            | Downstream application is overloaded        | **SQS**                           |
+            | Process jobs later                          | **SQS**                           |
+            | Work queue                                  | **SQS**                           |
+            | Message temporarily hidden while processing | **Visibility Timeout**            |
+            | Process message successfully                | **Delete message**                |
+            | Processing failed                           | **Message becomes visible again** |
+
+        
+
+
+
+
+
+
+
+
+
+
+
 
 
 

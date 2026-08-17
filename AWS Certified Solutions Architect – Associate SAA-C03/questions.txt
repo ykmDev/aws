@@ -428,7 +428,42 @@ S3 bucket ထဲက ဖိုင်အားလုံးကို default အန
 
 ans: 2.
 ----------------------------------------------
+You need to move hundreds of Terabytes into Amazon S3, then process the data using a fleet of EC2 instances. 
+You have a 1 Gbit/s broadband. You would like to move the data faster and possibly processing it while in transit. What do you recommend?
+
+1.Use your network.
+2. Use Snowcone
+3. Use AWS Data Migration.
+4. Use Snow Edge.
+
+ans. 4.
+-----------------------------
+You have hundreds of Terabytes that you want to migrate to AWS S3 as soon as possible. 
+You tried to use your network bandwidth and it will take around 3 weeks to complete the upload process. 
+What is the recommended approach to using in this situation?
+
+1. AWS Storage Gateway - Volume gateway
+2. s3 multi-part upload
+3. aws snowball Edge
+4. aws data migration service
+
+ans. 3.
+-----------------------------
+You have a large dataset stored in S3 that you want to access from on-premises servers using the NFS or SMB protocol. 
+Also, you want to authenticate access to these files through on-premises Microsoft AD. What would you use?
+
+1. aws storage gateway - volume gateway
+2. aws storage gateway - file gateway
+3. aws storage gateway - tap Gateway
+4. aws data migration service
+
+ans. 2.
 ----------------------------------------------
 ----------------------------------------------
-
-
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
