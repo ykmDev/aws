@@ -7854,7 +7854,34 @@ Decoupling Application:
                 Standard Queue က strict ordering ကို မ guarantee လုပ်ဘူး။
                 Best effort = AWS က order ကို ထိန်းထားဖို့ ကြိုးစားတယ်, ဒါပေမယ့် 100% guarantee မပေးဘူး။
         FIFO Queue:
+            FIFO = First In First Out(Messages are processed in the same order they were sent.)
+            The idea is that batching allows multiple messages to be handled in one API operation.
+                Without batching:
+                    300 messages/second
+
+                With batching:
+                    3,000 messages/second
+            Message deduplication:
+                Deduplication ID:
+                    producer can provide a: Message Deduplication ID
+            Message Group ID:
+                Ordering by Message Group ID(mandatory parameter)
+                    SQS can maintain ordering for each Producer(customer) independently.
+                    eg:
+                        FIFO Queue
+                        ────────────────────────────
+                        Group A:
+                        A1 → A2 → A3 → A4
+
+                        Group B:
+                        B1 → B2 → B3
+
+                        Group C:
+                        C1 → C2 → C3 → C4
+                    This allows FIFO to have parallelism while preserving ordering within each group.
+            Visibility Timeout still have.
         SQS with ASG:
+            SQS acts as a buffer between a fast producer and a slower consumer.
             Remember:
                 SQS Queue Length → CloudWatch Metric → CloudWatch Alarm → ASG Scaling → More/Fewer EC2 Consumers
             CloudWatch can monitor the queue and detect:
@@ -7904,6 +7931,8 @@ Decoupling Application:
                          │
                     Process SQS
                     messages
+                SQS protects the consumer from the producer's sudden workload.
+                CloudWatch monitors the queue backlog, while ASG automatically adjusts the number of workers.
         SQS Security:
             Encryption:
                 In-flight encryption = HTTPS
@@ -7934,7 +7963,40 @@ Decoupling Application:
                 | Control IAM user/role access  | **IAM Policy**             |
                 | Cross-account access to queue | **SQS Queue Policy**       |
                 | Allow S3/SNS to send to SQS   | **SQS Queue Policy**       |
-
+        SQS Short Polling:
+            consumer immediately gets the response.
+            Then perhaps it asks again:
+                10:00:00  → ReceiveMessage → No message
+                10:00:01  → ReceiveMessage → No message
+            This creates lots of API calls.
+        SQS Long Polling:
+            SQS, give me a message if one is available. If there isn't one yet, please wait for a while.
+            eg:
+                Consumer
+                │
+                │ ReceiveMessage
+                │ WaitTimeSeconds = 20
+                ▼
+                SQS
+                │
+                │ ... waiting ...
+                │
+                │ Message arrives!
+                ▼
+                Consumer receives message
+            Instead of immediately saying: "There are no messages."
+            reduce API calls.
+            WaitTimeSeconds:
+                wait time can be between 1 sec to 20 sec
+                20 seconds is generally preferred for long polling.
+                20 sec is not exactly waiting time. SQS can return the message immediately.
+                Queue-level configuration:
+                    consumers can use long polling without specifying it on every request.
+                        MyQueue
+                            │
+                            └── ReceiveMessageWaitTimeSeconds = 20
+                API-level configuration:
+                    consumer can controls the waiting behavior for particular API call.
         Important:
             SQS doesn't process the message.
             SQS itself isn't your business application.
@@ -7953,19 +8015,395 @@ Decoupling Application:
                 delete = Delete the entire SQS queue itself.
                 purge = completely clean/remove the contents.
                     Delete all messages inside the queue, but keep the queue itself.
-            | Question says...                            | Think...                          |
-            | ------------------------------------------- | --------------------------------- |
-            | Decouple applications                       | **SQS**                           |
-            | Asynchronous processing                     | **SQS**                           |
-            | Buffer traffic spikes                       | **SQS**                           |
-            | Queue messages                              | **SQS**                           |
-            | Producer and consumer                       | **SQS**                           |
-            | Downstream application is overloaded        | **SQS**                           |
-            | Process jobs later                          | **SQS**                           |
-            | Work queue                                  | **SQS**                           |
-            | Message temporarily hidden while processing | **Visibility Timeout**            |
-            | Process message successfully                | **Delete message**                |
-            | Processing failed                           | **Message becomes visible again** |
+            Standard = high throughput, ordering not guaranteed
+                🚀 Very high throughput
+                ❌ Ordering not guaranteed
+                ⚠️ Duplicate messages possible
+            FIFO = ordering guaranteed, throughput is more limited
+                Ordering + deduplication
+                FIFO
+                ├── 300 msg/s without batching
+                ├── 3,000 msg/s with batching
+                ├── Deduplication ID
+                └── Message Group ID = mandatory
+                Message Group ID → controls ordering lane
+                Message Deduplication ID → detects duplicate sends
+                Default deduplication scope → entire FIFO queue (can change on FIFO queue settings)
+            SQS + ASG + CloudWatch + decoupling + database protection.
+            SQS Terms:
+                | Question says...                            | Think...                          |
+                | ------------------------------------------- | --------------------------------- |
+                | Decouple applications                       | **SQS**                           |
+                | Asynchronous processing                     | **SQS**                           |
+                | Buffer traffic spikes                       | **SQS**                           |
+                | Queue messages                              | **SQS**                           |
+                | Producer and consumer                       | **SQS**                           |
+                | Downstream application is overloaded        | **SQS**                           |
+                | Process jobs later                          | **SQS**                           |
+                | Work queue                                  | **SQS**                           |
+                | Message temporarily hidden while processing | **Visibility Timeout**            |
+                | Process message successfully                | **Delete message**                |
+                | Processing failed                           | **Message becomes visible again** |
+            Long Polling vs Short Polling
+                |                              | Short Polling                         | Long Polling     |
+                | ---------------------------- | ------------------------------------- | ---------------- |
+                | Wait for messages?           | ❌ No                                  | ✅ Yes            |
+                | Maximum wait                 | Immediate                             | Up to **20 sec** |
+                | Empty responses              | More                                  | Fewer            |
+                | API calls                    | More                                  | Fewer            |
+                | Cost efficiency              | Lower                                 | Better           |
+                | Latency when message arrives | Can be higher due to repeated polling | Generally better |
+                | Recommended                  | ❌                                     | ✅                |
+    SNS:
+        Simple Notification Service
+        message တစ်ခုကို receiver တစ်ယောက်တည်းဆီ ပို့တာမဟုတ်ဘဲ၊
+        receiver အများကြီးဆီကို တစ်ပြိုင်နက်တည်း ဖြန့်ပို့ပေးတဲ့ service
+        as a broadcast system.
+        Explanation:
+            With SQS:
+                Producer
+                ↓
+                SQS Queue
+                ↓
+                Consumer
+                Usually, a message in a queue is processed by one consumer.
+            With SNS:
+                                ┌──→ SQS Queue
+                                │
+                Producer → SNS Topic
+                                │
+                                ├──→ Lambda
+                                │
+                                ├──→ Email
+                                │
+                                └──→ HTTP endpoint
+                One message can be delivered to multiple subscribers.
+        Topic:
+            a communication channel that 
+            publishers send messages to and subscribers receive messages from.
+            Note:
+                event producer only sends message to one SNS topic.
+                producer doesn't need to know who is listening.
+                    The producer doesn't directly communicate with:
+                        Payment Service
+                        Shipping Service
+                        Email Service
+                        Analytics Service
+                    This is an important part of decoupling.
+        Publisher:
+            application that sends a message to SNS.
+        Subscriber:
+            Something that receives messages from the SNS Topic.
+                eg:
+                    SQS
+                    Lambda
+                    HTTP/HTTPS endpoint
+                    Email
+                    SMS
+            subscription:
+                Each one receiver creates a subscription to the SNS topic.
+                A subscription basically means:
+                    "I want this destination to receive messages from this SNS Topic."
+                Subscriber = who receives
+                    The destination that wants the messages.
+                Subscription = the connection saying they want to receive
+                    The relationship connecting that destination to the SNS Topic.
+            One message published to SNS → every subscription receives a copy.
+                This is the fan-out pattern.
+                massive fan-out:
+                    One topic can have a huge number of subscriptions: 12500,000/topic.
+                    aws account has a service quota: 100,000 topics limit.
+        Why do we need SNS?
+            Imagine you have an e-commerce application.
+            When an order is created, several things need to happen:
+            Order Created
+            You need to:
+                Process payment
+                Send confirmation email
+                Update inventory
+                Generate shipping task
+                Send analytics event
+            Without SNS:
+                    Order Application
+                    ├──→ Payment
+                    ├──→ Email
+                    ├──→ Inventory
+                    ├──→ Shipping
+                    └──→ Analytics
+                The application needs to know about every downstream service.
+                This creates tight coupling.
+            With SNS
+                Instead:
+
+                                    SNS
+                            OrderCreated Topic
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ↓               ↓               ↓
+                    SQS             Lambda          SQS
+                Payment          Email           Inventory
+                    │
+                    ↓
+                Payment Service
+
+                The original application only needs to know: "Publish OrderCreated to SNS."
+                It doesn't need to directly communicate with every service.
+                This is decoupling.
+        SNS = Pub/Sub
+            Pub = Publish
+            Sub = Subscribe
+            flow:
+                Publisher
+                    ↓
+                Publish
+                    ↓
+                SNS Topic
+                    ↓
+                Subscribers
+        Subscription by filter policies:
+            To not send every subscribers, can filter by attributes.
+            This avoids sending unnecessary messages to subscribers.
+        How to publish:
+            Topic Publish:
+                using the SDK: Producer -> SNS Topic -> subscribers
+                SNS -> Publish API.
+            Direct Publish (for mobile apps SDK):
+                for mobile push notifications.
+                your app -> SNS -> user's smartphone
+                Why does mobile SNS need a Platform Application?
+                    Mobile push notification systems are different depending on the platform.
+                    Platform Application:
+                        the configuration that allows SNS to communicate with a particular mobile push platform
+                        Android:
+                            Google Firebase Cloud Messaging / FCM
+                            Older AWS course material may say:GCM (Google Cloud Messaging)
+                            GCM has been replaced by FCM.
+                        Apple:
+                            APNs — Apple Push Notification service
+                        Amazon device:
+                            ADM — Amazon Device Messaging
+                    Platform Endpoint:
+                        a specific device/app endpoint
+                    flow:
+                        Create a platform application
+                                ↓
+                        Create a platform endpoint
+                                ↓
+                        Publish to the platform endpoint
+
+                                    SNS
+                                    │
+                            Platform Application
+                                    │
+                            ┌──────┼──────┐
+                            ↓      ↓      ↓
+                        Endpoint A Endpoint B Endpoint C
+                            ↓
+                            📱 User's phone
+        SNS Security:
+            Encryption:
+                in-flight: HTTPS API.
+                at-rest: KMS keys.
+                Client side encryption(client itself)
+            Access Controls:
+                IAM policies to regulate access to SNS API.
+            Topic Access Policy:
+                resource-based policy similar to s3 bucket policy.
+                useful for cross-account access, allowing other services.
+                IAM is not enough for above resource-to-resource permission(s3 -> SNS Topic)
+        SNS Standard:
+        SNS FIFIO:
+            Message Group ID
+            Deduplication by Deduplication ID and Content-Based Deduplication.
+        SNS VS SQS:
+            |                 | SQS                                         | SNS                                          |
+            | --------------- | ------------------------------------------- | -------------------------------------------- |
+            | Model           | Queue                                       | Pub/Sub                                      |
+            | Main idea       | Store messages                              | Broadcast messages                           |
+            | Consumer        | Usually one consumer processes each message | Multiple subscribers can receive the message |
+            | Pull/Push       | Consumer pulls                              | SNS pushes to subscribers                    |
+            | Decoupling      | Yes                                         | Yes                                          |
+            | Buffer messages | ✅ Excellent                                 | Not its primary purpose                      |
+            | Fan-out         | ❌                                           | ✅                                            |
+            | Topic           | ❌                                           | ✅                                            |
+            SNS + SQS used together:
+                            SNS Topic
+                            OrderCreated
+                                    │
+                        ┌──────────┴──────────┐
+                        ↓                     ↓
+                    SQS Queue             SQS Queue
+                Payment Service       Shipping Service
+                        ↓                     ↓
+                    Worker                 Worker
+        Note:
+            Fan-out: One message → many destinations.[all services receive their own copy.]
+                SQS Standard
+                    ↓
+                High throughput
+                At-least-once
+                Best-effort ordering
+
+
+                SQS FIFO
+                    ↓
+                Ordering
+                Deduplication
+                Message Group ID
+
+
+                SNS Standard
+                    ↓
+                Fan-out
+                Pub/Sub
+                High throughput
+
+
+                SNS FIFO
+                    ↓
+                Fan-out
+                + Ordering
+                + Deduplication
+                + Message Group ID
+    Amazon Kinesis Data Steams:
+        a service for continuously collecting and processing streaming data in real time.
+            Users clicking websites
+                    ↓
+            IoT devices sending data
+                    ↓
+            Application metrics
+                    ↓
+            Server logs
+                    ↓
+                    Kinesis Data Streams
+                    ↓
+            Process in real time
+        Steaming Data:
+            Streaming data means data that arrives continuously over time
+                rather than being collected as one large batch.
+        Producers:
+            sends data into Kinesis.
+        Applications:
+            own app can use the Kinesis SDK/API to send records.
+        Kinesis Agent:
+            software that can collect data such as logs from servers
+        Kinesis Data Streams:
+            central part.
+            Kinesis stores incoming records in a stream like a continuous conveyor belt.
+            continuous conveyor belt = စဉ်ဆက်မပြတ် သယ်ယူပို့ဆောင်ရေးခါးပတ် in industry/airport.
+            Rention: configurable up 365 days
+                Data remains in Kinesis even after a consumer reads it. supports replay.
+                Replay = read previously processed streaming data again.
+                Data can't be deleted from Kinesis.
+                    consumers don't individually delete records.
+            Data up to 10 MiB:
+            Ordering guarantee with the same Partition ID:
+                Same partition key → same partition → ordering preserved.
+            Encryption:
+                In-flight: HTTPS
+                at-rest: KMS
+            Kinesis Producer Library (KPL):
+                Producer side.
+                an optimized application that writes data to Kinesis.
+            Kinesis Client Library (KCL):
+                Kinesis Client Library
+                optimized application that reads/processes data from Kinesis.
+            Cheat sheet:
+                | Feature                  | Remember                         |
+                | ------------------------ | -------------------------------- |
+                | Purpose                  | Real-time streaming data         |
+                | Data examples            | IoT, clickstreams, logs, metrics |
+                | Retention                | Up to **365 days**               |
+                | Consumer reads data      | Data **isn't deleted**           |
+                | Replay                   | ✅ Yes                            |
+                | Delete individual record | ❌ No                             |
+                | Expiration               | When retention period expires    |
+                | Maximum record size      | **10 MiB**                       |
+                | Ordering                 | Within the **same partition**    |
+                | Encryption in transit    | HTTPS                            |
+                | Encryption at rest       | KMS                              |
+                | Producer library         | **KPL**                          |
+                | Consumer library         | **KCL**                          |
+            Capacity Modes:
+                Provisioned = You choose/manage the capacity.
+                    choose how many shards your Kinesis stream has.
+                    Each shard has a certain capacity.
+                    Per shard
+                        Write/Ingestion: 1 MB/s
+                        Read/Output: 2 MB/s
+                    What does "shard" mean?
+                        shard as a capacity unit / lane.
+                    Scaling:
+                        Manual
+                        AWS doesn't automatically change your shard count based on your traffic.
+                    Cost:
+                        pay based on the number of shards provisioned.
+                            1 shard → $$$
+                            5 shards → $$$$$
+                On-demand = AWS chooses/scales the capacity for you.
+                    Scaling: 
+                        AWS automatically manages capacity
+                    Default capacity provisioned: 4 MB/s in or 4,000 records/s
+                Note:
+                    |                       | **Provisioned** | **On-demand**          |
+                    | --------------------- | --------------- | ---------------------- |
+                    | Shards                | You choose      | AWS manages            |
+                    | Capacity management   | Manual          | Automatic              |
+                    | Scaling               | Manual          | Automatic              |
+                    | Predictable traffic   | ✅ Good          | ✅                   |
+                    | Unpredictable traffic | More management | ⭐ Good               |
+                    | Cost                  | Per shard/hour  | Per stream/hour + data |
+                    | Operational effort    | Higher          | Lower                  |
+        Consumers:
+            reads/processes data from Kinesis.
+            eg: 
+                own Application,
+                Lambda,
+                Amazon Data Firehose
+                    delivering streaming data to destinations such as S3, Redshift, etc..
+                Managed Service for Apache Flink:
+                    Flink is used for more advanced stream processing.
+                    can perform things like:
+                        filtering
+                        aggregations
+                        transformations
+                        analytics
+                        detecting patterns
+        Why not just use SQS?
+            on SQS: Producer → SQS → Consumer
+                think: "I have work that needs to be processed."
+                Consumer processes the order and eventually deletes the message.
+            on Kinesis: Producer → Kinesis → Consumer
+                think: "I have a continuous stream of events/data that multiple consumers may want to process."
+                Multiple applications can consume the stream independently.
+            Their purposes are different. major reason Kinesis is useful.
+        Kinesis Data Streams vs SNS:
+            SNS => Publish/Subscribe → notify subscribers
+            Kinesis => Streaming data collection + real-time processing
+            think:
+                SNS → "Something happened. Tell interested subscribers."
+                Kinesis → "Here is a continuous stream of data. Process/analyze it."
+        Note:
+            SQS = queue model
+            SNS = pub/sub model
+            Kinesis = real-time streaming model.
+
+                SQS
+                │
+                └─ Queue work
+                "Process this job."
+
+                SNS
+                │
+                └─ Pub/Sub
+                "Tell everyone interested."
+
+                Kinesis Data Streams
+                │
+                └─ Streaming data
+                "Continuously collect and process this data."
+
+
 
         
 
