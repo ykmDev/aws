@@ -8402,6 +8402,83 @@ Decoupling Application:
                 │
                 └─ Streaming data
                 "Continuously collect and process this data."
+    Amazon Data Firehose:
+        renamed from Kinesis Data Firehose.
+        like a delivery truck.
+        Fully Managed Service
+        Where can Firehose deliver data?
+            AWS destination:
+                can deliver to:
+                    Amazon S3
+                    Amazon Redshift
+                    Amazon OpenSearch Service
+            Third-party destinations:
+                Custom HTTP endpoint
+        Automatic Scaling unlike Kinesis Data Streams's Provisioned mode.
+        Pay for what you use
+        Near Real-Time
+            has a buffer.
+            Firehose waits until either:
+                Buffer size is reached
+                or
+                Buffer time is reached
+            Then it delivers the batch to the destination.
+        Supported data formats:
+            CSV
+            JSON
+            Parquet
+            Avro
+            Raw Text
+            Binary data
+        can Convert data to Parquet / ORC
+            Why Parquet/ORC?
+            They are columnar storage formats, which are very useful for analytics.
+            eg: "Stream data into S3 and automatically convert it to Parquet".
+        Compression:
+            can also compress data.
+            ompression can reduce storage and/or transfer costs and improve efficiency.
+        AWS Lambda transformations:
+            app send data with json, but, want to transform data before sent s3.
+            can invoke Lambda for custom transfromation.
+                Producer
+                ↓
+                Firehose
+                ↓
+                Lambda
+                ↓
+                Transform data
+                ↓
+                S3
+        Kinesis Data Streams vs Data Firehose
+            |                     | Kinesis Data Streams                       | Amazon Data Firehose                |
+            | ------------------- | ------------------------------------------ | ----------------------------------- |
+            | Main purpose        | Real-time streaming platform               | Deliver streaming data              |
+            | Storage             | Yes, retention                             | ❌ Not designed as long-term storage |
+            | Replay              | ✅ Yes                                      | ❌ Not the main purpose              |
+            | Consumer            | Applications, Lambda, Firehose, etc.       | Destination                         |
+            | Shards              | Provisioned mode uses shards               | ❌ No shard management               |
+            | Scaling             | Provisioned/on-demand                      | Automatic                           |
+            | Serverless          | Managed, but Streams has capacity concepts | ⭐ Serverless                        |
+            | Buffering           | Not the same delivery-buffer concept       | ⭐ Yes                               |
+            | S3 delivery         | Can feed Firehose                          | ⭐ Direct destination                |
+            | Data transformation | Consumer-side processing                   | ⭐ Lambda transformation             |
+            | Parquet conversion  | Not its main feature                       | ⭐ Yes                               |
+            | ORC conversion      | Not its main feature                       | ⭐ Yes                               |
+    Amazon MQ:
+        managed message broker service.
+        broker:
+            traditional messaging protocols such as:
+                ActiveMQ
+                RabbitMQ
+                    message broker software.
+                        program that sits between applications and helps them exchange messages.
+        unlike SQS/SNS, they are AWS-native messaging services.
+        scalable is based on broker servers.
+        can use multiple Availability Zones.
+
+
+
+
 
 
 

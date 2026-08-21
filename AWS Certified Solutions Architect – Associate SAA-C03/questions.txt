@@ -459,8 +459,37 @@ Also, you want to authenticate access to these files through on-premises Microso
 
 ans. 2.
 ----------------------------------------------
+You have an e-commerce website and you are preparing for Black Friday 
+which is the biggest sale of the year. You expect that your traffic will increase by 100x. 
+Your website already using an SQS Standard Queue, and you're running a fleet of EC2 instances in an Auto Scaling Group to consume SQS messages. 
+What should you do to prepare your SQS Queue?
+
+1. Contact AWS Support to pre-warm your SQS Standard Queue
+2. Enable Auto Scaling in your SQS queue
+3. Increase the capacity of SQS queue
+4. Do nothing, SQS scales automatically.
+
+ans: 4.
 ----------------------------------------------
+You have a Kinesis data stream with 6 shards provisioned. 
+This data stream usually receiving 5 MB/s of data and sending out 8 MB/s. 
+Occasionally, your traffic spikes up to 2x and you get a ProvisionedThroughputExceeded exception. 
+What should you do to resolve the issue?
+
+1. Add more Shards
+2. Enable Kinesis Replication
+3. Use SQS as a buffer to Kinesis.
+
+ans: 1.
 ----------------------------------------------
+Which of the following is NOT a supported subscriber for AWS SNS?
+
+1. Amazon Kinesis Data Streams.
+2. Amazon SQS
+3. HTTP(s) Endpoint
+4. AWS Lambda
+
+ans: Amazon Kinesis Data Streams.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
