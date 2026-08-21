@@ -8475,6 +8475,293 @@ Decoupling Application:
         unlike SQS/SNS, they are AWS-native messaging services.
         scalable is based on broker servers.
         can use multiple Availability Zones.
+Containers on AWS:
+    Docker Introduction:
+        First: What problem does Docker solve?
+        Docker solve Problem of OS difference, extension difference, etc.. eg: It works on my machine!
+        Container:
+            an isolated environment where your application and its required dependencies can run together.
+            ackage the application and its environment consistently.
+        What is Docker?
+            a platform/tool for creating and running containers.
+        Image vs Container:
+            An image is a blueprint/template used to create containers.
+            A container is the running instance created from an image.
+        Docker Image come from container registry.
+            container registry: a place where container images are stored.
+            Docker Hub: public repository
+            Amazon ECR: Elastic Container Registry
+                private repo.
+                public repo is Amazon ECR Public Gallery
+        Dockerfile:
+            How do you create your own Docker image?
+            with a Dockerfile.
+            A Dockerfile contains instructions for building an image.
+        Container vs Virtual Machine:
+            VM includes a whole guest operating system.
+                each VM has its own OS.
+                structure: Application + dependencies + Guest OS
+            Container share the OS kernel.
+                structure: Application + dependencies
+                The container does not normally need a complete guest OS.
+                more efficient than VMs
+        Are containers completely isolated?
+            All container are isolated from each other, but they share the host kernel.
+                Each container has its own:
+                    filesystem view
+                    processes
+                    networking
+                    environment/configuration
+        Containers are excellent for microservices:
+            Container
+            ↓
+            User Service
+
+            Container
+            ↓
+            Order Service
+
+            Container
+            ↓
+            Payment Service
+        Docker doesn't manage everything:
+            Docker can:
+                Build image
+                    ↓
+                Run container
+                    ↓
+                Stop container
+                    ↓
+                Manage container
+
+                But imagine you have:
+                100 containers
+                You need to automatically:
+                    start containers
+                    stop unhealthy containers
+                    replace failed containers
+                    scale containers
+                    distribute traffic
+                    manage networking
+                    schedule containers across servers
+
+                That's where container orchestration comes in.
+            Container orchestration:
+                think: Docker -> run this container.
+                Orchestration:
+                    Orchestrator
+                        │
+                        ├── Run 100 containers
+                        ├── Scale to 200
+                        ├── Replace failed container
+                        ├── distribute containers
+                        └── manage networking
+                    Examples:
+                        Kubernetes
+                        Amazon ECS
+                        Amazon EKS
+                    And this is where your AWS container topic will start becoming important.
+            Note:
+                | Term           | Easy meaning                       |
+                | -------------- | ---------------------------------- |
+                | **Docker**     | Tool/platform for containers       |
+                | **Image**      | Blueprint/template                 |
+                | **Container**  | Running instance of an image       |
+                | **Dockerfile** | Instructions for building an image |
+                | **Registry**   | Place to store images              |
+                Hypervisor manage VM.
+                Docker Daemon manage Docker container. run/manage လုပ်ပေးတဲ့ background service
+    Docker Containers Management on AWS:
+        Amazon ECS:
+            Amazon's own container platform.
+        Amazon EKS:
+            Amazon managed Kubernetes(open source)
+        Amazon Fargate:
+            Amazon own serverless container platform.
+            work with ECS, EKS.
+        Amazon ECR:
+            Store container images.
+    Amazon ECS:
+        Elastic Container Service
+        Launch Docker containers on AWS = Launch ECS Tasks on ECS Clusters
+        ECS Clusters:
+            logical grouping of compute resources where your ECS tasks run.
+            ECS Cluster
+                │
+                ├── Task
+                ├── Task
+                └── Task
+        ECS Tasks:
+            a running instance of your container(s), based on an ECS Task Definition.
+            Task Definition
+                ↓
+                Task
+                ↓
+            Running Container
+            A Task can contain one or more containers.
+        sample architecture:
+            For ECS with EC2 Launch Type:
+
+                                ECS Cluster
+                                    │
+                        ┌──────────┴──────────┐
+                        ↓                     ↓
+                    EC2 #1                 EC2 #2
+                        │                     │
+                    ┌─────┴─────┐          ┌────┴────┐
+                    ↓           ↓          ↓         ↓
+                Task        Task       Task      Task
+                │            │          │         │
+            Container    Container  Container Container
+
+            The EC2 instances provide the actual compute capacity.
+        EC2 Launch Type:
+            you must provision & maintain the infrastructure (the EC2 instances)
+            You are responsible for the EC2 infrastructure.
+        Fargate Launch Type:
+            launch Docker containers on AWS.
+            do not provision the infrastructure(no ec2 to manage)
+            all serverless,
+            just create task definitions.
+        ECS Agent:
+            software running on the EC2 instance that allows ECS to communicate with and manage that instance.
+            EC2 instance နဲ့ ECS service ကြားမှာ communication လုပ်ပေးတဲ့ agent/software
+        AWS takes care of starting/stopping containers.
+            we don't need to manually run/stop containers. ECS manage the tasks.
+        Where does Docker image come from?
+            Developer
+            ↓
+            Docker build
+            ↓
+            Docker Image
+            ↓
+            Amazon ECR
+            ↓
+            ECS
+            ↓
+            Task
+            ↓
+            Container
+        What does ECS actually manage?
+            Suppose you have:
+                ECS Cluster
+                    │
+                    ├── EC2 #1
+                    ├── EC2 #2
+                    └── EC2 #3
+            You tell ECS:
+            Run 5 tasks.
+            ECS determines where those tasks should run based on the available resources and scheduling.
+            Conceptually:
+                ECS
+                │
+                ├── Task → EC2 #1
+                ├── Task → EC2 #1
+                ├── Task → EC2 #2
+                ├── Task → EC2 #2
+                └── Task → EC2 #3
+            So ECS is the container orchestrator.
+            Docker = container technology/tool
+            ECS = AWS container orchestration service
+        Two ECS IAM Roles:
+            think:
+                                ECS
+                                │
+                    ┌──────────┴──────────┐
+                    ↓                     ↓
+            ECS Agent / EC2         Application / Task
+                    │                     │
+                    ↓                     ↓
+            EC2 Instance Profile      ECS Task Role
+
+            EC2 Instance Profile:
+                EC2 Launch Type only.
+                EC2 instance ကို AWS service တွေကို access လုပ်ခွင့်ပေးတဲ့ IAM role
+                    used ECS agent.
+                    Make API call to ECS service.
+                    send container logs to CloudWatch logs
+                    Access Secrets Manager / SSM Parameter Store
+                    Pull Docker images from ECR
+            ECS Task Role:
+                Task Role belongs to the application running inside the task.
+                container အတွင်းက application ကို AWS resources တွေ access လုပ်ခွင့်ပေးတဲ့ IAM Role
+                defined in the Task Definition
+                    eg Task Definiton:
+                        Task Definition
+                            │
+                            ├── Container configuration
+                            ├── CPU / Memory
+                            ├── Image
+                            ├── Port
+                            └── Task Role ← IAM Role
+            Summary for Roles:
+                |                  | EC2 Instance Profile           | ECS Task Role              |
+                | ---------------- | ------------------------------ | -------------------------- |
+                | Used by          | ECS Agent / EC2 infrastructure | Application in the task    |
+                | EC2 Launch Type? | **Yes**                        | Both ECS launch types      |
+                | Defined where?   | EC2 instance configuration     | Task Definition            |
+                | Purpose          | ECS infrastructure operations  | Application AWS API access |
+                | Example          | Pull image from ECR            | Upload file to S3          |
+                | Example          | Send logs to CloudWatch        | Read DynamoDB              |
+                | Scope            | EC2 instance                   | Individual task            |
+                Ask:
+                    "Who needs permission?"
+
+                If ECS/EC2 infrastructure needs permission:
+                    EC2 Instance Profile
+                If my application/container needs permission:
+                    ECS Task Role
+        LB integration:
+            Instead of users connecting directly to ECS tasks, put a Load Balancer in front of the tasks.
+            no need to remember the IP address of Task 1, Task 2,
+                             Internet
+                                │
+                                ↓
+                        Application
+                        Load Balancer
+                                │
+                    ┌────────┼────────┐
+                    ↓        ↓        ↓
+                    Task 1    Task 2    Task 3
+            supported:
+                ALB: Most common choice.
+                    using Target Group:
+                        ALB
+                        ↓
+                        Target Group
+                        ↓
+                        ┌───────────────┐
+                        │ ECS Task 1    │
+                        │ ECS Task 2    │
+                        │ ECS Task 3    │
+                        └───────────────┘
+                    using Health Check = Task/Server က request လက်ခံပြီး ပုံမှန်အလုပ်လုပ်နေသလား စစ်တာ
+                NLB: only for high throughput/performance. pair it with AWS Private link.
+                CLB: not recommended.
+                EC2 Launch Type: two levels of scaling:
+                    Level 1:
+                        note enough container, increases tasks.
+                    Level 2:
+                        add more ec2 instances:
+                        very useful architecture.
+            Data Volume(EFS):
+                ECS + EFS = shared, persistent file storage across AZs, and it works with both EC2 and Fargate.
+                Main Problem is Container storage is usually temporary.
+                Tasks running in any AZ will share same data in EFS.
+                s3 cannot be mounted as a file system.
+        ECS Vs Fargate:
+            |                        | ECS EC2       | ECS Fargate         |
+            | ---------------------- | ------------- | ------------------- |
+            | EC2 management         | **You**       | **AWS**             |
+            | Infrastructure         | You provision | AWS manages         |
+            | ECS Agent on your EC2  | ✅             | You don't manage it |
+            | Server patching        | You           | AWS                 |
+            | Scaling infrastructure | You           | AWS                 |
+            | Container management   | ECS           | ECS                 |
+            | Serverless containers  | ❌             | ✅                |
+
+
+
 
 
 
@@ -8483,18 +8770,3 @@ Decoupling Application:
 
 
         
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
