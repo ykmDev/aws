@@ -491,7 +491,39 @@ Which of the following is NOT a supported subscriber for AWS SNS?
 
 ans: Amazon Kinesis Data Streams.
 ----------------------------------------------
+You're planning to migrate a WordPress website running on Docker containers from on-premises to AWS. 
+You have decided to run the application in an ECS Cluster, but you want your docker containers 
+to access the same WordPress website content such as website files, images, videos, etc. 
+What do you recommend to achieve this?
+
+1. Mount an EFS volume.
+2. Mount an EBS volume.
+3. Use an Ec2 Instance Store.
+
+ans: 1.
 ----------------------------------------------
+You are deploying an application on an ECS Cluster made of EC2 instances. 
+Currently, the cluster is hosting one application that is issuing API calls to DynamoDB successfully. 
+Upon adding a second application, which issues API calls to S3, you are getting authorization issues. 
+What should you do to resolve the problem and ensure proper security?
+
+1. Edit the EC2 Instance role to add permission to s3.
+2. Create an IAM task role for new application.
+3. Enable the Fargate mode.
+4. Edit the s3 bucket policy to allow the EC2 task.
+
+ans: 2.
+ECS Cluster
+    │
+    └── EC2 instances
+          │
+          ├── Application A
+          │      ↓
+          │    DynamoDB ✅
+          │
+          └── Application B
+                 ↓
+                S3 ❌
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------

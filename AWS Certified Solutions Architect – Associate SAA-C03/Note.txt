@@ -8615,14 +8615,15 @@ Containers on AWS:
             Container    Container  Container Container
 
             The EC2 instances provide the actual compute capacity.
-        EC2 Launch Type:
-            you must provision & maintain the infrastructure (the EC2 instances)
-            You are responsible for the EC2 infrastructure.
-        Fargate Launch Type:
-            launch Docker containers on AWS.
-            do not provision the infrastructure(no ec2 to manage)
-            all serverless,
-            just create task definitions.
+        two launch Types:
+            EC2 Launch Type:
+                you must provision & maintain the infrastructure (the EC2 instances)
+                You are responsible for the EC2 infrastructure.
+            Fargate Launch Type:
+                launch Docker containers on AWS.
+                do not provision the infrastructure(no ec2 to manage)
+                all serverless,
+                just create task definitions.
         ECS Agent:
             software running on the EC2 instance that allows ECS to communicate with and manage that instance.
             EC2 instance နဲ့ ECS service ကြားမှာ communication လုပ်ပေးတဲ့ agent/software
@@ -8749,6 +8750,194 @@ Containers on AWS:
                 Main Problem is Container storage is usually temporary.
                 Tasks running in any AZ will share same data in EFS.
                 s3 cannot be mounted as a file system.
+            Lab:
+                using this image: nginxdemos/hello: https://hub.docker.com/r/nginxdemos/hello/
+        ECS Service Auto Scaling vs EC2 Auto Scaling:
+            ECS Service Auto Scaling => scales Tasks
+                "How many containers/tasks do I need?"
+                Scaling:
+                    automatically changes the desired number of ECS tasks in ECS service.
+                        CPU scaling = CPU အလုပ်များလာရင် Task တိုး
+                        Memory scaling = RAM အသုံးပြုမှုများလာရင် Task တိုး
+                        can use ALB Request Count Per Target as the scaling signal.
+                            metric comes from the Application Load Balancer.
+                    Target Tracking:
+                        think: "Keep this metric around this target." => target CPU = 50%.
+                    Step Scaling:
+                        You create a CloudWatch Alarm and define scaling steps.
+                        architecture:
+                            CloudWatch Metric
+                                ↓
+                            CloudWatch Alarm
+                                ↓
+                            Step Scaling Policy
+                                ↓
+                            ECS Service
+                                ↓
+                            Tasks
+                        Example:
+                            CPU > 70%
+                                ↓
+                            Add 2 Tasks
+
+                            CPU > 90%
+                                ↓
+                            Add 5 Tasks
+
+                            And scale in:
+                                CPU < 30%
+                                    ↓
+                                Remove 1 Task
+                    Scheduled Scaling:
+                        For predictable workloads.
+                        ဘယ်အချိန်မှာ load တက်မယ်/ကျမယ်ဆိုတာ ကြိုသိထားတဲ့အခါ schedule နဲ့ scale လုပ်တာ
+            EC2 Auto Scaling => scales EC2 Instances
+                uses AWS Application Auto Scaling
+                "How many EC2 servers do I need?"
+                AWS service/API used to automatically scale various application-level resources.
+            ECS Capacity Provider:
+                bridge between ECS and your Auto Scaling Group.
+                why need ECS Capacity Provider?
+                    The problem is: ECS schedules tasks based on available resources such as CPU and memory, 
+                        not simply EC2 CPU utilization.
+                flow:
+                    ECS
+                    │
+                    │ "I need more capacity!"
+                    ↓
+                    Capacity Provider
+                    │
+                    ↓
+                    Auto Scaling Group
+                    │
+                    ↓
+                    EC2 Instances
+                Capacity:
+                    The word capacity here means: Available resources for running ECS tasks.
+
+                    Mainly think:
+                        CPU
+                        Memory
+
+                    example:
+                        ECS wants to run:
+                            Task A → 1 CPU + 2 GB RAM
+                            Task B → 2 CPU + 4 GB RAM
+
+                    But your cluster has:
+                        Available:
+                            0.5 CPU
+                            1 GB RAM
+
+                    There isn't enough capacity.
+                    So:
+
+                        Need more capacity
+                            ↓
+                        Capacity Provider
+                            ↓
+                        ASG
+                            ↓
+                        More EC2
+                Capacity Provider doesn't replace the ASG.
+                architecture:
+                                        ALB
+                                        │
+                                        ↓
+                                ECS Service
+                                        │
+                                        ↓
+                            ECS Service Auto Scaling
+                                        │
+                                "Need 8 Tasks"
+                                        │
+                                        ↓
+                            ┌────────────────┐
+                            │ ECS Tasks      │
+                            └───────┬────────┘
+                                    │
+                                Need capacity?
+                                    │
+                                    ↓
+                            ECS Capacity Provider
+                                    │
+                                    ↓
+                            Auto Scaling Group
+                                    │
+                            ┌─────────┼─────────┐
+                            ↓         ↓         ↓
+                        EC2       EC2       EC2
+            ECS Tasks Invoked by EventBridge:
+                EventBridge detects an event → EventBridge starts an ECS Task
+                Instead of having an ECS Service continuously running Tasks, 
+                you can start a Task only when something happens.
+                Amazon EventBridge:
+                    an event bus/service that receives events and routes them to targets.
+                    Think: "When X happens, do Y."
+                    The target could be:
+                        Lambda
+                        ECS Task
+                        SQS
+                        SNS
+                        Step Functions
+                        etc.
+                Event occur:
+                    Imagine you have a video-processing application.
+                    Normally, you don't want an ECS container running 24/7 because there may be no videos to process.
+                    Instead:
+                    New video uploaded
+                            ↓
+                        EventBridge
+                            ↓
+                    Start ECS Task
+                            ↓
+                    Container processes video
+                            ↓
+                    Task finishes
+
+                    The ECS Task is basically a one-time job.
+                Scheduled ECS Task:
+                    EventBridge doesn't only react to events.
+                    It can also trigger something according to a schedule.
+                        EventBridge Scheduler / Rule
+                                │
+                                │  2:00 AM
+                                ↓
+                            ECS Task
+                                ↓
+                        Run backup script
+                                ↓
+                            Finished
+                | Pattern                    | Typical purpose                              |
+                | -------------------------- | -------------------------------------------- |
+                | **ECS Service**            | Long-running application                     |
+                | **EventBridge → ECS Task** | Trigger a task when an event/schedule occurs |
+            Note:
+                ECS Service Auto Scaling = add/remove ECS Tasks
+                EC2 Auto Scaling = Add/remove Number of EC2 Instances.
+                    we might need both.
+                                    ALB
+                                    ↓
+                                ECS Service
+                                    ↓
+                            ECS Service Auto Scaling
+                                    ↓
+                            Number of Tasks
+                                    ↓
+                            EC2 Auto Scaling
+                                    ↓
+                        Number of EC2 Instances
+                when we use Fargate makes it easier,
+                    With Fargate:
+                        ALB
+                        ↓
+                        ECS Service
+                        ↓
+                        Fargate Tasks
+
+                        You don't manage EC2 instances.
+
+
         ECS Vs Fargate:
             |                        | ECS EC2       | ECS Fargate         |
             | ---------------------- | ------------- | ------------------- |
@@ -8759,6 +8948,154 @@ Containers on AWS:
             | Scaling infrastructure | You           | AWS                 |
             | Container management   | ECS           | ECS                 |
             | Serverless containers  | ❌             | ✅                |
+    Amazon ECR:
+        Elastic Container registry.
+        store and manage docker images on AWS.
+        fully integrated with ECS. backed by S3.
+        controlled by IAM.
+    Amazon EKS:
+        Amazon Elastic Kubernetes Service.
+        managed Kubernetes clusters on AWS.
+        Kubernetes:
+            open-source system for automatic deployment, scaling and management of containerized(Docker) application.
+        alternative to ECS, but, different API.
+        supports EC2 if you want to deploy worker nodes or Fargate to deploy serverless containers.
+        Kubernetes is cloud-agnostic(can used any cloud- GCP, Azure, ..)
+            agnostic = Independent
+        architecture:
+                             Amazon EKS
+                                │
+                    ┌────────────┴────────────┐
+                    │                         │
+            Control Plane              Worker Nodes
+            (Kubernetes)                    │
+                    │                  ┌───────┴───────┐
+                    │                  │               │
+                API Server         Node            Node
+                                    │               │
+                                    Pods            Pods
+                                    │               │
+                                Containers      Containers
+        EKS Control Plane:
+            Control plane is managed by AWS
+            Kubernetes brain.
+                manages things like:
+                    Kubernetes API
+                    scheduling
+                    cluster state
+                    orchestration
+        Worker Nodes:
+            They run:
+                Pods
+                ↓
+                Containers
+        Pod:
+            the smallest deployable unit in Kubernetes.
+            can run with EC2 or Fargate.
+            can also contain multiple closely-related containers:
+                Pod
+                ├── Application container
+                └── Sidecar container
+
+                The containers inside the same Pod share certain resources, such as networking.
+        Node Types:
+            who manages the underlying compute.
+            architecture:
+                                EKS Cluster
+                                    │
+                        ┌──────────┴──────────┐
+                        │                     │
+                    Control Plane          Worker Compute
+                                            │
+                                ┌──────────────┼──────────────┐
+                                ↓              ↓              ↓
+                        Managed Node    Self-Managed     Fargate
+                            Groups          Nodes
+                                │              │              │
+                            EC2            EC2          Serverless
+            Managed Node Groups:
+                AWS/EKS manages the EC2 nodes for you.
+                    Creates and manages Nodes (EC2 instances) for you
+            Self-Managed Nodes:
+                you managed the EC2 nodes yourself.
+                Amazon EKS Optimized AMI:
+                    a prebuilt AMI containing the software/configuration needed for EKS worker nodes.
+                    So instead of building an EC2 AMI completely from scratch, you can use:
+                        EKS Optimized AMI
+                            ↓
+                            EC2
+                            ↓
+                        Registered with EKS
+            Fargate:
+                No EC2 worker nodes for you to manage.
+                    EKS
+                    │
+                    └── Pod
+                        ↓
+                    Fargate
+                        ↓
+                    Container
+            Summary:
+                |                    | Managed Node Group | Self-Managed Nodes | Fargate    |
+                | ------------------ | ------------------ | ------------------ | ---------- |
+                | Compute            | EC2                | EC2                | Serverless |
+                | Who manages nodes? | AWS/EKS            | You                | AWS        |
+                | ASG                | Managed by EKS     | You manage it      | ❌          |
+                | EC2 visible to you | ✅                  | ✅                  | ❌          |
+                | On-Demand          | ✅                  | ✅                  | N/A        |
+                | Spot               | ✅                  | ✅                  | N/A        |
+                | Node maintenance   | Less               | More               | None       |
+        Data Volumes:
+            EKS Pods are temporary.
+            for persistent data:
+                EKS storage → StorageClass → CSI driver → AWS storage
+                    Pod
+                    │
+                    │ mount
+                    ↓
+                    AWS Storage
+
+                    example:
+                        Pod → EBS
+                        Pod → EFS
+                        Pod → FSx for Lustre
+                        Pod → FSx for NetApp ONTAP
+            StorageClass:
+                When a Pod asks for storage, what kind of storage should I create/use?
+                to dynamically provision storage.
+            CSI:
+                Container Storage Interface.
+                standard interface that allows Kubernetes to communicate with storage systems.
+                          Kubernetes
+                            │
+                            │ CSI
+                            ↓
+                    Storage provider
+                    /      |       \
+                    EBS     EFS      FSx
+        Note:
+            Control plane is managed by AWS
+            Applications run in Pods
+            Pods can run on:
+                EC2 worker nodes
+                Fargate
+            Good choice when:
+                company already uses Kubernetes
+                wants Kubernetes ecosystem/tools
+                needs Kubernetes compatibility.
+
+            EKS Fargate needs persistent/shared file storage.
+                think: EFS.
+                |                         | EBS                         | EFS                       |
+                | ----------------------- | --------------------------- | ------------------------- |
+                | Type                    | Block storage               | File storage              |
+                | Typical access          | Single node/AZ-oriented     | Shared                    |
+                | Multi-AZ                | ❌ Not normally              | ✅                         |
+                | EKS                     | ✅                           | ✅                         |
+                | Fargate                 | Not the typical choice      | ✅                         |
+                | Shared by multiple Pods | Limited/not the usual model | ✅                         |
+                | Think                   | Hard disk                   | Shared network filesystem |
+
 
 
 
