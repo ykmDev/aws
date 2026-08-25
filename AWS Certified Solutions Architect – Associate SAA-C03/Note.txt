@@ -9095,6 +9095,245 @@ Containers on AWS:
                 | Fargate                 | Not the typical choice      | ✅                         |
                 | Shared by multiple Pods | Limited/not the usual model | ✅                         |
                 | Think                   | Hard disk                   | Shared network filesystem |
+Serverless:
+    You don't manage the underlying servers.
+    FaaS = Function as a Service
+    nowadays, today, "Serverless" is broader:
+        compute => Lambda
+        database => DynamoDB
+        storage => s3
+        messaging => SQS, SNS.
+        api => API Gateway
+        container => Fargate
+    AWS Lambda:
+        virtual functions.
+        limited by time - short execution.
+            Maximum execution time = 15 minutes
+            For long-running workloads, think about EC2, ECS/Fargate, AWS Batch
+        You upload your code → AWS runs it when needed → AWS manages the servers.
+        event-driven:
+            Something happens → Lambda is invoked.
+            Lambda doesn't normally run continuously like EC2.
+        stateless
+            not depend on local files or local memory
+        Run on-demand
+            On-demand = လိုအပ်တဲ့အချိန်မှာပဲ run ခိုင်းတာ။
+        Pricing:
+            pay per request and compute time.
+            free tier
+        support many languages.
+        Limits - per region
+            Execution:
+                memory: 128 MB - 10 GB (1 MB increment)
+                    More Lambda memory also gives the function more CPU.
+                    Lambda is CPU-intensive, increasing memory can also make it execute faster
+                max execution time: 900 sec (15 min)
+                environment variable (4 KB)
+                    Don't use Lambda environment variables for storing large amounts of data.
+                    think: Small configuration
+                                ↓
+                            Environment variables
+
+                            Secrets
+                                ↓
+                            Secrets Manager / Parameter Store
+                disk capacity in the "functin container" (in /tmp) : 512 MB - 10 GB.
+                    Every Lambda execution environment has a temporary filesystem:
+                        Lambda
+                        │
+                        └── /tmp
+                Concurrency: 1,000(account/Region-level quota.)
+                    can be increase by request to aws.
+                    if over 1000 quota, eg:
+                        AWS Account
+                        │
+                        └── ap-northeast-1
+                            │
+                            ├── Lambda A → 600 concurrent
+                            ├── Lambda B → 300 concurrent
+                            └── Lambda C → 100 concurrent
+                                            ─────────
+                                            1,000
+
+                    If all 1,000 concurrency slots are being used, another Lambda invocation may be throttled.
+                    What is throttling?
+                    Throttle = AWS temporarily refuses/delays additional Lambda invocations.
+                    Reserved Concurrency:
+                        can reserved for a specific Lambda function.
+                        cannot run more than reserved limits.
+                            Lambda A → Reserved = 100
+                            Reserved Concurrency = 100
+
+                            Concurrent executions:
+                            0 ─────────────────── 100
+                                        ↑
+                                    MAXIMUM
+                    What happens when throttling occurs?
+                        depends on how Lambda was invoked.
+                            Invocation
+                            │
+                            ├── Synchronous
+                            │
+                            └── Asynchronous
+                            Synchronous invocation → 429 ❌
+                            Asynchronous invocation → retry
+                                go to Dead-Letter Queue (DLQ).
+                                    Event
+                                    ↓
+                                    Lambda
+                                    ↓
+                                    ❌
+                                    ↓
+                                    Retry
+                                    ↓
+                                    ❌
+                                    ↓
+                                    Retry
+                                    ↓
+                                    ❌
+                                    ↓
+                                    DLQ
+                            The DLQ is useful because you don't simply lose the failed event.
+                            You can later investigate/process it.
+            Deployment:
+                Deployment Size
+                    If you're uploading a Lambda function as a ZIP:
+                    ZIP compressed size: 50 MB
+                    after extracting, Uncompressed size: 250 MB
+            Cold Start:
+                Lambda needs to prepare a new execution environment before running your function.
+                Before run your function,
+                    AWS creates an execution environment for your function.
+                        Lambda Function
+                            │
+                            ↓
+                        Execution Environment
+                            │
+                            ├── Runtime
+                            ├── Your code
+                            ├── Dependencies
+                            └── Initialization
+                    if execution environment already exists,
+                        Warm Start:
+                            very little setup is required.
+                            Low latency.
+                            flow:
+                                Request
+                                ↓
+                                Existing Lambda environment
+                                ↓
+                                Handler
+                                ↓
+                                Response
+                        Cold Start:
+                            if not have a ready execution environment.
+                            higher latency.
+                            flow:
+                                Request
+                                ↓
+                                Create new execution environment
+                                ↓
+                                Load runtime
+                                ↓
+                                Load your code
+                                ↓
+                                Load dependencies
+                                ↓
+                                Run initialization
+                                ↓
+                                Handler
+                                ↓
+                                Response
+                            That preparation takes additional time.
+                        Why doesn't every request cause a Cold Start?
+                            lambda get request:
+                                Request 1
+                                ↓
+                                Cold Start
+                                ↓
+                                Environment A
+
+                                Request 2
+                                ↓
+                                Environment A
+                                ↓
+                                Handler
+                            No new initialization is required.
+                            That's a warm invocation.
+                                Request 1 → 🥶 Cold
+                                Request 2 → 🔥 Warm
+                                Request 3 → 🔥 Warm
+                                Request 4 → 🔥 Warm
+                            However, Lambda execution environments aren't permanent. AWS may eventually remove an idle environment.
+                            Then:
+                                Request 5
+                                ↓
+                                New environment
+                                ↓
+                                🥶 Cold Start
+                            Sudden traffic spike can cause:
+                                Cold-start latency
+            Provisioned Concurrency:
+                prepare those environments in advance so the first request doesn't have to wait.
+                AWS prepares environments before requests arrive.
+                So the request doesn't need to wait for the initialization phase.
+                use cases
+                    latency-sensitive APIs
+                    interactive applications
+                    user-facing applications
+                    workloads where predictable response time matters
+                can scale with schedule scaling, target utilization.
+                avoid cold-start latency
+            Lambda SnapStart:
+                improve functions performance to 10x with no extra costs.
+                take a snapshot of an initialized environment and restore from that snapshot.
+                reduce cold-start latency
+                When you publish a new version:
+                    SnapStart prepares the snapshot for that published version.
+                    Imagine:
+                        $LATEST
+                        ↓
+                        Publish
+                        ↓
+                        Version 5
+                    flow:
+                        Lambda initializes your function
+                        Takes a snapshot of memory and disk state of the initialized function
+                        Snapshot is cached for low-latency access
+                
+                |                           | Provisioned Concurrency | SnapStart                         |
+                | ------------------------- | ----------------------- | --------------------------------- |
+                | Main goal                 | Avoid cold starts       | Reduce cold-start time            |
+                | Prepares environment?     | ✅ Yes                   | ✅ During publish                  |
+                | Keeps environments ready? | ✅ Yes                   | ❌ Not the same mechanism          |
+                | Uses snapshots?           | ❌                       | ✅                                 |
+                | Extra cost                | 💰 Yes                  | 🆓 No additional SnapStart charge |
+                | Best idea                 | Predictable low latency | Faster startup                    |
+            exam summary:
+                | Limit                      |                          Remember |
+                | -------------------------- | --------------------------------: |
+                | **Maximum execution time** |                  ⭐ **15 minutes** |
+                | **Memory**                 |              ⭐ **128 MB – 10 GB** |
+                | **`/tmp` storage**         |              ⭐ **512 MB – 10 GB** |
+                | **Concurrency**            | ⭐ **1,000 default, can increase** |
+
+                | Limit                 |   Remember |
+                | --------------------- | ---------: |
+                | ZIP deployment        |  **50 MB** |
+                | Uncompressed package  | **250 MB** |
+                | Environment variables |   **4 KB** |
+
+                Cold Start → new execution environment → initialization → higher first-request latency
+                Provisioned Concurrency → pre-initialized environments → avoid cold-start latency
+                Reserved Concurrency → maximum concurrency / protect function and account capacity
+
+                my my Lab, AWS Lambda's Concurrent executions is 10 count(account-level quota value) only have. 
+                to increase: AWS Console → Service Quotas → AWS Lambda -> search for: Concurrent executions
+
+
+
+
+
 
 
 
