@@ -9200,135 +9200,384 @@ Serverless:
                     If you're uploading a Lambda function as a ZIP:
                     ZIP compressed size: 50 MB
                     after extracting, Uncompressed size: 250 MB
-            Cold Start:
-                Lambda needs to prepare a new execution environment before running your function.
-                Before run your function,
-                    AWS creates an execution environment for your function.
-                        Lambda Function
-                            │
+        Cold Start:
+            Lambda needs to prepare a new execution environment before running your function.
+            Before run your function,
+                AWS creates an execution environment for your function.
+                    Lambda Function
+                        │
+                        ↓
+                    Execution Environment
+                        │
+                        ├── Runtime
+                        ├── Your code
+                        ├── Dependencies
+                        └── Initialization
+                if execution environment already exists,
+                    Warm Start:
+                        very little setup is required.
+                        Low latency.
+                        flow:
+                            Request
                             ↓
-                        Execution Environment
-                            │
-                            ├── Runtime
-                            ├── Your code
-                            ├── Dependencies
-                            └── Initialization
-                    if execution environment already exists,
-                        Warm Start:
-                            very little setup is required.
-                            Low latency.
-                            flow:
-                                Request
-                                ↓
-                                Existing Lambda environment
-                                ↓
-                                Handler
-                                ↓
-                                Response
-                        Cold Start:
-                            if not have a ready execution environment.
-                            higher latency.
-                            flow:
-                                Request
-                                ↓
-                                Create new execution environment
-                                ↓
-                                Load runtime
-                                ↓
-                                Load your code
-                                ↓
-                                Load dependencies
-                                ↓
-                                Run initialization
-                                ↓
-                                Handler
-                                ↓
-                                Response
-                            That preparation takes additional time.
-                        Why doesn't every request cause a Cold Start?
-                            lambda get request:
-                                Request 1
-                                ↓
-                                Cold Start
-                                ↓
-                                Environment A
+                            Existing Lambda environment
+                            ↓
+                            Handler
+                            ↓
+                            Response
+                    Cold Start:
+                        if not have a ready execution environment.
+                        higher latency.
+                        flow:
+                            Request
+                            ↓
+                            Create new execution environment
+                            ↓
+                            Load runtime
+                            ↓
+                            Load your code
+                            ↓
+                            Load dependencies
+                            ↓
+                            Run initialization
+                            ↓
+                            Handler
+                            ↓
+                            Response
+                        That preparation takes additional time.
+                    Why doesn't every request cause a Cold Start?
+                        lambda get request:
+                            Request 1
+                            ↓
+                            Cold Start
+                            ↓
+                            Environment A
 
-                                Request 2
-                                ↓
-                                Environment A
-                                ↓
-                                Handler
-                            No new initialization is required.
-                            That's a warm invocation.
-                                Request 1 → 🥶 Cold
-                                Request 2 → 🔥 Warm
-                                Request 3 → 🔥 Warm
-                                Request 4 → 🔥 Warm
-                            However, Lambda execution environments aren't permanent. AWS may eventually remove an idle environment.
-                            Then:
-                                Request 5
-                                ↓
-                                New environment
-                                ↓
-                                🥶 Cold Start
-                            Sudden traffic spike can cause:
-                                Cold-start latency
-            Provisioned Concurrency:
-                prepare those environments in advance so the first request doesn't have to wait.
-                AWS prepares environments before requests arrive.
-                So the request doesn't need to wait for the initialization phase.
-                use cases
-                    latency-sensitive APIs
-                    interactive applications
-                    user-facing applications
-                    workloads where predictable response time matters
-                can scale with schedule scaling, target utilization.
-                avoid cold-start latency
-            Lambda SnapStart:
-                improve functions performance to 10x with no extra costs.
-                take a snapshot of an initialized environment and restore from that snapshot.
-                reduce cold-start latency
-                When you publish a new version:
-                    SnapStart prepares the snapshot for that published version.
-                    Imagine:
-                        $LATEST
-                        ↓
-                        Publish
-                        ↓
-                        Version 5
+                            Request 2
+                            ↓
+                            Environment A
+                            ↓
+                            Handler
+                        No new initialization is required.
+                        That's a warm invocation.
+                            Request 1 → 🥶 Cold
+                            Request 2 → 🔥 Warm
+                            Request 3 → 🔥 Warm
+                            Request 4 → 🔥 Warm
+                        However, Lambda execution environments aren't permanent. AWS may eventually remove an idle environment.
+                        Then:
+                            Request 5
+                            ↓
+                            New environment
+                            ↓
+                            🥶 Cold Start
+                        Sudden traffic spike can cause:
+                            Cold-start latency
+        Provisioned Concurrency:
+            prepare those environments in advance so the first request doesn't have to wait.
+            AWS prepares environments before requests arrive.
+            So the request doesn't need to wait for the initialization phase.
+            use cases
+                latency-sensitive APIs
+                interactive applications
+                user-facing applications
+                workloads where predictable response time matters
+            can scale with schedule scaling, target utilization.
+            avoid cold-start latency
+        Lambda SnapStart:
+            improve functions performance to 10x with no extra costs.
+            take a snapshot of an initialized environment and restore from that snapshot.
+            reduce cold-start latency
+            When you publish a new version:
+                SnapStart prepares the snapshot for that published version.
+                Imagine:
+                    $LATEST
+                    ↓
+                    Publish
+                    ↓
+                    Version 5
+                flow:
+                    Lambda initializes your function
+                    Takes a snapshot of memory and disk state of the initialized function
+                    Snapshot is cached for low-latency access
+            
+            |                           | Provisioned Concurrency | SnapStart                         |
+            | ------------------------- | ----------------------- | --------------------------------- |
+            | Main goal                 | Avoid cold starts       | Reduce cold-start time            |
+            | Prepares environment?     | ✅ Yes                   | ✅ During publish                  |
+            | Keeps environments ready? | ✅ Yes                   | ❌ Not the same mechanism          |
+            | Uses snapshots?           | ❌                       | ✅                                 |
+            | Extra cost                | 💰 Yes                  | 🆓 No additional SnapStart charge |
+            | Best idea                 | Predictable low latency | Faster startup                    |
+        exam summary:
+            | Limit                      |                          Remember |
+            | -------------------------- | --------------------------------: |
+            | **Maximum execution time** |                  ⭐ **15 minutes** |
+            | **Memory**                 |              ⭐ **128 MB – 10 GB** |
+            | **`/tmp` storage**         |              ⭐ **512 MB – 10 GB** |
+            | **Concurrency**            | ⭐ **1,000 default, can increase** |
+
+            | Limit                 |   Remember |
+            | --------------------- | ---------: |
+            | ZIP deployment        |  **50 MB** |
+            | Uncompressed package  | **250 MB** |
+            | Environment variables |   **4 KB** |
+
+            Cold Start → new execution environment → initialization → higher first-request latency
+            Provisioned Concurrency → pre-initialized environments → avoid cold-start latency
+            Reserved Concurrency → maximum concurrency / protect function and account capacity
+
+            my my Lab, AWS Lambda's Concurrent executions is 10 count(account-level quota value) only have. 
+            to increase: AWS Console → Service Quotas → AWS Lambda -> search for: Concurrent executions
+        Customize At the Edge:
+            Normally, your application logic runs in a server/Region.
+            Edge Functions let you run small pieces of code close to the user, at CloudFront edge locations.
+            Edge Function:
+                Code that runs at/near a CloudFront edge location.
+                minimize latency.
+            two different edge-computing:
+                CloudFront Functions:
+                    very lightweight, high-scale operations. 
+                    Lambda functions must be written by JavaScript.
+                    Small + fast + simple
+                    Millions of requests per second.
+                    Used to change Viewer requests and responses:
+                        Viewer Request: after CloudFront receives a request from a viewer.
+                        Viewer Response: before CloudFront forwards the response to viewer.
+                    Native feature of CloudFront(manage code entirely withing CloudFront)
+                        Native = built directly into the CloudFront service.
+                    Typical examples:
+                        URL rewrites
+                        URL redirects
+                        Modify headers
+                        Normalize requests
+                        Cache-key manipulation
+                        Simple authentication/authorization logic
                     flow:
-                        Lambda initializes your function
-                        Takes a snapshot of memory and disk state of the initialized function
-                        Snapshot is cached for low-latency access
-                
-                |                           | Provisioned Concurrency | SnapStart                         |
-                | ------------------------- | ----------------------- | --------------------------------- |
-                | Main goal                 | Avoid cold starts       | Reduce cold-start time            |
-                | Prepares environment?     | ✅ Yes                   | ✅ During publish                  |
-                | Keeps environments ready? | ✅ Yes                   | ❌ Not the same mechanism          |
-                | Uses snapshots?           | ❌                       | ✅                                 |
-                | Extra cost                | 💰 Yes                  | 🆓 No additional SnapStart charge |
-                | Best idea                 | Predictable low latency | Faster startup                    |
-            exam summary:
-                | Limit                      |                          Remember |
-                | -------------------------- | --------------------------------: |
-                | **Maximum execution time** |                  ⭐ **15 minutes** |
-                | **Memory**                 |              ⭐ **128 MB – 10 GB** |
-                | **`/tmp` storage**         |              ⭐ **512 MB – 10 GB** |
-                | **Concurrency**            | ⭐ **1,000 default, can increase** |
+                        User
+                        ↓
+                        CloudFront Edge
+                        ↓
+                        CloudFront Function
+                        ↓
+                        Very small/simple logic
+                        ↓
+                        Response / continue request
+                Lambda@Edge:
+                    More powerful logic at the edge
+                    Lambda functions must be written in Node.js / Python
+                    Thousands of requests per second.
+                    Used to change CloudFront requests and responses:
+                        Viewer Request - after CloudFront receives a request from a viewer
+                        Origin Request - before CloudFront forwards the request to the ongin
+                        Origin Response - after CloudFront receives the response from the origin
+                        Viewer Response - before CloudFront forwards the response to the viewer
 
-                | Limit                 |   Remember |
-                | --------------------- | ---------: |
-                | ZIP deployment        |  **50 MB** |
-                | Uncompressed package  | **250 MB** |
-                | Environment variables |   **4 KB** |
+            Differences:
+                |                   | CloudFront Functions                 | Lambda@Edge                                |
+                | ----------------- | ------------------------------------ | ------------------------------------------ |
+                | Purpose           | Lightweight edge logic               | More advanced edge logic                   |
+                | Complexity        | Simple                               | More complex                               |
+                | Startup           | Extremely fast                       | More capability, potentially more overhead |
+                | Runtime           | JavaScript                           | Node.js / Python                           |
+                | Execution time    | Very short                           | Longer than CloudFront Functions           |
+                | Use case          | Headers, redirects, URL manipulation | Complex request/response processing        |
+                | Runs at           | CloudFront edge                      | CloudFront edge                            |
+                | Server management | ❌                                    | ❌                                          |
 
-                Cold Start → new execution environment → initialization → higher first-request latency
-                Provisioned Concurrency → pre-initialized environments → avoid cold-start latency
-                Reserved Concurrency → maximum concurrency / protect function and account capacity
+                | Feature         | CloudFront Functions | Lambda@Edge             |
+                | --------------- | -------------------- | ----------------------- |
+                | Main idea       | **Simple + fast**    | **Powerful + flexible** |
+                | Runtime         | JavaScript           | Node.js / Python        |
+                | Requests        | Millions/sec         | Thousands/sec           |
+                | Viewer Request  | ✅                    | ✅                       |
+                | Viewer Response | ✅                    | ✅                       |
+                | Origin Request  | ❌                    | ✅                       |
+                | Origin Response | ❌                    | ✅                       |
+                | Execution       | **< 1 ms**           | **seconds**             |
+                | Memory          | **2 MB**             | Much larger             |
+                | Request body    | ❌                    | ✅                       |
+                | Network access  | ❌                    | More capable            |
+                | File system     | ❌                    | More capable            |
+                | Package         | Very small           | Larger                  |
+                | Cost            | Cheaper              | More expensive          |
 
-                my my Lab, AWS Lambda's Concurrent executions is 10 count(account-level quota value) only have. 
-                to increase: AWS Console → Service Quotas → AWS Lambda -> search for: Concurrent executions
+            To customize requests/responses at CloudFront Edge Locations.
+            Lambda@Edge functions must be deployed/created in Region: us-east-1.
+                CloudFront distributes/replicates the function to its edge locations.
+                                us-east-1
+                                │
+                                │ CloudFront replicates
+                                ↓
+                    ┌─────────┼─────────┐
+                    ↓         ↓         ↓
+                    🇯🇵        🇺🇸        🇬🇧
+                    Edge       Edge       Edge
+            Lambda in VPC:
+                By default: Lambda is not automatically inside your VPC.
+                Lambda is outside your VPC by default.
+                    Your AWS Account
+                        │
+                        ├── Your VPC
+                        │    ├── EC2
+                        │    ├── RDS
+                        │    └── ElastiCache
+                        │
+                        └── Lambda
+                            └── AWS-managed environment
+                So, Lambda cannot directly access private resources in your VPC.
+                How do we put Lambda into the VPC?
+                    When configuring Lambda, we need to specify:
+                            ├── VPC ID
+                            ├── Subnets
+                            └── Security Groups
+                    Lambda will create an ENI in your subnets
+                        ENI = Elastic Network Interface
+                        Think of an ENI as a virtual network interface/card.
+                    This gives Lambda network connectivity to your VPC.
+            Lambda + RDS Proxy:
+                For Lambda → RDS direction.
+                Lambda can create too many database connections under high concurrency.
+                Although Lambda can scale extremely quickly, your database may not scale its connections at the same rate.
+                RDS Proxy solves this.
+                RDS Proxy sits between Lambda and RDS:
+                        Lambda
+                        Lambda
+                        Lambda
+                        Lambda
+                        │
+                        ↓
+                        ┌──────────────┐
+                        │  RDS Proxy   │
+                        │              │
+                        │ Connection   │
+                        │    Pool      │
+                        └──────┬───────┘
+                            ↓
+                            RDS
+                The proxy pools and shares database connections.
+                    connection pooling: a collection of reusable database connections,
+                        instead of creating a new database connection for every request.
+                RDS Proxy = connection pooling for your database.
+                reducing failover time and preserving connections
+                    Without a proxy, many Lambda/database connections may need to be recreated.
+                integrates with: AWS Secrets Manager
+                    enforcing IAM authentication and storing credentials in Secrets Manager
+                Important:
+                    RDS Proxy is never publicly accessible.
+                    Lambda must be deployed in your VPC. and then it can access to RDS Proxy.
+            Lambda + RDS/Aurora integration:
+                RDS/Aurora can also trigger a Lambda function directly.
+                database becomes the caller.
+                support databases: PostgreSQL and Aurora MySQL.
+                requirements:
+                    Network connectivity:
+                        Must allow outbound traffic to your Lambda function from within your DB instance.
+                        RDS instance needs a way to reach Lambda:
+                            Public connectivity
+                            NAT Gateway
+                            VPC Endpoint
+                    Need permission on IAM Policy, Resource-based Policy.
+                        Even if RDS can reach Lambda through the network, AWS still asks:
+                            "Is this database actually allowed to invoke this Lambda?"
+                        So, need to add permission. Think:
+                            IAM Policy
+                                → "RDS can invoke Lambda"
+                            Lambda Resource Policy
+                                → "I allow RDS to invoke me"
+                RDS Event Notification:
+                    tell you about changes/status of the RDS resource itself, NOT changes to the data inside the database.
+                    tell you: "Something happened to my RDS infrastructure/resource."
+                    not: It does NOT tell you about database data.
+                    example:
+                        DB instance created
+                        DB instance started
+                        DB instance stopped
+                        DB instance rebooted
+                    Near real-time events(up to 5 mintes)
+                    Send notifications to SNS or subscribe to events using EventBridge.
+    Amazon DynamoDB:
+        fully managed, serverless NoSQL database
+        Highly available + multiple AZs
+        very high-scale, low-latency applications.
+        unlike SQL database, stores items with attributes.
+            attributes don't necessarily have to be identical for every item.
+            that's one reason DynamoDB is called NoSQL.
+        NoSQL — but supports transactions
+        IAM integration
+        Low cost + auto-scaling
+            capacity modes
+                Provisioned capacity(default):
+                    can set reads/writes per seconds.
+                    need to plan capacity beforehand.
+                    pay for provisioned Read Capacity Units(RCU) and Write Capacity Units(WCU)
+                    possibility to add auto-scaling mode RCU & WCU.
+                On-demand capacity:
+                    scale up/down read/writes automatically
+                    no capacity planning.
+                    pay for use, more expensive.
+                    great for Unpredictable workloads, steep sudden spikes.
+        has different table classes
+            Standard => Frequent access
+            Standard-IA => Infrequent access
+        Basic:
+            DynamoDB is made of Tables
+            Each table stores a collection of items.
+                Maximum item size = 400 KB
+            Table → Item → Attribute
+                | SQL    | DynamoDB      |
+                | ------ | ------------- |
+                | Table  | Table         |
+                | Row    | **Item**      |
+                | Column | **Attribute** |
+                Attributes don't have to be identical.
+                    This is called a flexible schema.
+            Every DynamoDB table must have a Primary Key.
+                Primary Key must be decided when the table is created.
+            Partition Key:
+                an attribute used to identify and distribute items.
+            Sort Key:
+                second key that can be used together with the Partition Key.
+            Simple Primary Key:
+                Simple Primary Key contains only a Partition Key.
+            Composite Primary Key:
+                Partition Key + Sort Key
+        Data Types:
+            Scalar Types
+                Scalar means basically one value.
+            Document Types
+                List,Map to allow you to create nested structures.
+                List => array
+                Map => Object / Dictionary.
+            Set Types
+                collection of unique values of the same type.
+                    String Set
+                    Number Set
+                    Binary Set
+        can repidly evolve schemas:
+            DynamoDB has a flexible schema at the item/attribute level.
+                but, Primary Key is NOT flexible.
+        DynamoDB Accerlerator(DAX):
+            Sits in front of DynamoDB to cache frequently read data.
+            flow: Application → DAX → DynamoDB
+            Helps reduce read congestion on DynamoDB.
+            Cached data can be returned in microseconds.
+            No application code changes required because DAX is compatible with existing DynamoDB APIs.
+            Default TTL = 5 minutes.
+            DAX vs ElastiCache:
+                DAX → specifically designed for DynamoDB, minimal/no application changes.
+                ElastiCache → general-purpose Redis/Memcached cache;
+                    usually requires application-level caching logic.
+        DynamoDB - Stream Processing:
+            DynamoDB Streams / Kinesis Data Streams can capture item-level changes in DynamoDB.
+            stream:
+                A record of changes happening to items in your DynamoDB table.
+
+
+
+
+
+
 
 
 
