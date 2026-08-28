@@ -9568,30 +9568,177 @@ Serverless:
                 DAX → specifically designed for DynamoDB, minimal/no application changes.
                 ElastiCache → general-purpose Redis/Memcached cache;
                     usually requires application-level caching logic.
-        DynamoDB - Stream Processing:
+        Stream Processing:
             DynamoDB Streams / Kinesis Data Streams can capture item-level changes in DynamoDB.
             stream:
                 A record of changes happening to items in your DynamoDB table.
+                flow:
+                    DynamoDB
+                        │
+                        │ Item changed
+                        ↓
+                    DynamoDB Streams
+                        ↓
+                    AWS Lambda
+                        ↓
+                    Process change
+            react to changes in real-time
+            Insert into derivative tables
+                Derivative = derived from something else
+                Whenever the original data changes, Lambda can update the derived table.
+            Cross-region replication
+            two type of straming:
+                DynamoDB Streams:
+                    24 hours Rentention.
+                    limited no of consumes.
+                    Lambda triggers
+                        New item
+                        ↓
+                        DynamoDB
+                        ↓
+                        Stream
+                        ↓
+                        Lambda automatically invoked
+                        ↓
+                        Send notification
+                    can be consumed by Lambda or through the DynamoDB Streams Kinesis Adapter.
+                Kinesis Data Streams:
+                    1 year Rentention
+                    high no of consumers.
+                    using AWS lambda, Kinesis Data Analytics, etc.
+            DynamoDB Streams vs Kinesis Data Streams
+                |                             | DynamoDB Streams              | Kinesis Data Streams          |
+                | --------------------------- | ----------------------------- | ----------------------------- |
+                | Purpose                     | Capture DynamoDB item changes | General-purpose streaming     |
+                | Retention                   | **24 hours**                  | **Up to 365 days**            |
+                | Consumers                   | More limited                  | **Many consumers**            |
+                | Replay                      | Limited to retention window   | Much better replay capability |
+                | Lambda                      | ✅                             | ✅                             |
+                | Firehose integration        | ❌ directly                    | ✅                             |
+                | General streaming ecosystem | Limited                       | **Excellent**                 |
+            Stream Vs DAX:
+                DAX:
+                    speed up reads
+                    Caching → improve read performance
+                DynamoDB Streams:
+                    detect item changes
+                    Capture changes → react to events
+            DynamoDB Global Tables:
+                multi-Region DynamoDB
+                Active-Active replication
+                Applications can READ and WRITE in any Region
+                    major difference of one Region is primary and another is standby.
+                Must enable: DynamoDB Streams required
+                Global Tables vs Multi-AZ:
+                    Multi-AZ → availability
+                    Global Tables → multi-Region + low latency + disaster recovery, Active-Active
+                        (Multiple Regions can actively handle reads and writes.)
+                    RDS Multi-AZ -> One primary handles writes; standby is for failover.
+            TTL(Time To Live):
+                automatically deletes expired items
+                TTL is NOT exactly "delete at this second"
+                TTL deletion is asynchronous.
+                Don't use TTL when you need something to be deleted at an exact second.
+                useful:
+                    Session data.
+                        User login session
+                            ↓
+                        expires after 24 hours
+                            ↓
+                        TTL automatically removes it
+                    Temporary data:
+                        Temporary verification code
+                            ↓
+                        expires after 10 minutes
+                            ↓
+                        TTL removes it
+                    Logs / events:
+                        Event
+                        ↓
+                        30 days
+                        ↓
+                        TTL
+                        ↓
+                        Automatically deleted
+                TTL saves you from manually deleting items
+                    a server-side automatic cleanup mechanism.
+            Backups for disaster recovery:
+                two types:
+                    PITR(point-in-time recovery):
+                        continuously back up your DynamoDB table so you can restore it to a specific point in time.
+                        35-day recovery
+                            can restore to a point within the previous 35 day
+                    On-demand backup:
+                        can keep that backup for a long time unlike PITR's 35 day.
+                    Note:
+                        AWS Backup:
+                            can centrally manage backups for supported AWS services, including DynamoDB.
+                            Cross-Region backup copies
+                            can be useful for disaster recovery.
+                recovery process creates a new table.
+                |                    | PITR                                    | On-demand                               |
+                | ------------------ | --------------------------------------- | --------------------------------------- |
+                | Backup style       | Continuous                              | Manual/explicit                         |
+                | Recovery           | **Any point in recovery window**        | Restore from backup                     |
+                | Retention          | **Up to 35 days**                       | Until explicitly deleted                |
+                | Good for           | Accidental changes/deletes              | Long-term backup                        |
+                | Performance impact | No significant table performance impact | No significant table performance impact |
+                | Restore            | **Creates new table**                   | **Creates new table**                   |
+            Integration with s3:
+                DynamoDB → S3 = Export:
+                    PITR required.
+                        an export a consistent snapshot of the table at a selected point in time within the PITR window.
+                    within the available 35-day recovery window.
+                    NOT consume Read Capacity
+                    Retain snapshots for auditing
+                    ETL: Extract → Transform → Load
+                    export format: DynamoDB JSON or Ion
+                S3 → DynamoDB = Import
+                    Import CSV, DynamoDB JSON or ION format
+                    doesn't consume Write Capacity
+                    Import creates a NEW table
+                    Import errors are logged in CloudWatch Logs
+                Summary:
+                    |                    | Export to S3             | Import from S3                    |
+                    | ------------------ | ------------------------ | --------------------------------- |
+                    | Direction          | DynamoDB → S3            | S3 → DynamoDB                     |
+                    | PITR required?     | **Yes**                  | No                                |
+                    | Capacity consumed  | **No RCU**               | **No WCU**                        |
+                    | Creates new table? | N/A                      | **Yes**                           |
+                    | Formats            | DynamoDB JSON, Ion       | CSV, DynamoDB JSON, Ion           |
+                    | Use case           | Analytics, auditing, ETL | Load/transform data into DynamoDB |
+                    | Errors             | —                        | CloudWatch Logs                   |
+
+                    Export → doesn't consume RCU
+                    Import → doesn't consume WCU
+    API Gateway:
+        API Gateway = a managed "front door" for your APIs.
+            Commonly used with AWS Lambda for serverless APIs
+            No infrastructure to manage
+            Supports HTTP/REST APIs and WebSocket APIs
+            API versioning (v1, v2, ...)
+            Different environments (dev, test, prod)
+            Authentication & authorization integrations
+            API keys + usage plans + throttling
+            Import APIs using Swagger/OpenAPI
+            Request/response transformation & validation
+            Can generate client SDKs/API specifications
+            API response caching
+        API Gateway + Lambda:
+            no infrastructure to manage.
+            API Gateway handles the API-facing responsibilities, while Lambda handles the business logic.
+        3 important integration types:
+            Lambda:
+                easy way to expose REST API backed by Lambda.
+            HTTP:
+                HTTP endpoint.
+                Why put API Gateway in front of an existing HTTP API?
+                    Because API Gateway gives you API-management features.
+                    eg: Rate Limiting, Authentication, API Keys, Caching.
+            AWS Service:
+        Note:
+            API Gateway receives the client's API request, then forwards/integrates that request to a backend.
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
