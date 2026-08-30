@@ -9735,9 +9735,164 @@ Serverless:
                 Why put API Gateway in front of an existing HTTP API?
                     Because API Gateway gives you API-management features.
                     eg: Rate Limiting, Authentication, API Keys, Caching.
-            AWS Service:
+            AWS Service Integration:
+                API Gateway doesn't have to call Lambda or an HTTP server.
+                It can directly integrate with AWS services.
+                eg: Send message to SQS, Start Step Functions.
+            why is API Gateway being added?
+                usually:
+                    Authentication
+                    Rate limiting / throttling
+                    API keys
+                    Caching
+                    Public API
+                    API management
+        3 endpoint types:
+            Global → Edge-Optimized:
+                default.
+                Global clients/ For clients around the world.
+                The request first reaches a nearby CloudFront edge location, 
+                    which can improve network latency.
+                    Edge-Optimized does NOT mean API Gateway is deployed globally.
+                API Gateway itself remains in one AWS Region
+            Regional → Regional:
+                API Gateway is accessed directly in its AWS Region.
+                when Your clients are primarily located in the same Region.
+                instead of Edge-Optimized, => more control over CloudFront.
+            VPC only → Private:
+                can only be accessed from your VPC.
+                For internal API (i.e: should not be Internet-accessible)
+                How to connect Privarte API Gateway?
+                    using Interface VPC Endpoint(ENI)
+            Note:
+                | Type               | Main purpose             | Client location | CloudFront                    |
+                | ------------------ | ------------------------ | --------------- | ----------------------------- |
+                | **Edge-Optimized** | Global users             | Worldwide       | Automatically uses CloudFront |
+                | **Regional**       | Users in/near one Region | Regional        | Can add your own CloudFront   |
+                | **Private**        | Internal APIs            | **VPC only**    | Not public CloudFront access  |
+        Security:
+            User Authentication:
+                IAM:
+                    IAM Role: for AWS/internal applications.
+                    eg:
+                        Internal AWS application
+                        AWS service calling API Gateway
+                        IAM permissions
+                        AWS credentials
+                        SigV4 authentication
+                Cognito:
+                    external application users
+                    Amazon Cognito is designed for managing identities for application users.
+                    for mobile/WEB application:
+                        Mobile App
+                        ↓
+                        Cognito
+                        ↓
+                        JWT token
+                        ↓
+                        API Gateway
+                        ↓
+                        Lambda
+                Custom Authorizer:
+                    Sometimes IAM or Cognito doesn't fit your requirements.
+                    for own authentication/authorization logic.
+                    could have your own token system.
+            Custom Domain + HTTPS:
+                HTTPS Security with ACM:
+                    If using Edge-Optimized endpoint, then the certificate must be in us-east-l
+                    If using Regional endpoint, the certificate must be same Region as API Gateway.
+                    DNS: 
+                        Use Route 53
+                        Must create a CNAME or Alias record pointing your custom domain to API Gateway.
         Note:
             API Gateway receives the client's API request, then forwards/integrates that request to a backend.
+    AWS Step Functions:
+        Step Functions = coordinator
+            think: "Run A first. If A succeeds, run B. Then run C."
+            while:  Lambda = worker
+        a managed workflow orchestrator that coordinates multiple steps/services in a process.
+        controls which step runs, when it runs, and what happens if something fails.
+            Step Functions
+                │
+                ├── Lambda: Check Payment
+                │
+                ├── Lambda: Check Inventory
+                │
+                ├── Lambda: Reserve Item
+                │
+                ├── Lambda: Shipping
+                │
+                └── Lambda: Send Email
+        Orchestrate = oordinate multiple tasks and control their execution order.
+        features:
+            Sequence: can execute tasks sequentially.
+            Parallel: don't depend on each other.can happen in parallel.
+            Conditions / Choice: can make decisions in the workflow.
+            Error handling:  can define what should happen
+            Timeouts: can also control how long a task is allowed to run.
+            Human approval: A human can make a decision as part of the workflow.
+        Can integrate with EC2, ECS, On-premises servers, API Gateway, SQS queues, etc.
+            not only Lambda.
+    Amazon Cognito:
+        a managed identity service for your application users.
+        Serverless user database:
+            Create a serverless database of users for your web & mobile apps
+            Suppose you have a mobile application with 10,000 users:
+            Cognito User Pool
+            │
+            ├── User A
+            ├── User B
+            ├── User C
+            ├── ...
+            └── User 10,000
+            Cognito manages the user identities for you.
+        TWO major concepts:
+            User Pools:
+                think: "Who is my user?" / Sign-in
+                User directory
+                Integrate with API Gateway
+                    very common architecture:
+                            Mobile/Web App
+                                ↓
+                            Cognito User Pool
+                                ↓
+                            Authentication
+                                ↓
+                            API Gateway
+                                ↓
+                            Lambda
+                Integrate with Application Load Balancers:
+                    User
+                     ↓
+                    ALB
+                    ↓
+                    Cognito authentication
+                    ↓
+                    EC2
+            Identity Pools:
+                think: "What AWS credentials can this user get?"
+                can provide temporary AWS credentials.
+                The user can then access an AWS resource according to 
+                    the permissions associated with those credentials.
+            Note:
+                Identity Pools can use User Pools.
+                Cognito is designed for this kind of large-scale application identity management.
+                    Key: "Hundreds/thousands/millions of application users"
+                SAML authentication:
+                    Users can authenticate using an existing identity system
+                        rather than creating another username/password account.
+                        Cognito can be part of that federation architecture.
+
+                |                               | User Pool          | Identity Pool                       |
+                | ----------------------------- | ------------------ | ----------------------------------- |
+                | Main purpose                  | **Authentication** | **AWS access**                      |
+                | Manages users                 | ✅                  | Not primarily                       |
+                | Sign-in/sign-up               | ✅                  | ❌                                   |
+                | Provides AWS credentials      | ❌                  | ✅                                   |
+                | Access AWS resources directly | ❌                  | ✅                                   |
+                | Works with API Gateway        | ✅                  | Can be part of broader architecture |
+                | Temporary AWS credentials     | ❌                  | ✅                                   |
+
 
 
 
