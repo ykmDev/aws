@@ -10589,7 +10589,412 @@ Databases:
                 Reader endpoint
                     distributes read traffic among available reader instances.
         RDS features are still available.
-        Aurora Serverless:
+        Aurora Serverless
+            Unpredictable/intermittent workloads
+        Aurora Global Database
+            Multiple AWS Regions
+        Aurora Machine Learning
+            Integrates with SageMaker / Comprehend
+        Aurora Database Cloning
+            Quickly create a new cluster from an existing Aurora cluster
+        Security/Monitoring/Maintenance:
+            Similar capabilities to RDS
+        Note:
+            AURORA
+                │
+                ├── 6 copies / 3 AZs
+                ├── Shared distributed storage
+                ├── Serverless → unpredictable workload
+                ├── Global → multi-region
+                └── Clone → fast copy
+    ElastiCache:
+        managed in-memory cache
+        Supports:
+            Redis
+            Memcached
+        Performance
+            Data stored in RAM
+            Sub-millisecond latency
+        Common use cases
+            Cache frequently accessed database queries
+            Key-value data
+            Session storage
+            Reduce database read load
+            Improve application latency
+        Important
+            Not a relational SQL database
+            Usually not the source of truth
+            Requires application changes to implement caching logic
+        Redis
+            Clustering
+            Replication
+            Read replicas
+            High availability
+        Security
+            Security Groups
+            KMS
+            Authentication
+            Encryption
+        Backup
+            Snapshots / backups available depending on engine/configuration
+        Exam shortcuts
+            "Frequent reads + same data repeatedly requested"
+            → ElastiCache
+            "Store website sessions across multiple servers"
+            → ElastiCache
+            "Sub-millisecond latency"
+            → ElastiCache
+            "DynamoDB + caching"
+            → DAX
+            "SQL + JOINs + source of truth"
+            → RDS/Aurora
+            "Cannot use SQL"
+            → ElastiCache / DynamoDB / other NoSQL depending on context
+    DynamoDB:
+        | Question says...                   | Think...           |
+        | ---------------------------------- | ------------------ |
+        | **Serverless NoSQL**               | DynamoDB           |
+        | **Massive scale**                  | DynamoDB           |
+        | **Key-value / document**           | DynamoDB           |
+        | **Single-digit milliseconds**      | DynamoDB           |
+        | **Unpredictable traffic**          | DynamoDB On-Demand |
+        | **Need cache for DynamoDB**        | DAX                |
+        | **Microsecond reads**              | DAX                |
+        | **Item expiration**                | DynamoDB TTL       |
+        | **React to item changes**          | DynamoDB Streams   |
+        | **Lambda triggered by DB changes** | DynamoDB Streams   |
+        | **Multiple regions, read + write** | Global Tables      |
+        | **Active-Active**                  | Global Tables      |
+        | **Recover to a specific time**     | PITR               |
+        | **Export database data to S3**     | DynamoDB Export    |
+        | **No RCU during export**           | DynamoDB → S3      |
+        | **No WCU during import**           | S3 → DynamoDB      |
+        | **Schema changes frequently**      | DynamoDB           |
+        | **SQL / JOINs**                    | RDS / Aurora       |
+        | **Sub-millisecond cache**          | ElastiCache        |
+    s3:
+        Key/Value Store for Objects
+            Key → Object
+                photos/yan/profile.jpg → [image data]
+                videos/intro.mp4       → [video data]
+                documents/passport.pdf → [PDF data]
+        Great for bigger objects, not so great for many small objects
+        Max object size = 50 TB
+        S3 is Serverless
+            | Keyword in question                          | Think                 |
+            | -------------------------------------------- | --------------------- |
+            | **Object storage**                           | S3                    |
+            | **Bucket**                                   | S3                    |
+            | **50 TB object**                             | S3                    |
+            | **Serverless storage**                       | S3                    |
+            | **Images / videos / PDFs / backups**         | S3                    |
+            | **Frequently accessed**                      | S3 Standard           |
+            | **Infrequent access**                        | S3 Standard-IA        |
+            | **Unknown access pattern**                   | Intelligent-Tiering   |
+            | **Archive**                                  | Glacier               |
+            | **Automatically move objects between tiers** | Lifecycle             |
+            | **Protect old versions**                     | Versioning            |
+            | **KMS encryption**                           | SSE-KMS               |
+            | **Browser accessing S3 from another origin** | CORS                  |
+            | **Prevent modification/deletion**            | Object Lock           |
+            | **Large file upload**                        | Multipart Upload      |
+            | **Users far from bucket**                    | Transfer Acceleration |
+            | **Filter part of object**                    | S3 Select             |
+            | **Operate on millions of objects**           | S3 Batch Operations   |
+            | **Get inventory/listing**                    | S3 Inventory          |
+            | **S3 object changed → Lambda**               | S3 Event Notification |
+            | **Shared filesystem for ECS**                | EFS                   |
+            | **EC2 disk**                                 | EBS                   |
+            | **Database records**                         | DynamoDB/RDS          |
+    DocumentDB:
+        AWS cloud-optimized document database
+        MongoDB compatible/migration.
+        MongoDB/DocumentDB works with documents.
+            JSON-like documents
+        DocumentDB stores JSON-like data.
+        Cluster architecture
+            Similar deployment concepts as Aurora
+                think of:
+                        DocumentDB Cluster
+                                │
+                    ┌──────────┴──────────┐
+                    ↓                     ↓
+                Primary              Replicas
+                    │                     │
+                WRITE                  READ
+                    │                     │
+                    └──────────┬──────────┘
+                                ↓
+                        Shared Storage
+        Highly Available across 3 AZs
+        Storage automatically grows
+        fully managed.
+        DocumentDB Vs Aurora:
+            |                 | Aurora                  | DocumentDB                 |
+            | --------------- | ----------------------- | -------------------------- |
+            | Database type   | Relational              | NoSQL document             |
+            | Compatible with | **MySQL / PostgreSQL**  | **MongoDB**                |
+            | Data model      | Tables/rows             | Documents                  |
+            | Query style     | SQL                     | MongoDB-compatible APIs    |
+            | Use case        | Relational applications | JSON/document applications |
+            | HA              | Multi-AZ                | Multi-AZ                   |
+            | Storage         | Distributed/shared      | Distributed/shared         |
+            | Storage scaling | Automatic               | Automatic                  |
+        DocumentDB vs DynamoDB:
+            |                | DocumentDB                                | DynamoDB                |
+            | -------------- | ----------------------------------------- | ----------------------- |
+            | Type           | Document database                         | Key-value/document      |
+            | AWS native     | Managed AWS service                       | **AWS proprietary**     |
+            | Compatibility  | **MongoDB**                               | AWS API                 |
+            | Serverless     | Not the same serverless model as DynamoDB | **Yes**                 |
+            | Data           | JSON-like documents                       | Items/attributes        |
+            | Primary access | MongoDB-compatible queries                | Primary key             |
+            | Massive scale  | ✅                                         | **Excellent**           |
+            | Use case       | MongoDB workloads                         | Serverless applications |
+    Neptune:
+        fully managed graph database.
+        To efficiently represent and query connections between entities.
+        Nodes + Relationships:
+            User A ──friend──> User B
+            │                  │
+            likes              likes
+            ↓                  ↓
+            Post A ──comment──> Post B
+            Nodes:
+                Things/entities:
+                    Users
+                    Products
+                    Posts
+                    Accounts
+                    Locations
+            Relationships / Edges
+                Connections between them:
+                    friend
+                    likes
+                    follows
+                    purchased
+                    commented
+                    transferred money to
+            Why do we need Neptune?
+                You want to answer: "Who are the friends of my friends who liked the same posts that I liked?"
+                That's a relationship-heavy query.
+                You may need to traverse:
+                    Me
+                    ↓
+                    My friends
+                    ↓
+                    Their friends
+                    ↓
+                    Posts they liked
+                    ↓
+                    Common posts
+                This can become very complicated in traditional relational databases.
+            Exam Keyword:
+                Highly connected data
+                Graph database
+                Relationships
+                Social network:
+                            User A
+                            /      \
+                        friend    likes
+                        ↓          ↓
+                        User B       Post 1
+                        │
+                        follows
+                        ↓
+                        User C
+                        │
+                        likes
+                        ↓
+                        Post 2
+                Recommendation engine:
+                    Graph:
+                        User A
+                        ├── bought → Product 1
+                        ├── bought → Product 2
+                        └── likes → Product 3
+
+                        User B
+                        ├── bought → Product 1
+                        └── bought → Product 4
+
+                        The system can traverse relationships:
+
+                        You
+                        ↓
+                        similar users
+                        ↓
+                        their products
+                        ↓
+                        recommend
+                Fraud detection:
+                    Account A
+                    ↓
+                    transfers money to
+                    ↓
+                    Account B
+                    ↓
+                    transfers to
+                    ↓
+                    Account C
+                    ↓
+                    same device
+                    ↓
+                    Account D
+                Knowledge graph:
+                        Albert Einstein
+                                │
+                        born in
+                                ↓
+                            Germany
+                                │
+                        continent
+                                ↓
+                            Europe
+
+                            Person
+                            ↓
+                            Company
+                            ↓
+                            Industry
+                            ↓
+                            Country
+                            ↓
+                            City
+                Network topology
+                Connected datasets(Huge number of connections/relationships)
+            Neptune Vs DynamoDB:
+                |                              | DynamoDB                          | Neptune                   |
+                | ---------------------------- | --------------------------------- | ------------------------- |
+                | Type                         | Key-value / document              | **Graph**                 |
+                | Main concept                 | Items & keys                      | **Nodes & relationships** |
+                | Best for                     | Massive scalable application data | **Highly connected data** |
+                | Serverless                   | ✅                                 | Managed                   |
+                | Partition Key                | ⭐                                 | ❌                         |
+                | Social network relationships | Possible, but not ideal           | ⭐⭐⭐                       |
+                | Fraud relationship analysis  | Possible                          | ⭐⭐⭐                       |
+                | Recommendation relationships | Possible                          | ⭐⭐⭐                       |
+                | Knowledge graph              | ❌                                 | ⭐⭐⭐                       |
+        Neptune Streams:
+            Real-time stream of every change to graph data
+            Changes available immediately after writing
+            Strictly ordered
+            No duplicates
+            Accessible through HTTP REST API
+            Used to:
+            React to graph changes
+            Send notifications
+            Synchronize Neptune with S3 / OpenSearch / ElastiCache
+            Replicate graph data across regions
+            Note:
+                | Question says...                          | Think...               |
+                | ----------------------------------------- | ---------------------- |
+                | **Real-time changes to Neptune graph**    | ⭐ Neptune Streams      |
+                | **Ordered sequence of graph changes**     | ⭐ Neptune Streams      |
+                | **React to graph changes**                | Neptune Streams        |
+                | **Synchronize Neptune with S3**           | Neptune Streams        |
+                | **Synchronize Neptune with OpenSearch**   | Neptune Streams        |
+                | **Synchronize Neptune with ElastiCache**  | Neptune Streams        |
+                | **Replicate Neptune data across regions** | Neptune Streams        |
+                | **Graph change notifications**            | Neptune Streams        |
+                | **MongoDB changes**                       | DocumentDB mechanisms  |
+                | **DynamoDB item changes**                 | DynamoDB Streams       |
+                | **S3 object events**                      | S3 Event Notifications |
+    Keyspaces:
+        fully managed, serverless, Apache Cassandra-compatible database service.
+            designed for:
+                Very large datasets
+                Distributed systems
+                High availability
+                High write/read throughput
+                Scaling across many machines
+        Serverless.
+        support Cassandra Query Language (CQL).
+        Single-digit millisecond latency at scale
+        Time-Series Data.
+        Note:
+            |                      | DynamoDB             | Amazon Keyspaces           |
+            | -------------------- | -------------------- | -------------------------- |
+            | Database type        | Key-value / document | Cassandra                  |
+            | Compatibility        | AWS DynamoDB API     | **Apache Cassandra / CQL** |
+            | Serverless           | ✅                    | ✅                          |
+            | Highly scalable      | ✅                    | ✅                          |
+            | Partition key        | ✅                    | Cassandra partition key    |
+            | CQL                  | ❌                    | **✅**                      |
+            | IoT                  | ✅                    | **✅**                      |
+            | Cassandra migration  | ❌                    | **⭐**                      |
+            | Multi-AZ replication | ✅                    | **3x across AZs**          |
+            | PITR                 | 35 days              | 35 days                    |
+    Timestream:
+        fully managed, fast, scalable, time series database.
+        time-series data.
+        Trillions of Events
+        sql support.
+        Scheduled Queries
+        Storage Tiering:
+                            Timestream
+                                │
+                    ┌──────────┴──────────┐
+                    ↓                     ↓
+                Recent data          Historical data
+                    ↓                     ↓
+                Memory             Cost-optimized
+                    store               storage
+        Why not just use RDS?
+            You could store time-based data in a relational database, 
+            but huge volumes of continuously generated measurements can become expensive and difficult to scale.
+            Imagine:
+                Millions of IoT devices
+                        ↓
+                Thousands of measurements/sec
+                        ↓
+                Millions/billions of records
+                        ↓
+                    Timestream
+        Use Cases:
+            ├── IoT ⭐⭐⭐
+            ├── Time-series data ⭐⭐⭐
+            ├── Operational monitoring
+            ├── Real-time analytics
+            └── Application metrics
+        |                                 | Timestream               | Keyspaces                         |
+        | ------------------------------- | ------------------------ | --------------------------------- |
+        | Main purpose                    | **Time-series database** | **Cassandra-compatible database** |
+        | Database model                  | Time series              | Wide-column / Cassandra           |
+        | Serverless                      | ✅                        | ✅                                 |
+        | CQL                             | ❌                        | **✅**                             |
+        | SQL                             | **✅**                    | CQL                               |
+        | IoT                             | ⭐⭐⭐                      | ⭐⭐⭐                               |
+        | Time-series                     | **⭐⭐⭐**                  | Possible                          |
+        | Cassandra application           | ❌                        | **⭐⭐⭐**                           |
+        | Historical time-based analytics | **⭐⭐⭐**                  | Possible                          |
+    Note:
+        | Database       | Serverless? | Key idea           |
+        | -------------- | ----------- | ------------------ |
+        | **DynamoDB**   | ✅ Yes       | Key-value/document |
+        | **Timestream** | ✅ Yes       | Time-series        |
+        | **Keyspaces**  | ✅ Yes       | Cassandra          |
+        | **DocumentDB** | ❌ No*       | MongoDB-compatible |
+        | **Neptune**    | ❌ No*       | Graph              |
+
+
+        | Application / Requirement    | AWS Service    |
+        | ---------------------------- | -------------- |
+        | AWS-native serverless NoSQL  | **DynamoDB**   |
+        | MongoDB application          | **DocumentDB** |
+        | Graph / relationships        | **Neptune**    |
+        | Apache Cassandra application | **Keyspaces**  |
+Data & Analytics:
+
+
+
+
+
+        
+
+
+
+
             
 
 
