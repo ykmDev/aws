@@ -10985,7 +10985,334 @@ Databases:
         | Graph / relationships        | **Neptune**    |
         | Apache Cassandra application | **Keyspaces**  |
 Data & Analytics:
+    Amazon Athena:
+        Serverless SQL query over S3
+        S3 = where my data/files are stored
+        Athena = SQL engine that reads and queries those files
+        supported file format:
+            CSV
+            JSON
+            ORC
+            Avro
+            Parquet
+        Parquet is especially important
+            "Large amount of data in S3 and need to reduce the amount of data scanned by Athena"
+            Think about columnar formats such as Parquet or ORC
+        $5 per TB scanned
+        Reduce data scanned → reduce Athena cost
+            Common techniques include:
+                Partition your data
+                Use Parquet/ORC
+                Select only required columns
+                Compress data
+        To Performance Improvement:
+            use columnar data for cost-savings(less scan)
+                Apache Parquet or ORC is recommended.
+                Huge performance Improvement
+                Use Glue to convert your data to Parquet or ORC
+                    AWS Glue:
+                        CSV files
+                        │
+                        ▼
+                        AWS Glue
+                        │
+                        ▼
+                        Parquet / ORC
+                        │
+                        ▼
+                        Amazon S3
+                        │
+                        ▼
+                        Athena
+            Compress data for smaller retrievals
+                compression formats include:
+                    GZIP
+                    Snappy
+                    ZSTD
+            Partition datasets
+            use Larger files (>128 MB) to minimize overhead.
+                to avoid lots of tiny files.
+            goal: Scan less → retrieve less → pay less → query faster
+        Athena Federated Query:
+            Normal Athena: Athena → query data in S3
+            Federated Query: Athena → query data in different data sources
+            Those sources can be:
+                Relational databases
+                NoSQL databases
+                Object stores
+                Custom data sources
+                AWS services
+                On-premises data sources
+            using Data Source Connector: Lambda.
+                Athena
+                │
+                │ SQL
+                ▼
+                Lambda Data Source Connector
+                │
+                ▼
+                DynamoDB
 
+                |                   | Normal Athena          | Federated Query  |
+                | ----------------- | ---------------------- | ---------------- |
+                | Main data source  | **S3**                 | Multiple sources |
+                | Query language    | SQL                    | SQL              |
+                | Serverless        | ✅                      | ✅                |
+                | Lambda connectors | Usually no             | **Yes**          |
+                | RDS               | Not directly as source | ✅                |
+                | DynamoDB          | Not directly as source | ✅                |
+                | CloudWatch Logs   | Not directly as source | ✅                |
+                | On-premises data  | Not directly           | ✅                |
+                | Results           | S3                     | S3               |
+        use cases:
+            Athena + QuickSight:
+                for reporting/dashboards
+                            S3
+                            │
+                            │ data
+                            ▼
+                            Athena
+                            │
+                            │ SQL results
+                            ▼
+                        QuickSight
+                            │
+                            ▼
+                    Dashboards / Reports
+                exam context: "Company stores data in S3 and wants to create interactive BI dashboards without managing servers."
+            Athena and AWS Logs:
+                for analyzing logs stored in S3
+        Important:
+            Athena + reduce query cost/data scanned → partitioning + Parquet/ORC
+            Athena does NOT store your data. S3 stores it; Athena queries it.
+
+            "Serverless SQL queries against data stored in S3"
+            ➡️ Athena
+
+            "Analyze S3 data without loading it into a database"
+            ➡️ Athena
+
+            "Query VPC Flow Logs stored in S3"
+            ➡️ Athena
+
+            "Analyze CloudTrail logs in S3 using SQL"
+            ➡️ Athena
+
+            "Create BI dashboards from Athena results"
+            ➡️ Athena + QuickSight
+
+            "Reduce Athena query costs"
+            ➡️ Partition data + columnar formats such as Parquet/ORC
+
+            "Data warehouse for large-scale analytics"
+            ➡️ Redshift, not Athena.
+    Amazon Redshit:
+        fully managed data warehouse designed for OLAP workloads.
+        OLTP:
+            Online Transaction Processing:
+                Customer buys something
+                    ↓
+                INSERT order
+                UPDATE inventory
+                UPDATE payment
+            Characteristics:
+                Many small transactions
+                Frequent INSERT/UPDATE/DELETE
+                Low-latency individual operations
+                Application database
+            Examples: RDS / Aurora / DynamoDB
+        OLAP:
+            Online Analytical Processing:
+                "Show me total sales by country for the last 5 years."
+            Characteristics:
+                Large datasets
+                Complex queries
+                Aggregations
+                Joins
+                Reporting
+                Business intelligence
+                Data warehouse
+        Redshift is based on PostgreSQL.
+        Columnar storage:
+            Traditional relational databases often store data by row.
+            Redshift uses columnar storage.
+        Parallel query engine
+                          Redshift
+                            │
+                    ┌─────────┼─────────┐
+                    ▼         ▼         ▼
+                Node 1    Node 2    Node 3
+                    │         │         │
+                data      data      data
+                    │         │         │
+                    └─────────┼─────────┘
+                            ▼
+                        Result
+        Two deployment modes:
+            Provisioned Redshift:
+                You choose the capacity.
+                    Redshift Cluster
+                    ├── Compute
+                    └── Storage
+            Serverless cluster:
+                SQL Query
+                ↓
+                Redshift Serverless
+                ↓
+                AWS manages compute
+        SQL interface
+        BI tools
+            integrates with BI tools such as:
+                Amazon QuickSight
+                Tableau
+                Power BI
+                other SQL/BI tools
+        Redshift vs Athena:
+            |                        | **Athena**            | **Redshift**                       |
+            | ---------------------- | --------------------- | ---------------------------------- |
+            | Main purpose           | Query data in S3      | Data warehouse                     |
+            | Storage                | S3                    | Redshift managed warehouse storage |
+            | Serverless             | ✅                     | ✅ Redshift Serverless              |
+            | SQL                    | ✅                     | ✅                                  |
+            | OLAP                   | ✅                     | ⭐⭐⭐                                |
+            | Complex joins          | Good                  | **Excellent**                      |
+            | Complex aggregations   | Good                  | **Excellent**                      |
+            | Large repeated queries | Good                  | **Better**                         |
+            | Data warehouse         | ❌                     | ✅                                  |
+            | Columnar               | Can query Parquet/ORC | **Native columnar architecture**   |
+            | Data must be in S3?    | Normally yes          | No                                 |
+            | BI                     | QuickSight etc.       | QuickSight/Tableau etc.            |
+        Snapshots:
+            point-in-time backup of a Redshift cluster.
+            incremental
+                after the initial snapshot, subsequent snapshots save changed data rather than repeatedly copying everything.
+            automatically takes snapshots:
+                with schedule:
+                    Every 8 hours OR after 5 GB per node of data changes — whichever comes first.
+            set Retention.
+                default: 1 day.
+        Restore Snapshot:
+            can be restored into a new Redshift cluster.
+        Disaster Recovery:
+            can configure snapshots to be copied to another AWS Region.
+        Multi-AZ
+        exam summary:
+            | Question clue                         | Think                            |
+            | ------------------------------------- | -------------------------------- |
+            | Point-in-time backup                  | **Redshift Snapshot**            |
+            | Automatic backups                     | **Automated snapshots**          |
+            | User-created backup                   | **Manual snapshot**              |
+            | Restore Redshift after failure        | **Snapshot → new cluster**       |
+            | AZ failure, continue operating        | **Multi-AZ**                     |
+            | Region failure / DR                   | **Cross-Region snapshot copy**   |
+            | Keep an important backup indefinitely | **Manual snapshot**              |
+            | Automatically remove old backups      | **Automated snapshot retention** |
+        how data gets into Redshift efficiently?
+            Large INSERTs are MUCH better. 
+            don't treat like an OLTP database
+                Redshift ကို တစ်ကြောင်းချင်း INSERT မလုပ်သင့်
+                "Data အများကြီးပေးပါ။ တစ်ခါတည်း analyze လုပ်မယ်။"
+                Batch လုပ်ပြီး ထည့်တာ ပိုကောင်း
+            Kinesis Data Firehose → Redshift
+                Firehose က Redshift ကို record တစ်ခုချင်းစီ မပို့ဘူး။
+                Firehose က data ကို buffer / batch လုပ်တယ်။
+                ပြီးတော့ S3 ကို staging area အဖြစ်သုံးပြီး Redshift ကို load လုပ်တယ်။
+                    Applications
+                        │
+                        │ streaming data
+                        ▼
+                    Kinesis Data Firehose
+                        │
+                        │ buffer / batch
+                        ▼
+                        S3
+                        │
+                        │ COPY
+                        ▼
+                    Redshift
+                "Redshift က S3 နဲ့ communicate လုပ်တဲ့ traffic ကို ဘယ် network path ကနေသွားစေချင်လဲ?"
+                    Without Enhanced VPC Routing:
+                        normal.
+                            S3
+                            │
+                            │ AWS internal path
+                            ▼
+                            Redshift
+                    With Enhanced VPC Routing:
+                        Redshift က S3 နဲ့ data transfer လုပ်တဲ့ traffic ကို VPC ထဲက network path ကနေ route လုပ်တယ်။
+                        ဒါကြောင့် VPC-level network controls ကို အသုံးချနိုင်တယ်။
+                EC2 + JDBC driver → Redshift:
+                    Java/application code can connect to Redshift using a JDBC driver and execute SQL.
+                    application က: 100 recordsကို စုထားပြီး: EC2 -> Batch -> Redshift လိုမျိုး ပို့တာက ပိုကောင်းတယ်။
+                    COPY vs INSERT:
+                        INSERT : Good for Small amount of data
+                        COPY : Good for Large datasets
+                    So, Large data in S3 → COPY
+                    prefer Batch because OLAP data warehouse.
+
+                Athena: S3 ထဲက data ကို query လုပ်ချင်တယ်
+                Redshift: Data warehouse ထဲကို data load လုပ်ပြီး heavy analytics လုပ်ချင်တယ်
+                | Requirement                          | Best thing to think of       |
+                | ------------------------------------ | ---------------------------- |
+                | Large data → Redshift                | **Batch loading**            |
+                | S3 → Redshift                        | **COPY command**             |
+                | Streaming → Redshift                 | **Kinesis Data Firehose**    |
+                | Firehose → Redshift                  | **Firehose → S3 → Redshift** |
+                | Many small INSERTs                   | ❌ Avoid                      |
+                | Large/batched INSERTs                | ✅ Better                     |
+                | EC2 application → Redshift           | **JDBC**                     |
+                | Keep S3/Redshift traffic through VPC | **Enhanced VPC Routing**     |
+        Redshift Spectrum:
+            Redshift ကနေ S3 ထဲက data ကို မရွှေ့ဘဲ query လုပ်ခြင်း
+            Normally, S3 -> COPY -> Redshift.
+            Data အရမ်းများရင် Storage လည်း Redshift မှာ လိုမယ်။
+            ဒီအခြေအနေမှာ Redshift Spectrum သုံးနိုင်တယ်။
+            Spectrum က S3 ထဲက data ကို တိုက်ရိုက် query လုပ်ပေးတယ်။
+            requirement:
+                Must have a Redshift cluster
+                Spectrum ကို သီးသန့် standalone query service အနေနဲ့ မသုံးဘူး။
+                            Redshift Cluster
+                                │
+                                ▼
+                        Redshift Spectrum
+                                │
+                                ▼
+                                S3
+                unlike Athena:
+                        S3
+                        │
+                        ▼
+                        Athena
+                        │
+                        ▼
+                        SQL
+            query is submitted to Thousands of Redshift Spectrum nodes
+                S3 data ကို parallel အနေနဲ့ Redshift architecture နဲ့ analyze လုပ်ပေး
+            |                                       | Athena           | Redshift Spectrum         |
+            | ------------------------------------- | ---------------- | ------------------------- |
+            | Query S3 data                         | ✅                | ✅                         |
+            | Data ကို S3 မှာထား                    | ✅                | ✅                         |
+            | Data ကို Redshift ထဲ load လုပ်ရန်လို? | ❌                | ❌                         |
+            | Redshift cluster လို?                 | ❌                | **✅**                     |
+            | SQL                                   | ✅                | ✅                         |
+            | Serverless query service              | **✅**            | ❌                         |
+            | Redshift နဲ့ integrate                | Optional         | **Core purpose**          |
+            | Main idea                             | S3 ကို SQL query | Redshift ကနေ S3 ကို query |
+
+            Athena → S3 ကို query
+            Redshift Spectrum → Redshift ကနေ S3 ကို query
+            Mainly use for: data warehouse + data lake.
+    OpenSearch (ex: ElasticSearch):
+        
+
+
+
+
+
+
+
+
+        
 
 
 

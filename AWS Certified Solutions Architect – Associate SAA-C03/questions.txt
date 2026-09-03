@@ -564,5 +564,20 @@ Kinesis Data Streams is designed for real-time streaming data at high throughput
     Consumers can reprocess/replay data because Kinesis retains the records for a configurable retention period.
 Why not S3? => not a real-time streaming service.
 ----------------------------------------------
+You are looking to perform Online Transaction Processing (OLTP). 
+You would like to use a database that has built-in auto-scaling capabilities and provides you with the maximum number of replicas for its underlying storage. What AWS service do you recommend?
+
+1. Amazon ElasticCache
+2. Amazon Neptune
+3. Amazon Aurora
+4. Amazon RDS
+
+ans: 3. Amazon Aurora
+OLTP means applications that perform lots of small, frequent database transactions:
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
