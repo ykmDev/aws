@@ -11303,7 +11303,227 @@ Data & Analytics:
             Redshift Spectrum → Redshift ကနေ S3 ကို query
             Mainly use for: data warehouse + data lake.
     OpenSearch (ex: ElasticSearch):
-        
+        searching နဲ့ log/data analysis အတွက်သုံးတဲ့ managed service
+        DynamoDB = exact key နဲ့ data ရှာတာကောင်း
+        OpenSearch = text / field / partial match နဲ့ data ရှာတာကောင်း(full-text search / partial matching)
+        Elasticsearch ရဲ့ successor
+        OpenSearch ကို Database အစားသုံးတာမဟုတ်ဘူး
+            DynamoDB က source of truth ဖြစ်နိုင်ပြီး OpenSearch က search index ဖြစ်နိုင်
+        Two modes:
+            Managed clusters:
+                ကိုယ်တိုင် cluster resources ကို configure/manage လုပ်ရ
+            OpenSearch Serverless:
+                Infrastructure / capacity ကို AWS က manage လုပ်ပေး
+        OpenSearch Dashboards
+        Note:
+            DynamoDB
+                ↓
+            "Give me item with this KEY"
+
+            OpenSearch
+                ↓
+            "Find documents matching this TEXT"
+
+            Athena
+                ↓
+            "Run SQL on files in S3"
+
+            Redshift
+                ↓
+            "Run heavy OLAP analytics on a warehouse"
+
+            OpenSearch Dashboards
+                ↓
+            "Visualize OpenSearch data"
+    Amazon EMR(Elastic MapReduce):
+        Big Data processing / analytics အတွက် အသုံးပြုတဲ့ managed service
+        idea: 
+            Data အရမ်းများတယ် → machine တစ်လုံးတည်းနဲ့ မနိုင်ဘူး → EC2 machines အများကြီးကို cluster လုပ် → data ကို parallel processing လုပ်
+                          Huge Data
+                                │
+                                ▼
+                        ┌───────────────────┐
+                        │    Amazon EMR     │
+                        │    Cluster        │
+                        └───────────────────┘
+                        │   │   │   │
+                        ▼   ▼   ▼   ▼
+                        EC2 EC2 EC2 EC2
+                        │   │   │   │
+                        └───┴───┴───┘
+                                │
+                                ▼
+                            Processed Data
+            EC2 instance hundreds အထိပါဝင်တဲ့ cluster တွေတည်ဆောက်နိုင်ပါတယ်။
+        Hadoop ecosystem ရဲ့ tools/frameworks အများကြီးကို support လုပ်
+            Hadoop = Data အများကြီးကို computer အများကြီးနဲ့ ခွဲပြီး process လုပ်တဲ့ system
+        EMR က ဘာကို Manage လုပ်ပေးလဲ
+            သာမန် EC2 နဲ့ Hadoop cluster ကို ကိုယ်တိုင်လုပ်မယ်ဆိုရင်—
+                EC2 create
+                ↓
+                Networking
+                ↓
+                Install Hadoop
+                ↓
+                Configure Hadoop
+                ↓
+                Install Spark
+                ↓
+                Configure Spark
+                ↓
+                Configure cluster
+                ↓
+                Monitor
+                ↓
+                Scale
+                အလုပ်တွေ အများကြီးရှိပါတယ်။
+            EMR သုံးရင်—
+                You
+                ↓
+                Create EMR Cluster
+                ↓
+                AWS EMR
+                ├── Provision instances
+                ├── Install software
+                ├── Configure cluster
+                ├── Manage cluster
+                └── Scaling
+            ဆိုပြီး AWS က အများကြီး manage ပေးပါတယ်။
+        bundled with Apache Spark, HBase, Presto, Flink...
+        EMR က cluster ကို workload အလိုက် scale up / scale down လုပ်နိုင်
+            ဒါကြောင့် cost နဲ့ performance ကို balance လုပ်နိုင်ပါတယ်။
+        EMR + Spot Instances:
+            "Instance ပျက်သွားရင် job ကို retry လုပ်နိုင်တယ်"
+            လိုမျိုး fault-tolerant ဖြစ်နိုင်ပါတယ်။
+            ဒီလို workload တွေအတွက် Spot Instances သုံးပြီး cost လျှော့နိုင်ပါတယ်။
+            Big Data processing + cost optimization
+            အချိန်တိတိကျကျ မပျက်မကွက် run ရမယ့် workload တွေအတွက် Spot ကို မသုံးသင့်
+        Node Types:
+            Master:
+                Cluster ရဲ့ manager
+                main management.
+                Long-running:
+                    stable instance သုံးတာက ပိုသင့်တော်ပါတယ်။
+            Core:
+                Task + Data Storage
+                two jobs: Core Node
+                            ├── Run processing tasks
+                            └── Store data
+                Long-running:
+                    ပိုပြီး stable purchasing option သုံး
+                        Core node မှာ data storage ပါတဲ့အတွက် Spot interruption ဖြစ်ရင် cluster/data processing ကို ထိခိုက်နိုင်ပါတယ်။
+            Task:
+                Compute only
+                ဘာကြောင့် Task Node ကို Spot သုံးလေ့ရှိလဲ?
+                    Task Node
+                        ↓
+                    Spot Instance
+                        ↓
+                    Cheap 💰
+                        ↓
+                    Terminated?
+                        ↓
+                    Other nodes continue
+                "Need additional compute capacity for EMR and can tolerate interruptions."
+        Note:
+            EMR = Process Big Data with Spark/Hadoop
+
+            | Node       | အဓိကတာဝန်            | Storage | Typical role          |
+            | ---------- | -------------------- | ------- | --------------------- |
+            | **Master** | Cluster management   | —       | Stable / long-running |
+            | **Core**   | Tasks + data storage | ✅       | Stable / long-running |
+            | **Task**   | Tasks only           | ❌       | Often Spot            |
+    QuickSight:
+        AWS ရဲ့ Business Intelligence (BI) service
+        → Database / S3 / Athena / Redshift စတဲ့ data တွေကိုယူပြီး chart, graph, dashboard တွေတည်ဆောက်ပြီး
+        business insight ရှာဖို့သုံးတာ။
+        QuickSight
+            │
+            ├── Charts
+            ├── Graphs
+            ├── Analysis
+            └── Dashboards
+        Interactive Dashboard:
+            user က filter / date range / region စတာတွေ ပြောင်းပြီး data ကို dynamically ကြည့်နိုင်
+        Ad-hoc Analysis:
+            ကြိုတင်သတ်မှတ်ထားတဲ့ report မဟုတ်ဘဲ လိုအပ်တဲ့အချိန်မှာ မေးခွန်းအသစ်တစ်ခုကို ချက်ချင်း data ခွဲခြမ်းစိတ်ဖြာတာ။
+            Ad-hoc = “I have a new question. Let me analyze the data now.”
+        SPICE:
+            “Import data into QuickSight for fast in-memory analysis.”
+            QuickSight ရဲ့ in-memory data engine ပါ။
+                Data Source
+                    │
+                    │ Import
+                    ▼
+                    SPICE
+                    │
+                    ▼
+                    QuickSight
+                    │
+                    ▼
+                    Fast Analysis
+            SPICE ထဲကို data import လုပ်လိုက်ရင်
+            Database ကို query တိုင်းတိုင်း မလုပ်ဘဲ SPICE ထဲက data ကို memory ထဲမှာ process လုပ်နိုင်တာကြောင့်
+            analysis/dashboard ကို မြန်မြန်လုပ်နိုင်
+        Automatically scalable
+        Embeddable
+            QuickSight dashboard ကို ကိုယ့် application ထဲမှာ ထည့်ပြနိုင်
+        Per-session pricing
+            user တစ်ယောက် dashboard ကို အသုံးပြုတဲ့ session အပေါ်မူတည်ပြီး charge လုပ်တဲ့ pricing model
+        Column-Level Security (CLS):
+            User တစ်ယောက်ချင်းစီကို column တချို့ပဲ မြင်ခွင့်ပေးတာ
+        Row-Level Security (RLS):
+            user တစ်ယောက်ချင်းစီ မြင်နိုင်တဲ့ data rows ကို ကန့်သတ်နိုင်
+        QuickSight Users & Groups ≠ IAM
+            QuickSight ထဲမှာ user တွေကို သီးခြား manage လုပ်နိုင်
+            QuickSight User/Group တွေဟာ QuickSight အတွင်းက identity ဖြစ်ပြီး IAM User/Group မဟုတ်
+            Enterprise Edition မှာ Groups တွေကို အသုံးပြုနိုင်
+        Analysis:
+            Dashboard မထုတ်ခင် ကိုယ်တိုင် data ကို analyze/design လုပ်နေတဲ့ workspace
+            dashboard ကို တည်ဆောက်/ပြင်ဆင် နေ
+            can share the analysis or the dashboard with Users or Groups
+        Dashboard:
+            Analysis ပြီးသွားပြီဆိုရင်—
+                Analysis
+                ↓ Publish
+                Dashboard
+            Dashboard က အခြားသူတွေကို ကြည့်ရှုဖို့ share လုပ်နိုင်တဲ့ published version ဖြစ်ပါတယ်။
+            Analysis ရဲ့ published/read-only version
+            To share a dashboard, you must first publish it.
+        Analysis vs Dashboard:
+            |                       | Analysis        | Dashboard            |
+            | --------------------- | --------------- | -------------------- |
+            | Purpose               | Analyze / build | View / share         |
+            | Edit                  | ✅               | Generally read-only  |
+            | Charts ပြင်           | ✅               | ❌                    |
+            | Filters/configuration | Build           | Preserved            |
+            | Share                 | ✅               | ✅                    |
+            | Publish လို?          | —               | **Yes**              |
+            | Mental model          | **Workspace**   | **Published report** |
+    Amazon Glue:
+        Serverless
+        Managed extract, transform, and load (ETL) service
+        အဓိက use case က Data ကို analytics မလုပ်ခင် prepare/transform လုပ်ခြင်း
+        Glue Job Bookmarks:
+            “Don't process the same old data again.”
+                ပြီးခဲ့တဲ့ run မှာ process လုပ်ပြီးသား data ကို နောက်တစ်ခါ ပြန်မ process လုပ်အောင် track လုပ်ပေးတာ
+        Glue DataBrew:
+            Data cleaning/preparation with pre-built transformations
+                Code ရေးတာထက် GUI နဲ့ data ကို clean/normalize လုပ်ချင်တယ်
+        Glue Studio:
+            Build ETL Job
+            Glue ETL jobs တွေကို GUI နဲ့ create/run/monitor လုပ်နိုင်တဲ့ visual interface
+        Glue Streaming ETL:
+            ပုံမှန် ETL က batch processing လုပ်လေ့ရှိပါတယ်
+            ဒါပေမယ့် data က continuous stream အနေနဲ့ ဝင်လာရင် Streaming ETL သုံးနိုင်ပါတယ်။
+        Apache Spark Structured Streaming:
+            Continuous streaming data ကို Spark နဲ့ process/transform လုပ်ခြင်း
+            data sources:
+                Kinesis Data Streams
+                Kafka
+                Amazon MSK(Managed Streaming for Apache Kafka)
+
+
 
 
 
