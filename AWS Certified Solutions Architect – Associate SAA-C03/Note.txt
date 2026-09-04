@@ -11765,7 +11765,7 @@ Data & Analytics:
                 ↓
                 "Dashboard / BI"
 Machine Learning:
-    Amazon Rekognition:
+    Rekognition:
         to find objects, people, text, scenes in images and videos using ML.
         Face Verification vs Face Search:
             Verification = 1-to-1 comparison
@@ -11831,6 +11831,147 @@ Machine Learning:
                         A2I
                             ↓
                         Human reviewer
+            Flag = mark something as suspicious / needs attention. 🚩
+                eg: Minimum confidence threshold = 80%
+                Now Rekognition follows this rule:
+                    Confidence >= 80%
+                        ↓
+                        🚩 FLAG
+
+                    Confidence < 80%
+                        ↓
+                    Don't flag
+    Transcribe:
+        convert speech to text
+        use a deep learning process called ASR = Automatic Speech Recognition.
+        PII Redaction:
+            PII = Personally Identifiable Information
+        Automatic Language Identification:
+            Audio ထဲမှာ ဘာ language ပြောထားလဲဆိုတာကို automatically identify လုပ်နိုင်
+        Closed Captioning / Subtitles:
+        Searchable Media Archive
+        use case:
+            customer service
+    Polly:
+        Text → Speech
+        Pronunciation Lexicons:
+            a custom pronunciation dictionary: When you see this word, pronounce it this way.
+            acronyms:
+                can define how Polly should interpret/pronounce a particular written form.
+                AWS → "Amazon Web Services"
+        SynthesizeSpeech operation:
+            SynthesizeSpeech means: Generate speech/audio from text.
+        SSML: 
+            Speech Synthesis Markup Language
+            instructions about how to speak the text, rather than simply giving it plain text.
+            Phonetic pronunciation:
+    Translate:
+        natural and accurate language translation
+            Natural = လူပြောသလို သဘာဝကျတဲ့ ဘာသာပြန်မှု
+            Accurate = အဓိပ္ပါယ်မှန်ကန်အောင် ဘာသာပြန်ပေးခြင်း
+        amazon translate allows you to localize content
+            such as websites and applications for international users,
+            and to easily tranlate large volumes of text efficiently.
+            Localize ဆိုတာ content ကို နိုင်ငံ/ဘာသာစကားအလိုက် ပြောင်းလဲပေးတာ
+    Amazon Lex & Connect:
+        Amazon Lex = Chatbot / Voice Bot တည်ဆောက်ဖို့ service
+            Alexa မှာအသုံးပြုတဲ့ technology နဲ့ ဆက်စပ်တဲ့ conversational AI service
+            ASR — Automatic Speech Recognition
+            Speech -> Text
+            Customer က ပြောလိုက်တာကို Lex က text အဖြစ် နားလည်နိုင်အောင် ပြောင်းပေ
+            NLU — Natural Language Understanding
+            help build chatbots, call center bots.
+        Amazon Connect = Cloud-based Contact Center
+            Lex က customer နဲ့ စကားပြောပြီး intent နားလည်တဲ့ bot ဖြစ်တယ်။
+            Connect က customer call center တစ်ခုလုံးကို cloud ပေါ်မှာ run ပေးတဲ့ service ဖြစ်တယ်။
+            Receive calls
+                Customer က company ကို ဖုန်းခေါ်လာတာကို Amazon Connect က လက်ခံပေးနိုင်တယ်။
+            Contact Flows
+                Contact Flow = customer call ဘယ်လိုအဆင့်ဆင့်သွားမလဲဆိုတာ သတ်မှတ်ထားတဲ့ workflow။
+        Note:
+            Lex vs Connect:
+                |                 | Amazon Lex                 | Amazon Connect                  |
+                | --------------- | -------------------------- | ------------------------------- |
+                | အဓိက            | Chat/Voice Bot             | Contact Center                  |
+                | အလုပ်           | Customer ရဲ့ intent နားလည် | Calls + contact-center workflow |
+                | ASR             | ✅                          | —                               |
+                | NLU             | ✅                          | —                               |
+                | Phone calls     | Bot အနေနဲ့ handle နိုင်    | ☎️ Call infrastructure          |
+                | Contact flows   | —                          | ✅                               |
+                | Human agents    | —                          | ✅                               |
+                | CRM integration | Indirect/backend           | ✅                               |
+    Comprehend:
+        Text ကို AI/ML နဲ့ "နားလည်" ပေးတဲ့ NLP service
+        text ကို input အဖြစ်ယူပြီး အဲဒီ text ထဲက information တွေကို ရှာပေး
+            📝 Text
+                ↓
+                Amazon Comprehend
+                ↓
+                "ဒီစာမှာ ဘာတွေပါလဲ?"
+                "ဘယ်လို sentiment လဲ?"
+                "ဘယ် topic လဲ?"
+                "ဘယ်သူ/ဘယ်နေရာ/ဘယ် brand လဲ?"
+        Language Detection,
+        Key Phrases(အဓိကစကားစုတွေ),
+        Entities(နေရာ၊ brand၊ event),
+        Sentiment Analysis
+            Sentiment = စာရေးသူရဲ့ positive/negative feeling
+        Tokenization: စကားလုံး/token အပိုင်းတွေ ခွဲခြမ်းခြင်း
+        Parts of Speech: စကားလုံးတစ်ခုချင်းစီရဲ့ grammatical role ကို analyze လုပ်
+        Organize Text by Topic:
+            Comprehend က text documents အများကြီးကို analyze လုပ်ပြီး ဘယ် topic အကြောင်းလဲ ဆိုတာ automatically ရှာနိုင်တယ်။
+            Topic Modelingနဲ့ ဆက်စပ်
+        use case:
+            Customer Interaction Example
+                Company မှာ customer emails 100,000 ရှိတယ်။
+                Company က ဒီလို insight ရနိုင်တယ်—
+                Negative customer experience အများစုက delivery delay ကြောင့်ဖြစ်နေတယ်။
+        Comprehend vs Lex:
+            | Service               | Main purpose                 |
+            | --------------------- | ---------------------------- |
+            | **Amazon Lex**        | Chatbot / conversational bot |
+            | **Amazon Comprehend** | Analyze and understand text  |
+            example:
+                Customer က chatbot ကို—
+                    "I want to cancel my order."
+                    ပြောတယ်။
+                Lex က:
+                    "Customer ရဲ့ intent က CancelOrder ဖြစ်တယ်"
+                    လို့ နားလည်ပြီး conversation ကို handle လုပ်တယ်။
+                Customer က email ရေးတယ်—  "Your delivery was very late and I'm disappointed."
+                Comprehend က:
+                    Sentiment = Negative
+                    Key phrase = delivery
+                    Topic = Delivery
+                လို analyze လုပ်တယ်။
+    Comprehend Medical:
+        Medical text ကို နားလည်/analyze
+        PHI:
+            PHI = Protected Health Information
+            ဒါက medical context ထဲက လူနာကို ခွဲခြားသိရှိနိုင်စေတဲ့ ကျန်းမာရေးဆိုင်ရာ အချက်အလက် တွေပါ။
+            DetectPHI ရဲ့ key point က PHI ကို detect လုပ်တာ ဖြစ်ပါတယ်။
+            ဒီ API ရဲ့ အဓိက concept ကို medical text ထဲက sensitive patient information ရှာဖွေ
+        real-time/streaming data use case:
+            Real-time medical data
+                    ↓
+            Kinesis Data Firehose
+                    ↓
+            Comprehend Medical
+                    ↓
+            Medical information
+    SageMaker AI:
+        AWS platform for building, training, deploying, and managing ML models.
+                Training Data
+                    ↓
+                Prepare / Label Data
+                    ↓
+                Train ML Model
+                    ↓
+                Evaluate Model
+                    ↓
+                Deploy Model
+                    ↓
+                Prediction
 
 
 
