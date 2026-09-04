@@ -11522,10 +11522,248 @@ Data & Analytics:
                 Kinesis Data Streams
                 Kafka
                 Amazon MSK(Managed Streaming for Apache Kafka)
+    AWS Lake Formation:
+        Data အမျိုးမျိုးကို S3-based Data Lake တစ်ခုထဲ စုစည်းပြီး၊ data ကို
+        clean/catalog/secure/access-control လုပ်ပေးတဲ့ managed service
+                         Lake Formation
+                                    │
+                    ┌────────────┼────────────┐
+                    ▼            ▼            ▼
+                    Collect       Clean       Catalog
+                    │            │            │
+                    └────────────┼────────────┘
+                                    ▼
+                                Secure
+                                    │
+                                    ▼
+                                Data Lake
+            Data Lake = central place to have all your data for analytics purposes
+                Data Lake ထဲမှာ—
+                    Structured data → database tables
+                    Semi-structured → JSON
+                    Unstructured → images, documents, logs
+                    တွေကို အတူတူထားနိုင်
+                is not separate storage service, S3 bucket can serve as Data Lake.
+            Data Lake = raw + structured + unstructured data အများကြီးကို စုထား
+            Data Warehouse = analytics အတွက် structured data ကို စနစ်တကျထား
+        Central Permission Management:
+            Row-level = which records can you see?
+            Column-level = which fields can you see?
+        Lake Formation + S3:
+                    Data Sources
+                ┌─────┬─────┬─────┐
+                ▼     ▼     ▼     ▼
+                RDS  DynamoDB IoT Logs
+                │     │     │     │
+                └─────┴─────┴─────┘
+                            │
+                            ▼
+                    Lake Formation
+                            │
+                            ▼
+                            S3
+                        Data Lake
+                                │
+                    ┌─────────┼─────────┐
+                    ▼         ▼         ▼
+            Athena    Redshift   QuickSight
+            S3 က Data Lake ရဲ့ storage layer ဖြစ်နိုင်ပြီး၊
+            Lake Formation က Data Lake ကို setup/govern/secure လုပ်တဲ့ management layer
+        Structured + Unstructured Data:
+            Structured
+            └── RDS customer table
 
+            Semi-structured
+            └── JSON application events
 
+            Unstructured
+            ├── PDF
+            ├── Images
+            └── Logs
+        Discover, Cleanse, Transform, Ingest:
+            Discover: ဘယ် data တွေရှိလဲ ရှာဖွေခြင်း
+            Cleanse: မလိုအပ်တာတွေဖယ်၊ မမှန်တာပြင်
+            Transform: Data format/structure ကို ပြောင်းခြင်း
+            Ingest: Source ကနေ Data Lake ထဲကို data သွင်းခြင်း
+        Fine-grained access control:
+            Data ကို အကြမ်းဖျင်း “table တစ်ခုလုံး” access ပေးတာမဟုတ်ဘဲ row / column အဆင့်အထိ ခွင့်ပြုချက်ကန့်သတ်နိုင်တာ
+        Built on top of AWS Glue:
+                        Lake Formation
+                            │
+                            ▼
+                            Glue
+                            │
+                    ┌──────────┼──────────┐
+                    ▼          ▼          ▼
+                Catalog      ETL       Crawlers
+        Glue vs Lake Formation
+            |                      | AWS Glue                 | AWS Lake Formation                  |
+            | -------------------- | ------------------------ | ----------------------------------- |
+            | ETL                  | ⭐ Main                   | Supports                            |
+            | Clean/Transform      | ⭐                        | Supports                            |
+            | Data Catalog         | ✅                        | Uses Glue                           |
+            | Data Lake setup      | —                        | ⭐ Main                              |
+            | Data Lake governance | —                        | ⭐ Main                              |
+            | Fine-grained access  | Limited context          | ⭐ Row/Column                        |
+            | Mental model         | **ETL/Data preparation** | **Data Lake management & security** |
+        ML Transforms / De-duplication:
+        Source Blueprints:
+            Lake Formation မှာ data source တွေကနေ Data Lake ထဲ data ထည့်ဖို့ pre-built source blueprints
+    Amazon Managed Service for Apache Flink:
+        Apache Flink နဲ့ streaming data ကို process လုပ်ဖို့
+        old name: Kinesis Data Analytics for Apache Flink
+        Apache Flink:
+            stream processing framework
+            Flink က data အားလုံးကို စုစုပေါင်းပြီး နောက်နေ့မှ process လုပ်တာမျိုးမဟုတ်ဘဲ stream ဝင်လာရင်း process လုပ်နိုင်ပါတယ်။
+        Provisioned Compute Resources
+            not 
+        Parallel Computation
+        Automatic Scaling
+        Checkpoints & Snapshots
+            Checkpoint:
+                application state ရဲ့ recovery point
+                Flink application က streaming data ကို process လုပ်နေတုန်း failure ဖြစ်သွားနိုင်
+                Application crash ဖြစ်ရင် အစကနေ data အားလုံးကို ပြန်လုပ်မယ့်အစား checkpoint ကနေ recovery လုပ်နိုင်
+            Snapshot:
+                application state ကို သိမ်းထားတဲ့ longer-term/reusable save point
+        Important:
+            Flink does NOT read from Firehose
+                Firehose ရဲ့ အဓိကအလုပ်က streaming data ကို destination ဆီ delivery လုပ်ပေးတာ
+            Flink ရဲ့ streaming input အနေနဲ့ Kinesis Data Streams ကို သုံးနိုင်
+        Glue Streaming ETL vs Managed Flink:
+            Glue Streaming ETL
+                Kinesis Data Streams
+                        ↓
+                Glue Streaming ETL
+                        ↓
+                Transform
+                        ↓
+                Destination
+                Glue Streaming ETL က ETL/data preparation ကို အဓိကထားပါတယ်။
 
+            Managed Service for Apache Flink
+                Kinesis Data Streams
+                        ↓
+                Managed Flink
+                        ↓
+                Flink Application
+                        ↓
+                Complex Stream Processing
+                ပိုပြီး custom/advanced stream processing logic ရေးချင်တဲ့အခါ Flink ကို စဉ်းစားပါ။
 
+                Glue Streaming ETL = Streaming ETL
+                Managed Flink = Apache Flink stream processing
+
+                Kinesis Family:
+                                 KINESIS
+                                        │
+                            ┌─────────┴─────────┐
+                            ▼                   ▼
+                    Data Streams            Firehose
+                            │                   │
+                            ▼                   ▼
+                    Flink / Glue          Delivery
+                    processing            to S3,
+                                            Redshift,
+                                            OpenSearch...
+                Apache Flink → Managed Service for Apache Flink
+                Kinesis Data Streams → Flink = ✅
+                Kinesis Data Firehose → Flink = ❌
+        Amazon MSK (Managed Streaming for Apache Kafka):
+            Apache Kafka:
+                a platform for streaming data.
+                Kafka is especially useful when many applications
+                    need to consume the same continuous stream of events.
+                MSK vs Kinesis:
+                    |                             | Kinesis Data Streams | Amazon MSK       |
+                    | --------------------------- | -------------------- | ---------------- |
+                    | Technology                  | AWS Kinesis          | Apache Kafka     |
+                    | Management                  | AWS managed          | AWS managed      |
+                    | Streaming                   | ✅                    | ✅                |
+                    | Partitions                  | Shards               | Kafka partitions |
+                    | Kafka compatibility         | ❌                    | ✅                |
+                    | Existing Kafka applications | Need modification    | Usually easier   |
+                    | Kafka ecosystem             | ❌                    | ✅                |
+                MSK Cluster:
+                    When you create an MSK cluster, AWS manages the Kafka broker nodes for you.
+                    Kafka Broker:
+                        A broker is basically a Kafka server that:
+                            receives messages
+                            stores messages
+                            serves messages to consumers
+                    ZooKeeper:
+                        Historically, Kafka used Apache ZooKeeper for cluster coordination and metadata management.
+                        However, modern Kafka can use KRaft instead of ZooKeeper.
+                MSK stores data on EBS to persisted.
+                Automatic recovery
+                MSK Serverless
+                    Apache Kafka without managing cluster capacity.
+                MSK Serverless vs regular MSK:
+                    |                                  | MSK                                    | MSK Serverless                   |
+                    | -------------------------------- | -------------------------------------- | -------------------------------- |
+                    | Apache Kafka                     | ✅                                      | ✅                                |
+                    | AWS managed                      | ✅                                      | ✅                                |
+                    | Manage cluster capacity          | More control                           | ❌                                |
+                    | Automatic scaling                | Limited/managed differently            | ✅                                |
+                    | Infrastructure capacity planning | More involved                          | Minimal                          |
+                    | Best for                         | Predictable/control-oriented workloads | Variable/unpredictable workloads |
+
+                Apache Kafka on AWS → Amazon MSK
+                Existing Kafka application → MSK
+                Kafka but don't want to manage broker capacity → MSK Serverless
+                AWS-native streaming → Kinesis Data Streams
+                Deliver streaming data to S3/Redshift/OpenSearch → Kinesis Data Firehose
+                Apache Flink processing → Managed Service for Apache Flink
+                Streaming ETL with Spark → AWS Glue Streaming ETL
+                Kinesis Data Streams VS Amazon MSK:
+                    | Feature              | Kinesis Data Streams     | Amazon MSK                         |
+                    | -------------------- | ------------------------ | ---------------------------------- |
+                    | Technology           | AWS Kinesis              | Apache Kafka                       |
+                    | Main container       | Stream                   | Topic                              |
+                    | Parallel units       | **Shards**               | **Partitions**                     |
+                    | Scaling unit         | Shard                    | Partition / Kafka capacity         |
+                    | Change units         | **Split + Merge shards** | **Add partitions**                 |
+                    | Message size         | ~1 MB limit              | ~1 MB default, configurable larger |
+                    | In-flight encryption | TLS                      | PLAINTEXT or TLS                   |
+                    | At-rest encryption   | KMS                      | KMS                                |
+                    | Kafka compatibility  | ❌                        | ✅                                  |
+                    | Kafka ecosystem      | ❌                        | ✅                                  |
+    Big Data Ingestion Pipeline:
+                IoT Core
+                ↓
+                "Collect from IoT devices"
+
+                Kinesis Data Streams
+                ↓
+                "Real-time streaming"
+
+                Firehose
+                ↓
+                "Deliver streaming data"
+
+                Lambda
+                ↓
+                "Lightweight transformation"
+
+                S3
+                ↓
+                "Store data / Data Lake"
+
+                Athena
+                ↓
+                "SQL query S3"
+
+                S3
+                ↓
+                "Store query reports"
+
+                Redshift
+                ↓
+                "Data Warehouse"
+
+                QuickSight
+                ↓
+                "Dashboard / BI"
 
 
 

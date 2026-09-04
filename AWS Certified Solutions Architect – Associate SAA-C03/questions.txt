@@ -575,8 +575,37 @@ You would like to use a database that has built-in auto-scaling capabilities and
 ans: 3. Amazon Aurora
 OLTP means applications that perform lots of small, frequent database transactions:
 ----------------------------------------------
+As a Solutions Architect, you have been instructed you to prepare a disaster recovery plan for a Redshift cluster. What should you do?
+
+1. Enable Multi-AZ
+2. Enable automated Snapshots, then configure your Redshift cluster to automatically copy snapshots to another AWS region.
+3. Take a snapshot then restore to a Redshift Global cluster.
+
+ans: 2.
 ----------------------------------------------
+A company is using AWS to host its public websites and internal applications. 
+Those different websites and applications generate a lot of logs and traces. 
+There is a requirement to centrally store those logs and efficiently search and 
+analyze those logs in real-time for detection of any errors and if there is a threat. 
+Which AWS service can help them efficiently store and analyze logs?
+
+1. Amazon S3
+2. Amazon OpenSearch service
+3. Amazon ElasticCache
+4. Amazon QLDB
+
+ans: 2.
+OpenSearch is designed for searching and analyzing large amounts of data,
+S3 itself isn't primarily a real-time log search and analysis engine.
 ----------------------------------------------
+You are a DevOps engineer in a machine learning company which 3 TB of JSON files stored in an S3 bucket. There’s a requirement to do some analytics on those files using Amazon Athena and you have been tasked to find a way to convert those files’ format from JSON to Apache Parquet. Which AWS service is best suited?
+
+1. S3 Object Versioning
+2. Kinesis Data Steams
+3. Amazon MSK
+4. AWS Glue
+
+ans: 4.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
