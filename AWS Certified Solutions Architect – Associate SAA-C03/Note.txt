@@ -11764,6 +11764,93 @@ Data & Analytics:
                 QuickSight
                 ↓
                 "Dashboard / BI"
+Machine Learning:
+    Amazon Rekognition:
+        to find objects, people, text, scenes in images and videos using ML.
+        Face Verification vs Face Search:
+            Verification = 1-to-1 comparison
+                "Are these two faces the same person?"
+            Search = 1-to-many search
+                "Which person in my face database is this?"
+        Use cases:
+            Labeling
+            Content Moderation
+            Text Detection
+            Face Detection and Analysis (gender, age range, emotions...)
+            Face Search and Verification
+            Celebrity Recognition
+            Pathing (ex: for sports game analysis)
+            So for example, if you're doing a sports game analysis
+        Content Moderation:
+            User uploads an image/video → Rekognition checks whether it contains potentially inappropriate content → flag it if necessary.
+            uploaded content ကို စစ်ဆေးပြီး မသင့်တော်တဲ့ / offensive / sensitive content တွေကို ရှာဖွေခြင်းပါ။
+            Minimum Confidence Threshold:
+                ဘယ်လောက်ယုံကြည်မှုရှိမှ content ကို flag လုပ်မလဲဆိုတဲ့ သတ်မှတ်ချက်
+                trade-off
+                        User
+                        │
+                        │ Upload photo/video
+                        ▼
+                        S3
+                        │
+                        ▼
+                        Amazon Rekognition
+                        │
+                        ├── Safe → Publish
+                        │
+                        └── Potentially unsafe
+                                ↓
+                            Flag it
+                                ↓
+                        Human Review
+                Amazon Augmented AI (A2I):
+                    Human checks when needed
+            Help comply with regulations:
+                It doesn't mean:
+                    "Rekognition guarantees regulatory compliance."
+                    The company is still responsible for its compliance process.
+            example:
+                    Seller
+                    │
+                    │ Upload product image
+                    ▼
+                    S3
+                    │
+                    ▼
+                    Rekognition
+                    │
+                    ▼
+                    Content Moderation
+                    │
+                    ├── Confidence 99%
+                    │       ↓
+                    │    Flag automatically
+                    │
+                    └── Confidence 60%
+                            ↓
+                        A2I
+                            ↓
+                        Human reviewer
+
+
+
+
+
+
+    Note:
+        | AWS Service             | Main idea                                  |
+        | ----------------------- | ------------------------------------------ |
+        | **Amazon SageMaker AI** | Build, train, deploy, and manage ML models |
+        | **Amazon Rekognition**  | Analyze images & videos                    |
+        | **Amazon Transcribe**   | Speech → text                              |
+        | **Amazon Polly**        | Text → speech                              |
+        | **Amazon Translate**    | Language translation                       |
+        | **Amazon Comprehend**   | NLP / understand text                      |
+        | **Amazon Lex**          | Build chatbots                             |
+        | **Amazon Textract**     | Extract text/data from documents           |
+        | **Amazon Kendra**       | Intelligent enterprise search              |
+        | **Amazon Personalize**  | Personalized recommendations               |
+        | **Amazon Forecast**     | Time-series forecasting                    |
 
 
 
