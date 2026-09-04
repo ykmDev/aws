@@ -11972,8 +11972,85 @@ Machine Learning:
                 Deploy Model
                     ↓
                 Prediction
-
-
+    Amazon Kendra:
+        Fully managed document search service powered by Machine Learning
+            document တွေအများကြီးထဲမှာ user မေးတဲ့အရာကို ရှာပြီး answer ကို document ထဲကနေ ထုတ်ပေးတာ
+        Extract answers from within a document.
+        Natural Language Search:
+            Natural language search ဆိုတာ keyword တွေကို တိတိကျကျ မသိဘဲ လူပြောသလို မေးလို့ရတာ
+        Incremental Learning:
+            user တွေရဲ့ interaction/feedback ကို အသုံးပြုပြီး search results ကို ပိုကောင်းအောင် learn လုပ်တာပါ။
+        Manually Fine-tune Search Results:
+            Kendra က automatic learning ပဲမဟုတ်ဘူး။
+            Admin ကလည်း—
+            "ဒီ result ကို ပိုအရေးကြီးတယ်လို့ သတ်မှတ်ချင်တယ်"
+            ဆိုပြီး search results ကို manually influence လုပ်နိုင်တယ်။
+        Kendra vs OpenSearch
+            OpenSearch: Search engine
+                Logs, application data, indexed documents စတာတွေကို fast search/filter လုပ်ဖို့ကောင်း
+            Kendra: Intelligent document search
+                keyword တစ်လုံးချင်းရှာတာထက် မေးခွန်းရဲ့ meaning ကိုနားလည်ပြီး relevant document/content ထဲက answer ကို ရှာပေးနိုင်
+        Kendra vs Comprehend:
+            Comprehend:
+                "ဒီ text ထဲမှာ ဘာတွေပါလဲ?"
+                Customer Email
+                    ↓
+                Comprehend
+                    ↓
+                Sentiment = Negative
+                Entity = Amazon
+                Key phrase = delivery
+            Kendra:
+                "Documents အများကြီးထဲမှာ ငါမေးတာနဲ့ သက်ဆိုင်တဲ့ answer ဘယ်မှာလဲ?"
+                100,000 Documents
+                    ↓
+                    Kendra
+                    ↓
+                Question
+                    ↓
+                Relevant answer
+    Personalize:
+        Recommendation
+        User တစ်ယောက်
+        ချင်းစီအတွက် ဘာကို recommend လုပ်သင့်လဲဆိုတာ ML နဲ့ ခန့်မှန်းပေးတဲ့ managed service
+        same website ဖြစ်ပေမယ့် user တစ်ယောက်ချင်းစီကို recommendation မတူအောင် လုပ်ပေးနိုင်
+        keywords:
+            Personalized recommendations
+            Product recommendations
+            Real-time recommendations
+            Recommendation engine
+            Personalized content
+            Re-ranking
+            User behavior/preferences
+            Customized marketing
+            Retail recommendations
+            Media recommendations
+            "Customers who bought this also..."
+        Re-ranking:
+            ရှိပြီးသား item list ကို user အတွက် ပိုသင့်တော်တဲ့ order နဲ့ ပြန်စီပေးခြင်း
+        don't need to build, train, deploy ML
+    Textract:
+        Extract text and structured data from documents using ML/OCR.
+            OCR = Optical Character Recognition
+            "Look at this image and recognize the characters."
+        can understand the structure of documents.
+        can understand the table structure.
+        can also detect selection elements such as checkboxes.
+        Key-Value Pair extraction.
+        keywords:
+            OCR
+            Extract text from documents
+            Extract data from scanned documents
+            Forms
+            Key-value pairs
+            Tables
+            Checkboxes / selection elements
+            Invoices
+            Receipts
+            PDF documents
+            Scanned documents
+            Automatically extract structured data from documents
+        if the question emphasizes documents, forms, tables, invoices, PDFs, think Textract.
 
 
 
