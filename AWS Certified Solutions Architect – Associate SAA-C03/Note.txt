@@ -12051,10 +12051,6 @@ Machine Learning:
             Scanned documents
             Automatically extract structured data from documents
         if the question emphasizes documents, forms, tables, invoices, PDFs, think Textract.
-
-
-
-
     Note:
         | AWS Service             | Main idea                                  |
         | ----------------------- | ------------------------------------------ |
@@ -12069,10 +12065,861 @@ Machine Learning:
         | **Amazon Kendra**       | Intelligent enterprise search              |
         | **Amazon Personalize**  | Personalized recommendations               |
         | **Amazon Forecast**     | Time-series forecasting                    |
+AWS Monitoring & Audit:
+    CloudWatch:
+        Overview:
+            Log Group:
+                basically a container/category for related logs.
+                Log Stream:
+                    Inside a Log Group, you have Log Streams.
+                    Log Group
+                        └── Web Application
+                            │
+                            ├── Log Stream → EC2-01
+                            ├── Log Stream → EC2-02
+                            └── Log Stream → EC2-03
+                    Log Events:
+                        an individual log entry.
+                            Log Group
+                            ↓
+                            Log Stream
+                            ↓
+                            Log Events
+            Log Retention / Expiration:
+                Can define log expiration policies (never expire, 1 day to 10 years...)
+                    Retention = 30 days
+                Because keeping logs forever costs money.
+            Arbitrary name:
+                AWS doesn't force one particular naming convention. You choose the name.
+            CloudWatch Logs → Other AWS Services:
+                CloudWatch Logs doesn't have to be the final destination.
+                CloudWatch Logs
+                    │
+                    ├──→ S3
+                    ├──→ Kinesis Data Streams
+                    ├──→ Kinesis Data Firehose
+                    ├──→ Lambda
+                    └──→ OpenSearch
+            Encryption:
+                Logs are encrypted by default.
+                supports encryption at rest.
+                use your own KMS key.
+            Note:
+                Group = application
+                Stream = source
+                Event = actual log entry
+        CloudWatch Logs Insights:
+            CloudWatch Logs ထဲက log data ကို SQL-like query နဲ့ search/analyze လုပ်တဲ့ query engine
+            CloudWatch Logs Insights => Stored logs ကို search/analyze
+            use case:
+                Count ERROR:
+                    Logs Insights က—
+                        Search
+                        ↓
+                        Filter ERROR
+                        ↓
+                        Count
+                        ↓
+                        ERROR = 3
+                    လို aggregate calculation လုပ်နိုင်
+                    Aggregate statistics:
+                        data အများကြီးကို စုစည်းပြီး count, average, sum စတဲ့ summary result ထုတ်တာ
+            Query Language:
+                Logs Insights မှာ SQL မဟုတ်တဲ့ purpose-built query language
+                CloudWatch Logs အတွက် အထူးတည်ဆောက်ထားတဲ့ query language နဲ့ query လုပ်တယ်
+            Automatically discovers fields:
+                application က JSON log ထုတ်တယ်
+                Logs Insights က field တွေကို သိရှိနိုင်တယ်
+            Save Queries → Dashboard
+                Query ကို save လုပ်ထားပြီး CloudWatch Dashboard မှာထည့်နိုင်
+                ဒါဆို dashboard ကနေ application health ကို လွယ်လွယ်ကြည့်နိုင်
+            Multiple Log Groups / AWS Accounts:
+                Logs Insights က supported setup နဲ့ multiple Log Groups / different AWS accounts ကို query လုပ်နိုင်
+            It's a query engine, not a real-time engine"
+                ရှိပြီးသား CloudWatch Logs ကို query/search/analyze လုပ်တာ
+                real-time streaming processing engine မဟုတ်ပါဘူး။
+                ဥပမာ—
+                    "Log event အသစ်ဝင်လာတာနဲ့ ချက်ချင်း process လုပ်ချင်တယ်"
+                    အဲဒီလို requirement ဆိုရင် Kinesis / Lambda / OpenSearch စတဲ့ architecture ကို စဉ်းစားရမယ်
+            ExportTask → S3 = batch / delayed
+                CreateExportTask can use. but,
+                    Log data can take up to 12 hours to become available for export.
+                    So this is not a real-time solution.
+                    eg: for yesterday's logs => perfect, use CreateExportTask
+                    eg: for Every new error log => Don't use CreateExportTask.
+            Subscription → Kinesis/Lambda = real-time
+                If you need real-time log events, use a Logs Subscription.
+                    Application
+                        ↓
+                    CloudWatch Logs
+                        ↓
+                    Subscription
+                        ↓
+                    ┌─────────────┬──────────────┬─────────┐
+                    ↓             ↓              ↓
+                    Kinesis       Firehose       Lambda
+                    Data Streams
+                Subscription Filter:
+                        Suppose CloudWatch has millions of logs:
+                            INFO
+                            INFO
+                            INFO
+                            ERROR
+                            INFO
+                        But you only care about: ERROR
+                        You can use a Subscription Filter.
+                ExportTask vs Subscription
+                    |                         | ExportTask           | Logs Subscription           |
+                    | ----------------------- | -------------------- | --------------------------- |
+                    | Main purpose            | Export/archive logs  | Real-time processing        |
+                    | Destination             | **S3**               | Kinesis / Firehose / Lambda |
+                    | Timing                  | Delayed/batch        | **Real-time**               |
+                    | Filter specific events? | Not the main concept | **Subscription Filter**     |
+                    | Common use              | Long-term archive    | Processing / analysis       |
+                Cross-account subscription:
+                    Account A ရဲ့ CloudWatch Logs ကို Account B ကနေ real-time လက်ခံပြီး process/analyze လုပ်ခြင်း။
+                CloudWatch Logs for EC2
+                    EC2 → CloudWatch Logs does NOT happen automatically.
+                    By default:
+                        EC2
+                        ├── /var/log/app.log
+                        ├── /var/log/messages
+                        └── /var/log/secure
+                    These are just files inside the EC2 instance.
+                    You need:
+                        EC2
+                        ↓
+                        CloudWatch Agent
+                        ↓
+                        CloudWatch Logs
+                    CloudWatch Agent:
+                        a small program running inside your EC2 instance.
+                        Its job is:
+                            Watch these log files and send their contents to CloudWatch.
+                            needs permission to call CloudWatch APIs and send logs.
+                            Usually, you attach an IAM role to the EC2 instance with the necessary CloudWatch permissions.
+                        Example: Web server
+                            Imagine you have an EC2 running Nginx.
+                            Nginx creates:
+                                /var/log/nginx/access.log
+                                /var/log/nginx/error.log
+                            By default:
+                                EC2
+                                │
+                                ├── access.log
+                                └── error.log
+                                ❌ Nothing automatically goes to CloudWatch
+
+                                Install/configure CloudWatch Agent:
+                                EC2
+                                │
+                                ├── access.log ──┐
+                                │                │
+                                └── error.log ───┤
+                                                ↓
+                                        CloudWatch Agent
+                                                ↓
+                                        CloudWatch Logs
+                                                ↓
+                                        Log Group / Streams
+                                Now you can use CloudWatch Logs Insights to query them.
+                                    EC2 → CloudWatch Agent → CloudWatch Logs → Logs Insights
+                        Agent can collect more than logs:
+                            ├── Log files
+                        ├── Memory utilization
+                        ├── Disk utilization
+                        └── Other system metrics
+                    CloudWatch Logs Agent & Unified Agent:
+                        Logs Agent = logs only
+                            "Take log files and send them to CloudWatch Logs."
+                        Unified Agent = logs + system metrics
+                            can send: System-level metrics
+                    Logs vs Metrics:
+                        Logs(old CloudWatch Agent)
+                            Detailed records/events:
+                                10:01 User logged in
+                                10:02 Order created
+                                10:03 ERROR database timeout
+
+                                → CloudWatch Logs
+                        Metrics(new CloudWatch Agent)
+                            Numerical measurements over time:
+                                10:01 → RAM 60%
+                                10:02 → RAM 65%
+                                10:03 → RAM 82%
+
+                                → CloudWatch Metrics
+                        The Unified Agent can collect both.
+                SSM Parameter Store:
+                    Centralized configuration using SSM Parameter Store
+                    This is useful when you have many servers.
+                    You don't want to manually configure every agent separately.
+                    Instead, you can store the agent configuration centrally in:
+                    AWS Systems Manager Parameter Store
+        CloudWatch Alarm:
+            Watch a metric and take an action when a condition is met.
+            Alarm States:
+                OK: metric is within the expected condition.
+                    Example:
+                        CPU = 40%
+                        Threshold = 80%
+                ALARM: threshold condition has been met/breached.
+                    Example:
+                        CPU = 90%
+                        Threshold = 80%
+                INSUFFICIENT_DATA: 
+                    CloudWatch doesn't have enough data to determine whether the alarm should be OK or ALARM.
+                    Example:
+                        Alarm:
+                        CPU > 80%
+
+                        But CloudWatch receives: (no data)
+
+                        CloudWatch can't confidently say:
+                            CPU > 80% ? 🤔
+                        So:
+                        → INSUFFICIENT_DATA
+            Threshold:
+                value that determines when the alarm condition is triggered.
+            Period:
+                how long CloudWatch evaluates the metric data for each evaluation.
+                Example:
+                    Period = 60 seconds
+                    means CloudWatch evaluates data in 1-minute intervals.
+                    10:00 ───────── 10:01
+                            1 minute
+            High-resolution custom metrics:
+                10 sec, 30 sec or multiples of 60 sec
+                This is useful when you need faster monitoring.
+            Alarm doesn't necessarily mean "send email":
+                common architecture:
+                    EC2 CPU
+                    ↓
+                    CloudWatch Metric
+                    ↓
+                    CloudWatch Alarm
+                    ↓
+                    SNS
+                    ↓
+                    Email
+                Or:
+                    EC2 CPU
+                    ↓
+                    CloudWatch Alarm
+                    ↓
+                    Auto Scaling
+                    ↓
+                    Add EC2 instance
+            Alarm Targets:
+                Alarm = detects a problem
+                Alarm Target/Action = what happens after the problem is detected.
+                EC2 Actions:
+                    CloudWatch Alarm can perform actions on an EC2 instance:
+                    Alarm
+                        ↓
+                        EC2
+                        ├── Stop
+                        ├── Terminate
+                        ├── Reboot
+                        └── Recover
+                    Stop:
+                        If CPU stays at 5% for a long time, stop an unnecessary EC2.
+                            CPU very low
+                                    ↓
+                                Alarm
+                                    ↓
+                                STOP EC2
+                    Terminate:
+                        Alarm ka EC2 instance ကို ဖျက်ပစ် လိုက်တယ်။
+                        Production EC2 မှာ သတိထားသုံးရမယ့် action
+                    Reboot:
+                        EC2 ကို restart လုပ်တယ်။
+                        ဥပမာ server တစ်ခုမှာ problem ဖြစ်ပြီး reboot လုပ်ရင် ပြန်ကောင်းနိုင်တဲ့ situation။
+                    Recover:
+                        EC2 underlying hardware problem ဖြစ်တဲ့အခါ instance recovery လုပ်နိုင်ပါတယ်။
+                        EC2 Instance Recovery:
+                            Status Check = EC2 ရဲ့ ဘယ်အပိုင်းမှာ ပြဿနာဖြစ်နေလဲ စစ်တာ
+                            System Status Check failure → underlying AWS hardware/infrastructure ပြဿနာ → Recover လုပ်နိုင်
+                            EC2 Status Checks:
+                                mainly 3 types:
+                                    Instance Status = VM
+                                    System Status = AWS hardware
+                                    EBS Status = Storage
+                                Instance Status Check:
+                                    EC2 VM / instance အတွင်းပိုင်းကို စစ်တာ
+                                System Status Check:
+                                    EC2 instance အောက်က physical/underlying AWS infrastructure ကို စစ်တာ
+                                Attached EBS Status:
+                                    EC2 နဲ့ attach လုပ်ထားတဲ့ EBS volume တွေကို စစ်တာ
+                                If recovery, 
+                                    Recovery လုပ်ပြီးတဲ့အခါ instance ရဲ့ configuration/network identity အများစုကို ဆက်ထိန်းထားပါတယ်။
+                                    Same Private, public, elastic IP, metadata, params, etc.
+                Trigger Auto Scaling Action
+                Send notification to SNS
+            Composite Alarm:
+                အခြား CloudWatch Alarms တွေရဲ့ STATE ကို monitor လုပ်တယ်
+            Normal Alarm vs Composite Alarm
+                Normal Alarm
+                    CPU Metric
+                        ↓
+                    CloudWatch Alarm
+                    ဥပမာ: CPU > 80% → ALARM
+                Composite Alarm
+                    Alarm A ──┐
+                            ├──→ Composite Alarm
+                    Alarm B ──┘
+                Composite Alarm က CPU metric ကို တိုက်ရိုက်ကြည့်တာမဟုတ်ဘူး
+                AND/OR condition:
+                    Alarm A AND Alarm B => do something.
+            Why Composite Alarms? → Reduce Alarm Noise
+                Alarm noise ဆိုတာ—
+                    Problem မဟုတ်သေးတဲ့ minor alerts တွေကြောင့် notification အများကြီးတက်လာပြီး
+                    administrator ကို alert fatigue ဖြစ်စေတာ။
+                    CPU တစ်ခုတည်း ခဏတက်သွားတာနဲ့ alert ပို့နေရင်—
+                    လူက alert တွေ အရမ်းများလာလို့ တကယ့် critical problem ကို မမြင်နိုင်တော့ဘူး။
+                        Alarm 1: CPU High
+                        AND
+                        Alarm 2: Memory High
+                        AND
+                        Alarm 3: Application Error High
+                            ↓
+                        Composite Alarm
+                            ↓
+                        🚨 Critical Problem
+                            ↓
+                        SNS
+                            ↓
+                        Administrator
+                        ဒီလို တကယ် serious ဖြစ်တဲ့အချိန်မှာပဲ notification ပို့နိုင်တယ်။
+            CloudWatch Logs → Metric Filter → Alarm:
+                CloudWatch Logs ထဲက log message ကို Metric Filter နဲ့ metric အဖြစ်ပြောင်းပြီး Alarm တပ်နိုင်ပါတယ်
+                    Application
+                        ↓
+                    CloudWatch Logs
+                        ↓
+                    Metric Filter
+                    "ERROR" ပါတဲ့ log ကိုရှာ
+                        ↓
+                    Custom CloudWatch Metric
+                    ErrorCount = 10
+                        ↓
+                    CloudWatch Alarm
+                    ErrorCount > 5
+                        ↓
+                    SNS → Email
+            Alarm ကို test လုပ်ခြင်း:
+                ဒီ command က တကယ် metric threshold ကျော်သွားအောင်လုပ်တာ မဟုတ်ပါဘူး။
+                    eg:  aws cloudwatch set-alarm-state --alarm-name "CPU > 95%" --state-value ALARM --state-reason "Testing alarm actions"
+                SNS email notification ရောက်မရောက်, Alarm action အလုပ်လုပ်မလုပ် စမ်းနိုင်
+            Note:
+                Normal Alarm
+                    ↓
+                Metric တစ်ခုကိုကြည့်
+
+                Composite Alarm
+                    ↓
+                Alarm တွေရဲ့ STATE ကိုကြည့်
+                    ↓
+                AND / OR
+        CloudWatch Network Synthetic Monitor:
+            AWS ↔ On-premises network connection ကို CloudWatch နဲ့ စောင့်ကြည့်ပေးတဲ့ synthetic network test
+            AWS ထဲမှာရှိတဲ့ application/server က on-premises server ကို ဆက်သွယ်တဲ့ network path မှာ ပြဿနာရှိမရှိ စစ်ပေးပါတယ်။
+                ဥပမာ
+                Latency ↑ → connection နှေးလာ
+                Packet loss ↑ → packet တချို့ပျောက်
+                Jitter ↑ → latency က တစ်ခါနဲ့တစ်ခါ မတည်ငြိမ်
+            "Synthetic" ဆိုတာဘာလဲ?
+                Real user traffic ကို စောင့်ကြည့်တာမဟုတ်ဘဲ monitoring အတွက် test traffic ကို ကိုယ်တိုင် generate လုပ်ပြီး စမ်းသပ်တာပါ။
+                    Network Synthetic Monitor
+                            │
+                            ├── ICMP test
+                            │
+                            └── TCP test
+                                │
+                                ▼
+                        On-premises IP
+                ဥပမာ—
+                AWS ကနေ On-prem server 10.0.0.10 ကို TCP connection test လုပ်ပြီး latency/packet loss စစ်မယ်။
+                ဒါကြောင့် Synthetic = simulated/test traffic လို့ မှတ်ပါ။
+            Agent မလိုဘူး
+                On-prem server မှာ monitoring agent install လုပ်စရာ မလိုပါဘူး။
+            can check route of :
+                AWS Direct Connect
+                Site-to-Site VPN
+            Traffic protocol အနေနဲ့—
+                ICMP
+                TCP
+            CloudWatch Metrics ထဲရောက်တယ်
+                Monitor လုပ်တဲ့ result တွေကို CloudWatch Metrics အဖြစ် publish လုပ်ပါတယ်။
+                        AWS / On-Prem Network
+                                ↓
+                        Network Synthetic Monitor
+                                ↓
+                        Latency
+                        Packet Loss
+                        Jitter
+                                ↓
+                        CloudWatch Metrics
+                                ↓
+                        CloudWatch Alarm
+                                ↓
+                        SNS / Notification
+        Amazon EventBridge:
+            a serverless event bus that lets AWS services and your applications react to events.
+            Schedule — "Do something at a specific time"
+                TIME-based trigger similar to a cron job.
+            Event Pattern — "Something happened"
+                Event listener
+            EventBridge trigger:
+                doesn't necessarily do the actual work itself.
+                routes the event to a Target:
+                    Lambda
+                    SQS
+                    SNS
+                    Step Functions
+                    ECS tasks
+                    API destinations
+                    other EventBridge buses
+            EventBridge Rule:
+                can be based on either:
+                    Schedule
+                    OR
+                    Event Pattern
+            EventBridge vs CloudWatch Alarm:
+                CloudWatch Alarm : Metric crossed a threshold → take action
+                EventBridge: An event happened → route/react
+            Event Bus + Resource-based Policy:
+                Event Bus is where events are received and routed.
+                By default, an event bus is mainly used within its AWS account. 
+                But you can allow other AWS accounts to send events to your event bus using a resource-based policy.
+                        Account A                       Account B
+                        Application
+                            │
+                            │ Event
+                            ▼
+                        EventBridge ────────────────────► Event Bus
+                                                        │
+                                                        ▼
+                                                    Rule
+                                                        │
+                                                        ▼
+                                                    Lambda
+                    PutEvents:
+                        Send/publish an event to an EventBridge event bus.
+                EventBridge Archive:
+                    can archive events that arrive at an Event Bus.
+                    You can choose:
+                        Archive all events
+                        Archive only events matching a filter/event pattern
+                        Keep them for a configured retention period
+                EventBridge Replay:
+                    Archive = save the past events
+                    Replay = send those saved events through the Event Bus again
+                        example:
+                            Imagine you deployed a buggy Lambda:
+                                S3 Event
+                                ↓
+                                EventBridge
+                                ↓
+                                Lambda ❌ Bug
+                            Events were archived.
+                            After fixing Lambda:
+                                Archive
+                                │
+                                │ Replay
+                                ▼
+                                EventBridge
+                                ↓
+                                Lambda ✅ Fixed
+                            Now the old events can be processed again.
+                Important:
+                    on this EventBridge:
+                        Don't think: Archive = backup of my application data.
+                        Replay doesn't mean: "restore the application."
+            Schema Registry:
+                a place to store and manage the schemas of events.
+                    schema:
+                        the structure of an event — what fields exist and what type of data they contain.
+                EventBridge can discover/infer schemas automatically
+                    infer = ကောက်ချက်ချ
+                Why is this useful?
+                The biggest benefit is developer productivity.
+                Generate code bindings from schemas
+                schemas can be versioned.
+        CloudWatch Container Insights:
+            CloudWatch monitoring specifically designed for containers.
+            supported:
+                ECS
+                    Amazon Elastic Container Service
+                        ECS
+                        ├── Task
+                        │    └── Container
+                    Container Insights can monitor ECS.
+                EKS
+                    Amazon Elastic Kubernetes Service
+                        EKS
+                        ├── Node
+                        │    └── Pod
+                        │         └── Container
+                    Container Insights can monitor EKS.
+                Kubernetes on EC2
+                    You can also run Kubernetes yourself on EC2 rather than using EKS.
+                        EC2
+                        └── Kubernetes
+                            └── Containers
+                    Container Insights can monitor these as well.
+                Fargate
+                    This is important because Fargate means you don't manage the underlying servers.
+                    Container Insights supports:
+                        ECS on Fargate
+                        EKS on Fargate
+                    So:
+                                    Container Insights
+                                            │
+                            ┌─────────────┴─────────────┐
+                            ↓                           ↓
+                            ECS                           EKS
+                        ┌───────┐                    ┌───────┐
+                        │ EC2   │                    │ EC2   │
+                        │Fargate│                    │Fargate│
+                        └───────┘                    └───────┘
+            Containerized CloudWatch Agent:
+                In Amazon EKS and Kubernetes,
+                CloudWatch Insights is using a containerized version of the CloudWatch Agent to discover containers.
+                    Kubernetes / EKS
+                    │
+                    ├── Application Container
+                    │
+                    ├── Application Container
+                    │
+                    └── CloudWatch Agent Container
+                            ↓
+                        CloudWatch
+                The agent can discover the containers and collect their monitoring data.
+                    "Discover containers" means what?
+                    You don't necessarily need to manually tell CloudWatch:
+                        "Monitor Container A"
+                        "Monitor Container B"
+                    The agent can discover the running container environment and collect relevant metrics/logs.
+                    Container discovery = automatically identify the containers/workloads that need monitoring.
+        CloudWatch Lambda Insights:
+            "Monitor and troubleshoot Lambda applications with detailed system-level metrics and diagnostics."
+            collects system-level metrics, such as:
+                CPU time
+                Memory
+                Disk
+                Network
+                And diagnostic information such as:
+                    Cold starts
+                    Lambda worker shutdowns
+            Lambda Insights is provided as a Lambda Layer.
+                Lambda Insights → Lambda Layer
+        CloudWatch Contributor Insights:
+            who or what is contributing to the activity you're measuring.
+            Top-N contributors:
+                N = a number you choose.
+                can find the largest contributors to a particular metric/activity.
+            Top talkers:
+                the resource generating the most activity.
+                    Example: VPC traffic
+                        Server A → 90%
+                        Server B →  5%
+                        Server C →  3%
+                    Server A is the top talker.
+                    So: Contributor Insights → find top talkers / top contributors.
+            leverages your CloudWatch Logs
+                leverages = use = အသုံးချ
+        CloudWatch Application Insights:
+            "I have a complete application made of many AWS resources. Something is wrong. Help me identify the problem."
+            Imagine your application suddenly becomes slow.
+                You have:
+                    EC2
+                    RDS
+                    EBS
+                    ELB
+                    ASG
+                    Lambda
+                    SQS
+                    DynamoDB
+                    S3
+                    API Gateway
+                    ...
+                You don't want to manually inspect every service.
+                Application Insights helps provide a more application-focused view.
+            Powered by SageMaker:
+                automated application monitoring + troubleshooting.
+            Application Insights = application-level troubleshooting
+            EventBridge + SSM OpsCenter:
+                Findings and alerts are sent to Amazon EventBridge and SSM OpsCenter.
+                flow:
+                            Application
+                                ↓
+                            Application Insights
+                                ↓
+                            Finding / Alert
+                                │
+                                ├──→ EventBridge
+                                │
+                                └──→ SSM OpsCenter
+                SSM OpsCenter = A central place to manage operational issues/incidents.
+        Note:
+            when you see "top-N", "top talkers", "heaviest users", "URLs generating the most...", immediately think:
+            ⭐ Contributor Insights
+
+            When you see "cold starts, Lambda worker, Lambda memory/system metrics":
+            ⭐ Lambda Insights
+
+            When you see "application health, automated dashboards, troubleshoot ongoing application issues":
+            ⭐ Application Insights
+    CloudTrail:
+        "WHO did WHAT, WHEN, and FROM WHERE in my AWS account?"
+        It records API activity in your AWS account.
+            User / Admin / Application
+                │
+                ├── AWS Console
+                ├── AWS CLI
+                ├── SDK
+                └── AWS Service
+                        │
+                        ▼
+                    CloudTrail
+                        │
+                        ▼
+                Record the API call
+            What does CloudTrail record?
+            Suppose someone deletes an S3 bucket.
+            CloudTrail can record information such as:
+                WHO?
+                → IAM user / role
+
+                WHAT?
+                → DeleteBucket
+
+                WHEN?
+                → 2026-08-26 10:30
+
+                WHERE FROM?
+                → Source IP
+
+                WHICH RESOURCE?
+                → my-important-bucket
+
+            So if your boss asks:
+            "Who deleted our production resource?"
+            👉 CloudTrail
+        CloudTrail is enabled by default.
+        Everything is permanently stored automatically."
+        For longer-term/custom logging, you normally configure a Trail and deliver events to storage such as S3, 
+            and optionally integrate with CloudWatch Logs.
+        CloudTrail → S3:
+            Because you may want to keep audit logs for a long time
+        CloudTrail → CloudWatch Logs:
+            useful when you want to create monitoring/alerting workflows around API activity.
+        "Resource deleted? Check CloudTrail first!"
+        Governance / Compliance / Audit
+        CloudWatch vs CloudTrail:
+            |                  | CloudWatch                   | CloudTrail                                |
+            | ---------------- | ---------------------------- | ----------------------------------------- |
+            | Main purpose     | **Monitoring**               | **Auditing**                              |
+            | Focus            | Performance / logs / metrics | API activity                              |
+            | Question         | "How is my system?"          | "Who did this?"                           |
+            | CPU usage        | ✅                            | ❌                                         |
+            | Application logs | ✅                            | ❌                                         |
+            | API calls        | ❌                            | ✅                                         |
+            | User activity    | Limited                      | ✅                                         |
+            | Audit/compliance | Supporting                   | ⭐ Main purpose                            |
+            | Store in S3      | ✅                            | ✅                                         |
+            | Alerting         | Alarm                        | Can integrate with CloudWatch/EventBridge |
+        Management Events:
+            "Someone changed my AWS infrastructure."
+            Read vs Write Management Events:
+                Read Event: just look. Doesn't change anything.
+                Write Event: Can change something.
+        Data Events:
+            DATA inside those resources
+            Lambda Data Events:
+                can also record Lambda function execution activity
+            Note:
+                |                    | Management Events | Data Events               |
+                | ------------------ | ----------------- | ------------------------- |
+                | Focus              | Manage resources  | Access/use data           |
+                | Example            | CreateSubnet      | GetObject                 |
+                | Example            | AttachRolePolicy  | PutObject                 |
+                | Example            | CreateTrail       | DeleteObject              |
+                | Default            | Logged by trails  | **Not logged by default** |
+                | Volume             | Generally lower   | Often very high           |
+                | S3 object activity | ❌                 | ✅                         |
+                | Lambda Invoke      | ❌                 | ✅                         |
+        CloudTrail Insights:
+            to detect: Unusual API activity / unusual behavior
+            How does Insights work?
+            Step 1 — Establish a baseline
+            Step 2 — Continuously analyze activity
+        What can Insights detect?
+            Unusual resource provisioning
+            Service limit problems
+            Burst of IAM actions (IAM လုပ်ဆောင်ချက်များ ပေါက်ကွဲထွက်လာခြင်း)
+            Gaps in periodic maintenance (ပုံမှန်ပြုပြင်ထိန်းသိမ်းမှုတွင် ကွာဟချက်များ)
+        Where do Insights appear?
+            │
+            ├──→ CloudTrail console
+            │
+            ├──→ S3
+            │
+            └──→ EventBridge
+            Anomalies appear in the CloudTrail console.
+                Anomalies = ပုံမှန်မဟုတ်မှုများ
+        Retention — 90 Days:
+            if you need longer-term retention:
+                CloudTrail
+                    ↓
+                Trail
+                    ↓
+                S3
+                    ↓
+                Long-term storage
+            Then you can use Athena to query those CloudTrail logs.
+                CloudTrail
+                    ↓
+                S3
+                    ↓
+                Athena
+                    ↓
+                SQL query
+            Example:
+            "Show me all DeleteBucket events from the last 2 years."
+            👉 CloudTrail logs stored in S3 + Athena
+        Remember:
+            Management = RESOURCE
+            Data = DATA
+            Insights = ANOMALY
+    AWS Config:
+        main idea: record resource configuration + track changes + evaluate compliance.
+        think: What is the configuration/state of my resources, and does it comply with my rules?
+        Compliance = Does this resource follow the rule?
+        AWS Config is heavily associated with:
+            Governance
+            Compliance
+            Security
+            Auditing
+            Configuration management
+        as a configuration auditor for your AWS resources.
+            Imagine your company has a rule:
+            "All S3 buckets must not be publicly accessible."
+            You have 500 S3 buckets.
+            Manually checking:
+                Bucket 1 → public?
+                Bucket 2 → public?
+                Bucket 3 → public?
+                ...
+                Bucket 500 → public?
+                😵
+            AWS Config can evaluate this automatically.
+                S3 Buckets
+                    ↓
+                AWS Config Rule
+                "Bucket must not be public"
+                    ↓
+                ┌─────────────────────┐
+                │ Bucket A → COMPLIANT│
+                │ Bucket B → COMPLIANT│
+                │ Bucket C → NON-COMPLIANT
+                └─────────────────────┘
+            That's the core purpose.
+        Configuration History:
+            keeps a history of resource configuration changes.
+        Config Resource:
+            View compliance of a resource over time
+            View configuration of a resource over time
+            View CloudTrail API calls of a resource over time
+        Config vs CloudTrail:
+            CloudTrail asks: WHO made the change?
+            AWS Config asks: WHAT was the configuration before and after the change?
+        Config Rules:
+            defines a condition that your resources should satisfy.
+            Managed Rules vs Custom Rules
+                AWS provides many managed Config Rules that you can use without writing the rule yourself.
+                You can also create custom rules.
+            When are Config Rules evaluated?
+                two important triggers:
+                    Resource configuration changes
+                                ↓
+                        Config Rule
+                            evaluates
+                OR
+                    Periodic schedule
+                        ↓
+                    Config Rule
+                    evaluates
+        Config Rules DON'T prevent actions:
+            Config does not automatically block the API request.
+                Change happens
+                    ↓
+                AWS Config evaluates
+                    ↓
+                NON-COMPLIANT
+                    ↓
+                Remediation (if configured)
+        Regional:
+            a per-region service. So, to view centrally, can use Config Aggregator.
+        Config Aggregator:
+            to collect configuration/compliance information from multiple accounts and Regions.
+        Remediation:
+            AWS Config can automatically remediate a NON_COMPLIANT resource using SSM Automation Documents.
+            remediation = ပြုပြင်မွမ်းမံခြင်း
+                Config Rule
+                │
+                │ evaluates
+                ↓
+                Target Resource
+                │
+                └── NON_COMPLIANT
+                        ↓
+                    Remediation
+                        ↓
+                Change TARGET RESOURCE
+                        ↓
+                    COMPLIANT
+                eg:
+                    Suppose you have this Config Rule:
+                    EBS volumes must be encrypted
+                    The rule itself doesn't change.
+                        Config Rule:
+                        "EBS must be encrypted"
+                                │
+                                ↓
+                        EBS Volume A
+                        encrypted = false
+                                │
+                                ↓
+                        NON_COMPLIANT
+                                │
+                                ↓
+                        Remediation
+                                │
+                                ↓
+                        Fix EBS Volume A
+                                │
+                                ↓
+                        encrypted = true
+                                │
+                                ↓
+                        COMPLIANT
+            Remediation Retries:
+                You can set Remediation Retries if the resource is still non-compliant
+            Notification:
+                Config → SNS
+                Config → EventBridge
+            Pricing:
+                a paid service; configuration recording and rule evaluations can incur charges.
+                
 
 
 
 
+
+
+                
 
 
         
