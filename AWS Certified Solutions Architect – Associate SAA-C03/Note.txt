@@ -12912,7 +12912,56 @@ AWS Monitoring & Audit:
                 Config → EventBridge
             Pricing:
                 a paid service; configuration recording and rule evaluations can incur charges.
-                
+IAM Advanced:
+    AWS Organizations:
+        one place to manage multiple AWS accounts.
+                         AWS Organization
+                            │
+                    Management Account
+                            │
+                ┌────────────┼────────────┐
+                ▼            ▼            ▼
+                OU A         OU B       OU C
+                │            │            │
+            Accounts      Accounts    Accounts
+        OU = Organization Units
+            Whey OUs?
+                group/container of AWS Accounts:
+                    AWS Organization
+                        │
+                        ├── Security OU
+                        │     ├── Security Account
+                        │     └── Audit Account
+                        │
+                        ├── Production OU
+                        │     ├── Production-1
+                        │     └── Production-2
+                        │
+                        └── Development OU
+                            ├── Dev-1
+                            └── Dev-2
+                    for eg: "All Production accounts must not use this AWS service."
+        Management Account:
+            main account of the Organization.
+            manages the organization and has special organization-level permissions.
+        Member Account:
+            belongs to one organization at a time.
+        Consolidated Billing:
+            major benefit.
+            instead of 
+                Account A → Bill
+                Account B → Bill
+                Account C → Bill
+            organization can provide:
+                Account A ─┐
+                Account B ─┤
+                Account C ─┼──→ Consolidated billing
+                Account D ─┘
+                                ↓
+                            One payer
+            gives the organization a centralized billing arrangement.
+
+
 
 
 
