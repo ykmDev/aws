@@ -12924,7 +12924,7 @@ IAM Advanced:
                 OU A         OU B       OU C
                 │            │            │
             Accounts      Accounts    Accounts
-        OU = Organization Units
+        OU = Organization Units (group of accounts)
             Whey OUs?
                 group/container of AWS Accounts:
                     AWS Organization
@@ -12960,6 +12960,650 @@ IAM Advanced:
                                 ↓
                             One payer
             gives the organization a centralized billing arrangement.
+        Aggregated usage:
+            some AWS pricing benefits can be based on aggregated usage.
+            organization may receive volume pricing benefits.
+                Account A → 100 GB
+                Account B → 200 GB
+        Reserved Instances & Savings Plans:
+            can also allow eligible discounts from things such as:
+                Reserved Instances
+                Savings Plans
+            to benefit workloads across accounts, depending on the applicable sharing settings and service.
+        Advantages:
+            Tagging standards for billing:
+                can use tags to identify resources.
+                    Environment = Production
+                    Department  = Finance
+                    Project      = Website
+            Centralized CloudTrail:
+                Instead of keeping audit logs separately, you can create a dedicated logging/security account and centrally collect logs.
+            Central CloudWatch Logs:
+                can design centralized logging
+            Cross-account IAM Roles
+                Suppose you're an administrator and need to access the Production account.
+                You don't necessarily create the same admin user in every account.
+                using AssumeRole.
+        SCP — Service Control Policy:
+            organization-level policy
+            used to define the maximum permissions available to accounts/users/roles under it.
+            AWS Account တစ်ခုမှာ "အများဆုံး ဘာတွေလုပ်ခွင့်ရှိမလဲ" ဆိုတာကို ကန့်သတ်ထားတဲ့ Organization-level စည်းမျဉ်း
+            SCP does NOT grant permissions:
+            not like an IAM policy that grants access.
+                IAM Policy
+                    ↓
+                Can grant permission
+
+                SCP
+                    ↓
+                Can restrict permission
+                🔴 SCP က Permission ပေးတာ မဟုတ်ဘူး။
+                🟢 SCP က Permission ကို ကန့်သတ်တာ။
+                SCP = organizational guardrail
+                eg: Company policy: "Nobody in Development can use certain AWS services."
+                    SCP ကို "Company Gate" လို့ မှတ်ပါ 🚪
+
+                    ဒီလိုစဉ်းစားပါ။
+                        Developer
+                            ↓
+                        ┌─────────────────┐
+                        │   SCP Gate 🚪   │
+                        │                 │
+                        │ EC2 allowed?    │
+                        └─────────────────┘
+                            ↓
+                        ┌─────────────────┐
+                        │   IAM Policy    │
+                        │                 │
+                        │ User allowed?   │
+                        └─────────────────┘
+                            ↓
+                            AWS Resource
+                    နှစ်ခုလုံး OK ဖြစ်မှ လုပ်လို့ရတယ်။
+
+                    SCP  → Allowed
+                    IAM  → Allowed
+                        ↓
+                        ✅
+            SCP inheritance through OUs:
+                can attach an SCP at the Root or Production OU.
+                An SCP attached higher in the hierarchy can restrict everything underneath it.
+                SCP က Account တစ်ခုကို "အပေါ်ကနေ" ထိန်းတယ်
+                    Development accounts အားလုံးမှာ rule တစ်ခုတည်း ထားချင်တယ်။
+                    "Region တချို့မှာ resource မဖန်တီးရ"
+                    SCP ကို Development OU မှာ attach လုပ်လိုက်ရုံပဲ။
+                        Root SCP
+                        ↓
+                        OU SCP
+                        ↓
+                        Account
+                        ↓
+                        User / Role
+                        ဆိုပြီး restriction က အောက်ကို သက်ရောက်နိုင်တယ်။
+                        SCP က Firewall လိုမျိုး နည်းနည်းဆင်တယ်။
+                            Firewall က: "ဒီ traffic ကို ဖြတ်ခွင့်ရှိလား?"
+                            SCP က: "ဒီ AWS Account က ဒီ action ကို လုပ်ခွင့်ရှိနိုင်လား?" ဆိုတာကို ကန့်သတ်တယ်။
+                SCP Allow ဆိုတာ:
+                    SCP: Allow S3
+                    ဒါကို: "Account ထဲက လူတိုင်း S3 သုံးလို့ရပြီ" လို့ မယူဆရပါဘူး။
+
+                    IAM permission လည်း လိုသေးတယ်။
+                        SCP
+                        ↓
+                        S3 allowed within the boundary
+                            +
+                        IAM
+                        ↓
+                        This user can use S3
+                            ↓
+                            ✅
+                    ဒါကြောင့်: SCP alone ≠ permission
+            Explicit Allow through the path:
+                Must have an explicit allow from the root through each OU in the direct path to the target account
+                        Root
+                        │
+                        │ Allow?
+                        ▼
+                        OU
+                        │
+                        │ Allow?
+                        ▼
+                        Account
+                        │
+                        │ IAM Allow?
+                        ▼
+                        Resource
+                လမ်းတစ်လျှောက်မှာ applicable SCP policies တွေက action ကို ခွင့်ပြုထားရမယ်။
+                တစ်နေရာမှာ restriction ရှိရင်:
+                        Root
+                        ↓
+                        ✅
+                        OU
+                        ↓
+                        ❌ DENY
+                        ↓
+                        Account
+                    နောက်ဆုံး ❌ Access Denied
+            Management Account exception:
+                SCPs don't restrict permissions for users/roles in the Organization management account in the same way they restrict member accounts.
+                Organization
+                    │
+                    ├── Management Account
+                    │      └── SCPs don't restrict it
+                    │
+                    └── Member Accounts
+                        └── SCPs can restrict them
+            Note:
+                Sandbox = စမ်းသပ်ဖို့နေရာ
+                    စမ်းသပ်ကြည့်ဖို့ သီးသန့်ထားတဲ့ AWS Account တွေ
+                Workloads = တကယ်အလုပ်လုပ်နေတဲ့ systems
+                Sandbox vs Test:
+                    Sandbox
+                    → "Anything I want to experiment with"
+
+                    Test
+                    → "Test our actual application"
+                    |             | Sandbox                   | Workloads          |
+                    | ----------- | ------------------------- | ------------------ |
+                    | ရည်ရွယ်ချက် | စမ်းသပ်ရန်                | တကယ်အသုံးပြုရန်    |
+                    | Resources   | Experiment                | Real applications  |
+                    | Risk        | ပိုလွတ်လပ်နိုင်           | ပိုတင်းကျပ်        |
+                    | Example     | New AWS service စမ်းခြင်း | Company website    |
+                    | Data        | Test data                 | Real/business data |
+                    | SCP         | ပိုလွတ်လပ်စေနိုင်         | ပိုတင်းကျပ်စေနိုင် |
+
+                | Topic                            | Remember                          |
+                | -------------------------------- | --------------------------------- |
+                | Organization                     | Manage multiple AWS accounts      |
+                | Management Account               | Main organization account         |
+                | Member Account                   | Account inside organization       |
+                | OU                               | Group of accounts                 |
+                | Consolidated Billing             | Centralized billing               |
+                | Aggregated usage                 | Potential volume pricing benefits |
+                | Reserved Instances               | Discounts can be shared           |
+                | Savings Plans                    | Discounts can be shared           |
+                | CloudTrail                       | Can centralize audit logs         |
+                | Cross-account access             | IAM `AssumeRole`                  |
+                | SCP                              | **Restrict/guardrail**            |
+                | SCP grants permission?           | ❌ No                              |
+                | SCP denies/restricts?            | ✅ Yes                             |
+                | SCP applies to member accounts?  | ✅                                 |
+                | SCP restrict management account? | ❌                                 |
+                | Multiple accounts                | Better isolation/governance       |
+
+                |                                         | IAM Policy          | SCP                         |
+                | --------------------------------------- | ------------------- | --------------------------- |
+                | ဘယ်မှာ?                                 | User / Group / Role | Organization / OU / Account |
+                | Permission ပေးလား?                      | ✅ Yes               | ❌ No                        |
+                | Restrict လုပ်လား?                       | ✅ Can               | ✅ Yes                       |
+                | Account-level guardrail                 | ❌                   | ✅                           |
+                | User-specific                           | ✅                   | ❌                           |
+                | Management account ကို SCP restriction? | —                   | ❌ Normal SCP model          |
+                | Member accounts                         |                     | ✅                           |
+            Tag Policies:
+                A company-wide rule for how AWS resource tags should look.
+                    Environment = Dev / Staging / Prod
+                    Department  = IT / HR / Sales
+                    Owner       = person's/team name
+                    Project     = ProjectA / ProjectB
+                Standardize tag keys and values:
+                    example, your organization defines:
+                        Tag key: Environment
+                        Allowed values:
+                            Dev
+                            Staging
+                            Prod
+                        Then:
+                            Environment = Dev       ✅
+                            Environment = Staging   ✅
+                            Environment = Prod      ✅
+
+                            Environment = Production ❌
+                            Environment = Test       ❌
+                            env = Dev                ❌  (if standardized key is Environment)
+                Where does Tag Policy live?
+                    an AWS Organizations feature.
+                    different OUs/accounts can apply  different tag requirements.
+                Support tag compliance and can enforce tagging standards:
+                Not automatically adding missing tags to every resource.
+                Compliance report:
+                    Generate a report that lists all tagged/non-compliant resources.
+                        You can see which resources/accounts are compliant or non-compliant with the organization's tagging rules.
+                                            Tag Policy
+                                                │
+                                    ┌──────────┴──────────┐
+                                    ▼                     ▼
+                                Account A              Account B
+                                    │                     │
+                                EC2 ❌                  S3 ✅
+                                RDS ✅                  EC2 ❌
+                                Lambda ✅              RDS ✅
+                                    │                     │
+                                    └──────────┬──────────┘
+                                                ▼
+                                        Compliance report
+                EventBridge monitoring:
+                    Use EventBridge to monitor non-compliant tags
+                        eg:
+                            Resource tagging
+                                │
+                                ▼
+                            Tag Policy evaluation
+                                │
+                                ▼
+                            Non-compliant
+                                │
+                                ▼
+                            EventBridge
+                                │
+                            ┌───┴────┐
+                            ▼        ▼
+                            SNS       Lambda
+                            Email     Automation
+                        other:
+                            EC2 tag changed
+                                ↓
+                            Tag Policy detects non-compliance
+                                ↓
+                            EventBridge
+                                ↓
+                            SNS
+                                ↓
+                            "EC2-123 has a non-compliant tag"
+                Tag Policies + Cost Allocation Tags:
+                    You can use tags for cost allocation.
+                    Then your AWS costs can be categorized like:
+                        AWS Cost
+                        │
+                        ├── Sales
+                        │    ├── Website
+                        │    └── CRM
+                        │
+                        ├── IT
+                        │    ├── Monitoring
+                        │    └── Internal Tools
+                        │
+                        └── HR
+                            └── HR System
+                    Tag Policy itself does not calculate your AWS bill.
+                Tag Policies + ABAC:
+                    ABAC = Attribute-Based Access Control.
+                    Tags can become attributes used by IAM policies.
+                        Tag Policy → consistent tags → easier ABAC.
+                Tag Policy vs AWS Config vs SCP:
+                    | Service                  | Question it answers                                |
+                    | ------------------------ | -------------------------------------------------- |
+                    | **Tag Policy**           | 🏷️ Are our tags standardized correctly?           |
+                    | **AWS Config**           | 🔍 Is the resource configured/compliant correctly? |
+                    | **SCP**                  | 🚧 What actions are accounts allowed to perform?   |
+                    | **CloudTrail**           | 👤 Who performed the API action?                   |
+                    | **Cost Allocation Tags** | 💰 How should costs be categorized?                |
+    IAM Advanced Policy:
+        aws:SourceIp:
+            restrict the client IP frm API calls are being made.
+            Deny access if the request does NOT come from one of these IP ranges.
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Deny",
+                            "Action": "*",
+                            "Resource": "*",
+                            "Condition": {
+                                "NotIpAddress": {
+                                    "aws:SourceIp": [
+                                        "192.0.2.0/24",
+                                        "203.0.113.0/24"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+        aws:RequestedRegion:
+            restrict the region the API calls are make to.
+            Deny EC2/RDS/DynamoDB requests when they are targeting those regions.
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Deny",
+                                "Action": [
+                                    "ec2:*",
+                                    "rds:*",
+                                    "dynamodb:*"
+                                ],
+                                "Resource": "*",
+                                "Condition": {
+                                "StringEquals": {
+                                    "aws:RequestedRegion": [
+                                    "us-central-1",
+                                    "eu-west-1"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+        ec2:ResourceTag:
+            Check the tags on the EC2 resource, then decide whether the action is allowed or denied.
+            Developers can manage Dev instances, but cannot manage Prod instances.
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ec2:StartInstances",
+                                "ec2:StopInstances",
+                                "ec2:RebootInstances"
+                            ],
+                            "Resource": "*",
+                            "Condition": {
+                                "StringEquals": {
+                                    "ec2:ResourceTag/Environment": "Dev"
+                                }
+                            }
+                        }
+                    ]
+                }
+        ResourceTag vs RequestTag:
+                ResourceTag
+                    ↓
+                "What tag does the resource ALREADY have?"
+
+                RequestTag
+                    ↓
+                "What tag is being supplied IN THIS REQUEST?"
+            🧠 Resource = existing object
+            🧠 Request = incoming operation
+            eg: 
+                Company rule: Developers can create and manage only Dev EC2 instances.
+
+                Creation
+                    Require: aws:RequestTag/Environment = Dev
+                Existing resources
+                    Require: :ResourceTag/Environment = Dev
+                                    Developer
+                                        │
+                            ┌─────────┴─────────┐
+                            │                   │
+                        Create EC2           Manage EC2
+                            │                   │
+                            ▼                   ▼
+                    RequestTag             ResourceTag
+                            │                   │
+                    Environment=Dev       Environment=Dev
+                            │                   │
+                            ▼                   ▼
+                            ✅                  ✅
+        aws:MultiFactorAuthPresent:
+            Allow this action only when the request was authenticated with MFA.
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Deny",
+                            "Action": "*",
+                            "Resource": "*",
+                            "Condition": {
+                                "BoolIfExists": {
+                                    "aws:MultiFactorAuthPresent": "false"
+                                }
+                            }
+                        }
+                    ]
+                }
+        S3 Bucket and Object Level Permission:
+            S3 Bucket
+                │
+                ├── Bucket-level permissions
+                │      └── ListBucket
+                │
+                └── Object-level permissions
+                        ├── GetObject
+                        ├── PutObject
+                        ├── DeleteObject
+                        └── ...
+            s3:ListBucket → bucket-level
+            s3:GetObject / PutObject / DeleteObject → object-level
+            s3:ListBucket does NOT mean: “Can I download those objects?”, read/download is s3:GetObject.
+            Important:
+                eg: you want a user to:
+                    List the bucket and download files from documents/, but not upload or delete anything.
+                        {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "s3:ListBucket",
+                                    "Resource": "arn:aws:s3:::my-company-bucket"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "s3:GetObject",
+                                    "Resource": "arn:aws:s3:::my-company-bucket/documents/*"
+                                }
+                            ]
+                        }
+                    Why can't I use the same ARN?
+                        You might think:
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "s3:ListBucket",
+                                    "s3:GetObject"
+                                ],
+                                "Resource": "arn:aws:s3:::my-company-bucket/*"
+                            }
+                            ❌ That's wrong for ListBucket.
+
+                            Why?
+                            Because:
+                                Bucket ARN:
+                                arn:aws:s3:::my-company-bucket
+
+                                Object ARN:
+                                arn:aws:s3:::my-company-bucket/*
+                            Different levels.
+                        Level Actions:
+                            | Action                   | Meaning                        | Level     |
+                            | ------------------------ | ------------------------------ | --------- |
+                            | `s3:ListBucket`          | List objects in bucket         | 🪣 Bucket |
+                            | `s3:GetObject`           | Read/download object           | 📄 Object |
+                            | `s3:PutObject`           | Upload/create object           | 📄 Object |
+                            | `s3:DeleteObject`        | Delete object                  | 📄 Object |
+                            | `s3:GetObjectVersion`    | Read a specific object version | 📄 Object |
+                            | `s3:DeleteObjectVersion` | Delete a specific version      | 📄 Object |
+                            | `s3:GetBucketLocation`   | Get bucket Region              | 🪣 Bucket |
+        aws:PrincipalOrgID:
+            aws:PrincipalOrgID lets a resource policy trust principals that belong to a particular AWS Organization.
+            especially useful for cross-account access.
+            Principal  = Who is allowed to access the resource?
+                "Principal": {
+                    "AWS": "arn:aws:iam::123456789012:root"
+                }
+                means that AWS account is the principal being trusted
+                if we have 50 accounts, aws:PrincipalOrgID makes this much easier.
+                aws:PrincipalOrgID:
+                    What AWS Organization does the requesting principal belong to?
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:PrincipalOrgID": "o-abcd1234"
+                        }
+                    }
+                full sample:
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Principal": "*",
+                                "Action": [
+                                    "s3:GetObject"
+                                ],
+                                "Resource": "arn:aws:s3:::company-shared-data/*",
+                                "Condition": {
+                                    "StringEquals": {
+                                        "aws:PrincipalOrgID": "o-abcd1234"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                    At first, this may look scary:
+                        "Principal": "*"
+                    because it looks like:
+                        “Everyone can access my bucket!”
+                        But the Condition restricts it:
+                            Principal = *
+                                │
+                                ▼
+                            Is PrincipalOrgID = o-abcd1234?
+                                │
+                            ┌───┴────┐
+                            YES       NO
+                            │         │
+                            ▼         ▼
+                            ✅         ❌
+                PrincipalOrgID vs Principal:
+                    Principal => WHO exactly?
+                    PrincipalOrgID => WHICH ORGANIZATION
+                Note:
+                    | Condition                    | Checks                                              |
+                    | ---------------------------- | --------------------------------------------------- |
+                    | `aws:SourceIp`               | 🌐 Where is request coming from?                    |
+                    | `aws:RequestedRegion`        | 🌎 Which AWS Region is targeted?                    |
+                    | `aws:PrincipalOrgID`         | 🏢 Which AWS Organization does principal belong to? |
+                    | `aws:MultiFactorAuthPresent` | 🔐 Was MFA used?                                    |
+                    | `ec2:ResourceTag/...`        | 🏷️ What tag does the EC2 resource have?            |
+        IAM Roles vs Resource-Based:
+            question: “Should I give the user a role to access another account, or should the resource itself trust the user/account?”
+            eg: Account A wants to access the S3 bucket in Account B.
+            Two ways to do cross-account access:
+                Resource-based policy:
+                    Account A User
+                        │
+                        │ access
+                        ▼
+                    Account B S3 Bucket
+                        │
+                        └── Bucket Policy
+                            ↓
+                        Trust Account A ("Account A ကို ယုံတယ်")
+                    Put a policy directly on the S3 bucket.
+                    like:
+                        {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "AWS": "arn:aws:iam::111111111111:root"
+                                    },
+                                    "Action": "s3:GetObject",
+                                    "Resource": "arn:aws:s3:::company-data/*"
+                                }
+                            ]
+                        }
+                    The S3 bucket trusts Account A to read objects.
+                    Account A ရဲ့ original identity က မပြောင်းဘူး။
+                IAM Role:
+                    Account A User
+                        │
+                        │ AssumeRole
+                        ▼
+                    Account B IAM Role
+                        │
+                        ▼
+                    S3 Bucket
+                    The role acts as a proxy.
+                    like:
+                        Account B
+                            └── IAM Role: ReadCompanyData
+
+                            The role has:
+                            {
+                                "Effect": "Allow",
+                                "Action": "s3:GetObject",
+                                "Resource": "arn:aws:s3:::company-data/*"
+                            }
+                        The user temporarily becomes the role's identity.
+                    Account A က Account B က Role ကို Assume လုပ်တယ်။
+                    Account B က Role ရဲ့ temporary credentials ကိုသုံးပြီး S3 access လုပ်နေတယ်။
+                    Give up original permissions:
+                        Role Assume လုပ်လိုက်ရင် Role ရဲ့ identity/permissions နဲ့ အလုပ်လုပ်တာ
+                Example: DynamoDB -> S3:
+                    Requirement: Account A ထဲက User က Account A ရဲ့ DynamoDB Table ကို Scan လုပ်ပြီး Account B ရဲ့ S3 Bucket ထဲကို data dump လုပ်ချင်တယ်
+                                    Account A
+                                ┌─────────────────────┐
+                                │                     │
+                                │ Alice               │
+                                │   │                 │
+                                │   │ DynamoDB Scan   │
+                                │   ▼                 │
+                                │ DynamoDB Table      │
+                                │                     │
+                                └─────────────────────┘
+                                        │
+                                        │ S3 PutObject
+                                        ▼
+                                ┌─────────────────────┐
+                                │     Account B       │
+                                │                     │
+                                │     S3 Bucket       │
+                                │     company-data    │
+                                │                     │
+                                └─────────────────────┘
+                        Alice လိုအပ်တာက—
+                            1. DynamoDB Scan permission
+                            2. S3 PutObject permission
+                        Resource-Based Policy နဲ့လုပ်ရင်:
+                            Account B ရဲ့ S3 Bucket Policy က Account A ကို trust လုပ်တယ်
+                            Principal ပါတယ်
+                        Role နဲ့လုပ်ရင်
+                            Role ရဲ့ temporary credentials သုံးနေတယ်
+                            Role မှာ Policy ၂ ခုရှိတာကို မမေ့နဲ့:
+                                Trust Policy:
+                                    ဘယ်သူက ဒီ Role ကို Assume လုပ်နိုင်လဲ?
+                                Permission Policy:
+                                    Role ကို Assume ပြီးရင် ဘာလုပ်နိုင်လဲ?
+                Question Match:
+                    Allow Account A to access an S3 bucket in Account B. => Resource-based Policy
+                    Users from Account A must assume a role in Account B  => IAM Role
+                    Users need temporary credentials to access resources => IAM Role
+                    Grant access without requiring the user to assume a role  => Resource-based Policy
+
+                    sample:
+                        ကုမ္ပဏီ Building တစ်ခုရှိတယ်လို့ယူပါ။
+                        Resource-Based Policy
+                            Building owner ကပြောတယ်— "ဒီလူကို ဝင်ခွင့်ပေးတယ်။"
+                        IAM Role
+                            Building owner ကပြောတယ်— "ဒီ access card ကို ခဏယူသုံးပါ။ ဒီ card မှာ သတ်မှတ်ထားတဲ့ access ပဲရမယ်။"
+            Amazon Eventbridge - Security:
+                Sometimes EventBridge uses a Resource-Based Policy, and sometimes it uses an IAM Role.
+                Note:
+                    | EventBridge Target          | Permission mechanism     |
+                    | --------------------------- | ------------------------ |
+                    | Lambda                      | 🟢 Resource-based policy |
+                    | SNS                         | 🟢 Resource-based policy |
+                    | SQS                         | 🟢 Resource-based policy |
+                    | S3 bucket                   | 🟢 Resource-based policy |
+                    | API Gateway                 | 🟢 Resource-based policy |
+                    | Kinesis Data Stream         | 🔵 IAM Role              |
+                    | EC2 Auto Scaling            | 🔵 IAM Role              |
+                    | Systems Manager Run Command | 🔵 IAM Role              |
+                    | ECS Task                    | 🔵 IAM Role              |
+
+
+
+            
+                            
+
+
+
+
+
 
 
 
