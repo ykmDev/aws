@@ -13594,7 +13594,256 @@ IAM Advanced:
                     | EC2 Auto Scaling            | 🔵 IAM Role              |
                     | Systems Manager Run Command | 🔵 IAM Role              |
                     | ECS Task                    | 🔵 IAM Role              |
+        IAM Permission Boundaries:
+            maximum permissions an IAM user or role can ever receive.(for user and role not group)
+            a limit, not grant permission.
+            IAM Policy:
+                grants permission
+            example:
+                Suppose Bob has this IAM policy:
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:*",
+                                "ec2:*"
+                            ],
+                            "Resource": "*"
+                        }
+                    Without a boundary:
+                        Bob
+                        ↓
+                        S3:*  ✅
+                        EC2:* ✅
+                    Now attach a boundary:
 
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:*"
+                            ],
+                            "Resource": "*"
+                        }
+                    Now:
+                        IAM Policy says: S3:* + EC2:*
+
+                        Boundary says: S3:*
+
+                        Effective:
+                            S3:*   ✅
+                            EC2:*  ❌
+                analogy:
+                    Imagine you work for a company.
+                        Your manager says: "You can potentially do many things."
+
+                        That's your IAM Policy.
+                        But the company gives you an employee access card:
+                            "This card physically allows you to enter only these rooms."
+                        That's the Permission Boundary.
+                        Even if your manager says:
+                            "You can enter every room."
+                        your access card still limits you.
+                                IAM Policy
+                                ↓
+                                "What permissions are granted?"
+
+                                Permission Boundary
+                                ↓
+                                "What is the maximum allowed?"
+                                            ↓
+                                    Effective permissions
+                    Why would a company use Permission Boundaries?
+                        The most common use case is: 👨‍💻 Delegated administration
+
+                        Imagine:
+                            Company
+                            │
+                            ├── Security Team
+                            │
+                            ├── Platform Team
+                            │
+                            └── Developers
+
+                        The Platform Team should be allowed to create IAM roles for developers.
+                        But you don't want Platform Team members to create an unrestricted administrator role.
+                        So you define:
+                            Developer Role
+                                │
+                                ▼
+                            Permission Boundary
+                                │
+                                ├── S3
+                                ├── DynamoDB
+                                ├── Lambda
+                                └── CloudWatch
+                                
+                                ❌ IAM
+                                ❌ Organizations
+                        Now Platform Team can create roles, but those roles can't exceed the organization's security boundary.
+            use cases:
+                Delegate responsibilities to non-administrators:
+                    problem: "I want someone to manage IAM permissions, but I don't want them to become Administrator."
+                    Imagine your company has:
+                        Management/Admin
+                            │
+                            ├── Platform Team
+                            ├── Developer Team
+                            └── Data Team
+                        The Admin doesn't want to create every IAM user manually.
+                        Instead, Admin says:
+                            "Platform Team, you can create IAM users, but those users must stay inside this Permission Boundary."
+                        For example:
+                            Permission Boundary
+                            ─────────────────────
+                            S3
+                            Lambda
+                            CloudWatch
+                            DynamoDB
+
+                            ❌ IAM administration
+                            ❌ Organizations
+                            ❌ Billing
+
+                        Now Platform Team can create:
+
+                            User: DeveloperA
+                            │
+                            ├── IAM Policy
+                            │     └── S3 + Lambda
+                            │
+                            └── Permission Boundary
+                                    └── S3 + Lambda + CloudWatch
+                        Even if Platform Team accidentally gives DeveloperA:
+                            AdministratorAccess
+                        DeveloperA still cannot exceed the boundary.
+                Developers self-manage their permissions:
+                    problem:
+                        This one sounds scary at first:
+                            "Allow developers to self-assign policies."
+                            You might think:
+                                "Wait! If they can assign policies, can't they give themselves AdministratorAccess?"
+                            Normally, yes, that could be a privilege-escalation problem.
+                            Privilege escalation(အခွင့်အရေးအဆင့်မြှင့်တင်ခြင်း) means:
+                                A user finds a way to obtain permissions greater than
+                                the permissions they were supposed to have.
+                                အသုံးပြုသူတစ်ဦးသည် မိမိရရှိထားသင့်သည့် အခွင့်အရေးများထက် ပိုမိုမြင့်မားသော အခွင့်အရေးများကို ရယူနိုင်မည့်နည်းလမ်းကို ရှာဖွေတွေ့ရှိခြင်း ဖြစ်သည်။
+                Restrict ONE specific user:
+                    Suppose you have:
+                            AWS Organization
+                            │
+                            ├── Account A
+                            │    ├── Alice
+                            │    ├── Bob
+                            │    └── Charlie
+                            │
+                            └── Account B
+                                ├── David
+                                └── Eve
+                        You discover:
+                            "Alice needs special restrictions."
+                        But Bob and Charlie are fine.
+                        You don't want to restrict the entire AWS Account.
+                        So: Permission Boundary
+                        Attach boundary only to Alice:
+                            Alice
+                            │
+                            └── Permission Boundary
+                                    ↓
+                                Limited
+
+                        Bob and Charlie:
+                            Bob/Charlie
+                            │
+                            └── Normal permissions
+                        Only Alice is restricted.
+                        Compare with SCP:
+                            This is the easiest way to understand the difference.
+                            Permission Boundary
+                                Account
+                                │
+                                ├── Alice ← 🚧 Boundary
+                                ├── Bob
+                                └── Charlie
+                        One IAM user/role can be restricted.
+                            SCP
+                            AWS Account
+                            │
+                            ├── Alice    ❌
+                            ├── Bob      ❌
+                            └── Charlie  ❌
+                        An SCP is an account/OU-level guardrail, so it affects principals in that scope.
+                        Therefore:
+                            Need to restrict one particular IAM user/role → Permission Boundary
+                            Need to restrict an entire AWS account/OU → SCP
+            Permission Boundary vs SCP:
+                SCP = organization/account-level guardrail
+                Permission Boundary = user/role-level guardrail
+                |                                   | SCP                      | Permission Boundary     |
+                | --------------------------------- | ------------------------ | ----------------------- |
+                | Scope                             | Account / OU             | IAM user / role         |
+                | Managed by                        | AWS Organizations        | IAM                     |
+                | Purpose                           | Account-level guardrail  | User/role-level maximum |
+                | Grants permissions?               | ❌                        | ❌                       |
+                | Limits permissions?               | ✅                        | ✅                       |
+                | Can prevent privilege escalation? | ✅                        | ✅                       |
+                | Applies to management account?    | SCP has special behavior | Not relevant            |
+            Permission Boundary vs IAM Policy:
+                    IAM Policy
+                        ↓
+                    GRANTS permissions
+
+                    Permission Boundary
+                        ↓
+                    LIMITS maximum permissions
+                For effective permissions, think roughly:
+                    Identity-based permissions
+                            ∩
+                    Permission Boundary
+                            ↓
+                    Effective permissions
+                Example:
+                    IAM Policy:
+                    S3 + EC2 + DynamoDB
+
+                    Boundary:
+                    S3 + DynamoDB
+
+                    Effective:
+                    S3 + DynamoDB
+            Permission Boundary does not override everything:
+                Permission Boundary is not a magical "allow."
+                think: "If this user gets permissions, they cannot exceed this boundary."
+                    So:
+                        IAM Policy says:
+                            Allow EC2
+                        Boundary says:
+                            EC2 NOT allowed
+                        Result:
+                            ❌ EC2
+
+                        And:
+                            IAM Policy says:
+                                ❌ No S3 permission
+                            Boundary says:
+                                ✅ S3 allowed
+                            Result:
+                                ❌ S3
+            Policy Evaluation Logic:
+                Explicit Deny ရှိရင် Allow အားလုံးကို override လုပ်တယ်။
+                Deny evaluation -> Organization SCPs -> Resource-based policies -> Identity-based Policies -> IAM permissions boundaries -> Session policies.
+            keynote:
+                If you see:
+                    "Set the maximum permissions that an IAM user or role can have."
+                    🎯 Permission Boundary
+                If you see:
+                    "Prevent developers from escalating privileges when creating IAM roles."
+                    🎯 Permission Boundary
+                If you see:
+                    "Limit what an AWS account can do across an Organization."
+                    🎯 SCP
+                If you see
+                    "Give a user permission to access S3."
+                    🎯 IAM Policy
+                    
 
 
             
