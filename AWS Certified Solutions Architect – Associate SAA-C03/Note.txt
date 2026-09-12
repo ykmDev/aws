@@ -13534,7 +13534,8 @@ IAM Advanced:
                     Give up original permissions:
                         Role Assume လုပ်လိုက်ရင် Role ရဲ့ identity/permissions နဲ့ အလုပ်လုပ်တာ
                 Example: DynamoDB -> S3:
-                    Requirement: Account A ထဲက User က Account A ရဲ့ DynamoDB Table ကို Scan လုပ်ပြီး Account B ရဲ့ S3 Bucket ထဲကို data dump လုပ်ချင်တယ်
+                    Requirement: Account A ထဲက User က Account A ရဲ့ DynamoDB Table ကို Scan လုပ်ပြီး 
+                    Account B ရဲ့ S3 Bucket ထဲကို data dump လုပ်ချင်တယ်
                                     Account A
                                 ┌─────────────────────┐
                                 │                     │
@@ -13971,6 +13972,29 @@ IAM Advanced:
             keyword:
                 “Employees already use an existing corporate identity provider”
                 → IAM Identity Center + external IdP
+        Fine-grained Permissions and Assignments:
+            Multi-Account Permissions:
+                Employee တစ်ယောက်ကို account တစ်ခုချင်းစီမှာ IAM User ဆောက်ပြီး manage လုပ်မယ့်အစား IAM Identity Center ကနေ centralized access ပေးနိုင်တယ်။
+            Application Assignments:
+                IAM Identity Center က AWS accounts တွေကိုပဲ access ပေးတာမဟုတ်ဘူး။
+                SAML 2.0-supported applications တွေကိုလည်း SSO လုပ်နိုင်တယ်။
+                                    IAM Identity Center
+                                        │
+                            ┌────────────┼────────────┐
+                            ↓            ↓            ↓
+                        Salesforce      Box       Microsoft 365
+            Attribute-Based Access Control (ABAC):
+                ABAC = User ရဲ့ attributes ကိုကြည့်ပြီး access ဆုံးဖြတ်ခြင်း
+                ပုံမှန် permission management ဆိုရင် user ပြောင်းတိုင်း policy တွေ ပြင်ရနိုင်တယ်။
+                ABAC မှာတော့ policy ကို တစ်ခါ define လုပ်ပြီး attributes ကိုပြောင်းနိုင်တယ်။
+            Note:
+                | Question မှာတွေ့ရင်                                           | စဉ်းစားရန်                 |
+                | ------------------------------------------------------------- | -------------------------- |
+                | Multiple AWS accounts + centralized login                     | **IAM Identity Center**    |
+                | User/Group AWS account permissions                            | **Permission Set**         |
+                | Salesforce / Box / SAML 2.0 + SSO                             | **Application Assignment** |
+                | `cost center`, `title`, `locale` attributes                   | **ABAC**                   |
+                | Define permissions once, change access by changing attributes | **ABAC**                   |
         IAM Identity Center vs IAM Role:
             IAM Role
                 AWS resource/service access အတွက် temporary permissions ပေးတဲ့ mechanism
@@ -13992,9 +14016,274 @@ IAM Advanced:
             | Long-term credentials possible        | Temporary role-based access              |
             | Small/simple environments             | Multi-account organizations              |
             | IAM users                             | Users + Groups + Permission Sets         |
+    AWS Directory Service:
+        Microsoft Active Directory (AD):
+            Active Directory = Windows environment ထဲက users, computers, groups, resources တွေကို
+            centralized manage လုပ်တဲ့ directory service
+                    ဥပမာ company မှာ—
 
-            
-                            
+                            Active Directory
+                                │
+                ┌────────────────┼────────────────┐
+                ↓                ↓                ↓
+            Users           Computers          Groups
+                │                │                │
+            Alice             PC-001          Developers
+            Bob               PC-002          Admins
+            AD Domain Services က ဘယ်မှာရှိလဲ?
+            Microsoft Active Directory ကို Windows Server ပေါ်မှာ run လုပ်နိုင်တယ်။
+            အထူးသဖြင့်—
+                Active Directory Domain Services (AD DS) ကို Windows Server မှာ install/configure လုပ်ရတယ်။
+            ပြီးရင် အဲဒီ server က Domain Controller (DC) ဖြစ်လာနိုင်တယ်။
+                    Windows Server
+                        ↓
+                    AD Domain Services
+                        ↓
+                    Domain Controller
+                        ↓
+                    Active Directory
+            AD ထဲမှာ ဘာတွေသိမ်းထားလဲ?
+            AD က database of objects တစ်ခုလိုပါပဲ။
+            အဲဒီ objects တွေထဲမှာ—
+                User Accounts
+                Computers
+                Printers
+                File Shares
+                Security Groups
+            စတာတွေ ပါတယ်။
+            Centralized Security Management:
+                ဒါက AD ရဲ့ အဓိက purpose တစ်ခုပါ။
+                    ဥပမာ Alice ကို company employee အဖြစ် create လုပ်တယ်—
+                        Create Alice
+                            ↓
+                        Add Alice to Developers Group
+                            ↓
+                        Alice gets Developer permissions
+
+                    Alice ထွက်သွားရင်—
+                        Disable Alice's AD account
+                                ↓
+                        Alice can no longer authenticate
+
+                    ဒါကြောင့် computer တစ်လုံးချင်းစီမှာ user account သီးသန့်လုပ်နေစရာ မလိုဘူး။
+                    Centralized management ဖြစ်တယ်။
+            Objects are organized in Trees
+                AD objects တွေကို random အနေနဲ့မထားဘဲ hierarchical structure နဲ့ organize လုပ်တယ်။
+                Tree = connected domains ရဲ့ hierarchy
+                    eg:                  gfrog.com
+                                            │
+                                ┌─────────┴─────────┐
+                                ↓                   ↓
+                            jp.gfrog.com        us.gfrog.com
+                                │
+                                ↓
+                            tokyo.jp.gfrog.com
+                parent-child domain relationship ရှိရင် Tree လို့ခေါ်
+                Forest = one or more AD Trees
+                                     FOREST
+                                        │
+                                ┌──────────┴──────────┐
+                                ↓                     ↓
+                            Tree 1                Tree 2
+                                │                     │
+                        gfrog.com              example.com
+                            │
+                        ┌───┴───┐
+                        ↓       ↓
+                        jp.     us.
+                ဒါကြောင့် hierarchy က
+                        Forest
+                        ↓
+                        Tree
+                        ↓
+                        Domain
+                        ↓
+                        Objects
+        AWS Directory Services:
+            main note:
+                AWS Directory Service
+                    │
+                    ├── AWS Managed Microsoft AD
+                    │      → AD ကို AWS မှာထား
+                    │
+                    ├── AD Connector
+                    │      → AD ကို On-Premises မှာထား
+                    │      → AWS က Proxy/Gateway လိုလုပ်
+                    │
+                    └── Simple AD
+                        → AWS မှာ AD-compatible directory
+            AWS Managed Microsoft AD:
+                တကယ့် Microsoft Active Directory ကို AWS က managed လုပ်
+                On-Premises AD နဲ့ Trust ချိတ်နိုင်တယ်
+                MFA support
+                Exam clues:
+                    Managed Microsoft AD in AWS
+                    Need actual Microsoft AD
+                    Need MFA
+                    Need trust relationship with on-premises AD
+            AD Connector:
+                AD Connector က AD အသစ်တစ်ခုကို AWS မှာ မဖန်တီးဘူး။
+                AD က On-Premises မှာပဲရှိတယ်။
+                MFA support.
+                    AWS
+                    │
+                    └── AD Connector
+                        │
+                        │ Proxy / Gateway
+                        ↓
+                    On-Premises
+                    │
+                    └── Microsoft Active Directory
+                        │
+                        ├── Users
+                        ├── Groups
+                        └── Authentication
+            Simple AD:
+                AWS ပေါ်မှာရှိတဲ့ AD-compatible managed directory
+                ဒါက Microsoft Active Directory အပြည့်အစုံ မဟုတ်ဘူး။
+                AWS က directory management ကို လုပ်ပေးတယ်။
+                ဒါပေမယ့်—
+                On-Premises AD နဲ့ join/trust integration မလုပ်နိုင်ဘူး
+            comparison:
+                | Feature                | Managed Microsoft AD | AD Connector      | Simple AD                     |
+                | ---------------------- | -------------------- | ----------------- | ----------------------------- |
+                | AD location            | **AWS**              | **On-Premises**   | **AWS**                       |
+                | Actual Microsoft AD    | ✅                    | Uses existing AD  | ❌ AD-compatible               |
+                | User management        | AWS Managed AD       | **On-Prem AD**    | AWS                           |
+                | Proxy/Gateway          | ❌                    | ✅                 | ❌                             |
+                | MFA                    | ✅                    | ✅                 | Limited / not the key feature |
+                | On-Prem AD integration | ✅ Trust              | ✅ Main purpose    | ❌                             |
+                | Best for               | Microsoft AD in AWS  | Existing AD → AWS | Simple/basic directory        |
+            IAM Identity Center ကို Active Directory နဲ့ ဘယ်လို connect လုပ်မလဲ?
+                အဓိကအားဖြင့် AD က AWS ထဲမှာရှိလား၊ On-Premises မှာရှိလား ဆိုတာခွဲစဉ်းစား
+                AWS Managed Microsoft AD ရှိပြီးသားဆိုရင်
+                    IAM Identity Center ကို အဲဒီ Managed Microsoft AD နဲ့ connect လုပ်နိုင်
+                    Integration is out of the box ဆိုတာ—
+                        AWS Managed Microsoft AD နဲ့ IAM Identity Center ကြား integration ကို 
+                        AWS က support လုပ်ပေးထားပြီး setup က ရိုးရှင်းတယ်။
+                Self-Managed Directory ဆိုတာ?
+                    two optons:
+                        Two-way Trust:
+                            AWS ဘက်မှာ AWS Managed Microsoft AD တစ်ခု create လုပ်ပြီး On-Premises AD နဲ့ two-way trust relationship တည်ဆောက်တယ်။
+                                On-Premises
+                                Self-Managed AD
+                                    ↕
+                                Two-way Trust
+                                    ↕
+                                AWS Managed Microsoft AD
+                                    │
+                                    ↓
+                                IAM Identity Center
+                            Two-way trust ဆိုတာ AD နှစ်ခုက တစ်ဖက်နဲ့တစ်ဖက် trust လုပ်နိုင်တဲ့ relationship ပါ။
+                            ဒီနည်းမှာ AWS Managed Microsoft AD ကို AWS ဘက်က directory အဖြစ်သုံးပြီး existing On-Premises AD နဲ့ trust ချိတ်ထားတာပါ။
+                        AD Connector:
+                            AD Connector က AD အသစ်မဖန်တီးဘူး။
+                            သူက On-Premises AD ကို proxy/gateway လို connect လုပ်ပေး
+                            User တွေကလည်း On-Premises AD မှာပဲ manage လုပ်
+                Note:
+                    | Requirement                                 | Solution                     |
+                    | ------------------------------------------- | ---------------------------- |
+                    | Managed AD already in AWS                   | **AWS Managed Microsoft AD** |
+                    | On-Prem AD + AWS Managed AD integration     | **Two-way Trust**            |
+                    | On-Prem AD ကိုပဲ ဆက်သုံးပြီး AWS ကနေ access | **AD Connector**             |
+                    | User management remains On-Premises         | **AD Connector**             |
+    AWS Control Tower ကို အလွယ်ဆုံးပြောရရင်—
+            AWS Organizations ထဲမှာ multi-account environment တစ်ခုကို လွယ်လွယ်ကူကူ setup လုပ်ပြီး 
+                centralized governance လုပ်ပေးတဲ့ service ပါ။
+            Account တစ်ခုချင်းစီကို manually setup လုပ်မယ်ဆိုရင် အချိန်ကုန်ပြီး configuration မတူတာတွေ ဖြစ်နိုင်တယ်။
+            Control Tower က best practices အတိုင်း ဒီ multi-account environment ကို automatically setup + govern လုပ်ပေးတယ်။
+                             AWS Control Tower
+                                    │
+                        ┌────────────┼────────────┐
+                        ↓            ↓            ↓
+                    Setup         Govern       Monitor
+                        │            │            │
+                        ↓            ↓            ↓
+                    Accounts      Guardrails   Dashboard
+            AWS Organizations to create and organize accounts.
+            Benefits:
+                Automate setup:
+                    flow:
+                        Control Tower
+                            ↓
+                        Landing Zone
+                            ↓
+                        Accounts + OUs + Security + Governance
+                    Landing Zone ဆိုတာ Control Tower ကနေ setup လုပ်ထားတဲ့ 
+                        well-architected multi-account baseline environment လို့ မှတ်ထားပါ။
+                Automate ongoing policy management:
+                    Guardrail = Accounts တွေကို rule/guardrail ချမှတ်ပြီး governance လုပ်တဲ့ mechanism
+                    Preventive Guardrail:
+                        Preventive = မဖြစ်အောင် ကြိုတင်တားဆီးခြင်း
+                        အဓိကအားဖြင့် SCPs ကို အသုံးပြုတယ်။
+                        violation မဖြစ်ခင်ကတည်းက တားလိုက်တယ်။
+                    Detective Guardrail:
+                        Detective = ဖြစ်ပြီးသား configuration/violation ကို ရှာဖွေခြင်း
+                        အဓိကအားဖြင့် AWS Config ကို အသုံးပြုတယ်။
+                    Note:
+                        |            | Preventive       | Detective                 |
+                        | ---------- | ---------------- | ------------------------- |
+                        | Purpose    | မဖြစ်အောင်တား    | ဖြစ်ပြီးတာကိုရှာ          |
+                        | Technology | **SCP**          | **AWS Config**            |
+                        | Example    | Restrict Regions | Detect untagged resources |
+                        | Result     | Action ကို deny  | Compliance status ပြ      |
+
+                Detect policy violations and remediate:
+                    Account တစ်ခုမှာ policy ချိုးဖောက်မှုဖြစ်ရင် Control Tower က detect လုပ်ပြီး remediate လုပ်နိုင်တယ်။
+                    Remediate = violation ဖြစ်နေတာကို ပြန်ပြင်ပေးခြင်း
+                Monitor compliance:
+                    accounts တွေရဲ့ governance/compliance status ကို centralized ကြည့်နိုင်တယ်။
+    IAM Identity Center vs AWS Directory Service:
+        IAM Identity Center = “Who can access which AWS Account?”
+            SSO / AWS account access
+        AWS Directory Service = “Where are the users/directories managed?”
+            Directory / Active Directory
+        The important difference
+            Imagine Alice wants to enter AWS.
+            Directory Service
+            Answers: “Alice is a valid user in our company's directory.”
+            IAM Identity Center
+            Answers: “Alice can access the Development AWS Account with this Permission Set.”
+            So:
+                Directory Service
+                    ↓
+                    WHO IS ALICE?
+                    ↓
+                IAM Identity Center
+                    ↓
+                WHAT CAN ALICE ACCESS?
+                    ↓
+                AWS Account
+    AWS Organizations vs AWS Control Tower:
+        AWS Organizations = Build/manage the multi-account structure
+            Organizations is the foundation.
+        AWS Control Tower = Make that structure easy to set up + govern + monitor
+            Think of Control Tower as a management layer built on top of Organizations.
+                        AWS Control Tower
+                    "Setup + Govern + Monitor"
+                                │
+                                ▼
+                        AWS Organizations
+                    "Accounts + OUs + SCPs"
+                                │
+                    ┌──────────┼──────────┐
+                    ▼          ▼          ▼
+                Prod       Dev/Test     Sandbox
+                Account     Accounts     Account
+        Note:
+            | Requirement                                        | Answer            |
+            | -------------------------------------------------- | ----------------- |
+            | Create/manage AWS accounts                         | **Organizations** |
+            | Create OUs                                         | **Organizations** |
+            | Consolidated billing                               | **Organizations** |
+            | Create SCPs                                        | **Organizations** |
+            | Set up a complete multi-account environment easily | **Control Tower** |
+            | Automated governance                               | **Control Tower** |
+            | Landing Zone                                       | **Control Tower** |
+            | Account Factory                                    | **Control Tower** |
+            | Compliance dashboard                               | **Control Tower** |
+            | Preventive / Detective controls                    | **Control Tower** |
+
 
 
 

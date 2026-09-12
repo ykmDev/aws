@@ -685,6 +685,14 @@ to make some tests. The tests will be done every 6 months, so the events need to
 
 ans: Use EventBridge Archieve and Replay feature.
 ----------------------------------------------
+Which of the following IAM condition key you can use only to allow API calls to a specified AWS region?
+
+1. aws:RequiredRegion
+2. aws:SourceRegion
+3. aws:InitialRegion
+4. aws:RequestedRegion
+
+ans: 4.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
