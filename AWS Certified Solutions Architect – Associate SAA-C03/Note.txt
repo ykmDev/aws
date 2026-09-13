@@ -14283,6 +14283,761 @@ IAM Advanced:
             | Account Factory                                    | **Control Tower** |
             | Compliance dashboard                               | **Control Tower** |
             | Preventive / Detective controls                    | **Control Tower** |
+AWS Security & Encryption:
+    Encryption:
+        Encryption in flight:
+            protects data while traveling over the network.
+            use TLS
+            HTTPS = HTTP + TLS
+                    Client
+                    │
+                    │ 🔒 encrypted
+                    │
+                    │────── Internet ──────▶
+                    │
+                    ▼
+                    Server
+                    │
+                    ▼
+                    decrypt
+            Without encryption:
+                Client ──────── "password=12345" ────────▶ Server
+                                    👀
+                                attacker
+            A MITM (Man-in-the-Middle) attacker could potentially intercept traffic.
+        Server-side encryption at rest:
+            The server encrypts it before storing it.
+                    Client
+                    │
+                    │ data
+                    ▼
+                    Server
+                    │
+                    │ encrypt 🔐
+                    ▼
+                    💾 Storage
+                    🔐 encrypted data
+            When an authorized application needs the data:
+                Storage 🔐
+                    │
+                    │ decrypt
+                    ▼
+                Application
+        Client-side encryption:
+            the client encrypts the data before sending it to the server.
+            The server receives only encrypted data.
+            The server should not have the ability to decrypt the data.
+                CLIENT                         SERVER
+                │                              │
+                │ data                         │
+                │ ↓                            │
+                │ 🔐 encrypt                   │
+                │                              │
+                │──── 🔐 encrypted data ─────▶│
+                │                              │
+                │                              ▼
+                │                         💾 encrypted
+        Note:
+            |                     | Encryption in flight    | Server-side encryption at rest | Client-side encryption           |
+            | ------------------- | ----------------------- | ------------------------------ | -------------------------------- |
+            | When?               | During transmission     | While stored                   | Before sending                   |
+            | Who encrypts?       | Client/server using TLS | Server/service                 | Client                           |
+            | Server can decrypt? | Yes, at TLS endpoint    | **Yes**                        | **Should not**                   |
+            | Main protection     | Network                 | Storage                        | End-to-end/client-controlled     |
+            | Example             | HTTPS/TLS               | S3 SSE                         | Client encrypts before S3 upload |
+        What is Envelope Encryption?
+            Instead of using one master key directly to encrypt a huge amount of data.
+            we use a data key.
+                KMS
+                │
+                │ generate
+                ▼
+                Data Key
+                │
+                ├────────▶ encrypt data 🔐
+                │
+                └────────▶ encrypted by KMS key 🔐
+                Envelope = စာအိတ်
+            The data key encrypts the actual data.
+            The KMS key protects the data key.
+    AWS KMS:
+        AWS service for creating, storing, controlling, and using encryption keys.
+        KMS manages encryption keys for you.
+        Instead of your application trying to safely store encryption keys itself, AWS KMS manages the keys.
+        KMS + IAM:
+            You still control who is allowed to use the KMS key.
+            KMS authorization can involve IAM policies and KMS key policies.
+        KMS + CloudTrail:
+            You can audit KMS API usage through CloudTrail.
+        KMS + AWS services:
+            KMS integrates with many AWS services. eg: EBS, S3, RDS,
+        Never store plaintext secrets in code
+        Instead, use services such as:
+            AWS Secrets Manager
+            AWS Systems Manager Parameter Store
+            KMS for encryption/key management
+        Important distinction
+            KMS doesn't primarily store your application's secrets.
+            It manages encryption keys.
+            Secrets Manager stores secrets such as:
+                DB username
+                DB password
+                API key
+        KMS API:
+            KMS Key Encryption also available through API calls (SDK, CLI)
+        Encrypted secrets can be stored in code/environment variables:
+            Imagine your password is:
+                MyPassword123
+                You don't want to put this directly in your code.
+                Step 1 — Encrypt the password
+                You use an encryption key:
+                    Password
+                    MyPassword123
+                        │
+                        │ 🔑 Encryption Key
+                        ▼
+                    Encrypt
+                        │
+                        ▼
+                    Encrypted Password
+                    X8a91K...xyz
+                So now you can store:
+                    ENCRYPTED_PASSWORD=X8a91K...xyz
+                That's safer because someone who sees X8a91K...xyz doesn't immediately know the password.
+                Step 2 — But you need the key to decrypt it
+                To get the original password back:
+                    Encrypted Password
+                    X8a91K...xyz
+                        │
+                        │ 🔑 Encryption Key
+                        ▼
+                        Decrypt
+                        │
+                        ▼
+                    MyPassword123
+                This is the problem.
+                If you put both in your code:
+                    CODE
+                    ├── encrypted_password = X8a91K...xyz
+                    └── encryption_key     = ABC123...key
+                an attacker who gets your code has both things.
+                So where should the key go?
+                This is where AWS KMS becomes useful.
+                you can have:
+                    Your Application
+                        │
+                        │ encrypted secret
+                        ▼
+                    Secrets Manager
+                        │
+                        │ needs encryption/decryption
+                        ▼
+                        KMS 🔑
+                AWS manages the encryption key through KMS, and your application needs appropriate IAM permissions to use it.
+        Note:
+            | Question says...                                             | Think...                              |
+            | ------------------------------------------------------------ | ------------------------------------- |
+            | Manage encryption keys                                       | **KMS**                               |
+            | Control access to encryption key                             | **KMS + IAM/Key Policy**              |
+            | Audit KMS API usage                                          | **CloudTrail**                        |
+            | Encrypt EBS/S3/RDS                                           | **KMS may be involved**               |
+            | Store database password securely                             | **Secrets Manager**                   |
+            | Store configuration parameters                               | **SSM Parameter Store**               |
+            | Never expose password/API key in source code                 | **Secrets Manager / Parameter Store** |
+            | Encrypt data before sending it to AWS and AWS cannot decrypt | **Client-side encryption**            |
+            | Protect data while traveling                                 | **TLS**                               |
+        old name: KMS Customer Master Key (CMK)
+        KMS Key Types:
+            Symmetric KMS Key: [symmetric = ညီမျှသော၊ အချိုးကျသော]
+                same key is used for both operations[Encrypt,Decrypt]
+                AES-256 for the cryptographic key material.
+                You cannot simply download the plaintext symmetric KMS key.
+                Instead, an AWS service/application asks KMS to perform the cryptographic operation:
+                    Application
+                        │
+                        │ "KMS, encrypt this"
+                        ▼
+                        KMS 🔑
+                        │
+                        ▼
+                    Encrypted data
+                Or:
+                    Application
+                        │
+                        │ "KMS, decrypt this"
+                        ▼
+                        KMS 🔑
+                        │
+                        ▼
+                    Plaintext
+                So, You must call KMS API to use.
+            Asymmetric KMS Key:
+                have two mathematically related keys: Public Key and Private Key.
+                For encryption:
+                    Public Key 🔓
+                        │
+                        ▼
+                    Encrypt
+                        │
+                        ▼
+                    Encrypted data 🔐
+                        │
+                        ▼
+                    Private Key 🔒
+                        │
+                        ▼
+                    Decrypt
+                Public key → Encrypt
+                Private key → Decrypt
+                    The public key can be shared.
+                    The private key must remain protected.
+                Asymmetric keys can also sign:
+                    Asymmetric cryptography isn't only for encryption.
+                    It can also be used for digital signatures.
+                        flow:
+                            Private Key 🔒
+                                │
+                                ▼
+                                Sign
+                                │
+                                ▼
+                            Signature
+                                │
+                                ▼
+                            Public Key 🔓
+                                │
+                                ▼
+                            Verify
+                So remember:
+                    Asymmetric KMS
+                    │
+                    ├── Encrypt / Decrypt
+                    │
+                    └── Sign / Verify
+                Why would I use an Asymmetric KMS key?
+                    Encryption outside AWS by users/applications that cannot call the KMS API.
+            Note:
+                |                                     | Symmetric         | Asymmetric                          |
+                | ----------------------------------- | ----------------- | ----------------------------------- |
+                | Keys                                | **1 key**         | **2 keys**                          |
+                | Keys                                | Same key          | Public + Private                    |
+                | Encryption                          | Encrypt + Decrypt | Public → Encrypt, Private → Decrypt |
+                | Signing                             | ❌                 | ✅ Sign / Verify                     |
+                | Algorithms                          | AES-256           | RSA / ECC                           |
+                | Public key downloadable?            | ❌                 | ✅                                   |
+                | Private key plaintext access?       | ❌                 | ❌                                   |
+                | AWS service integration             | **Very common**   | Less common                         |
+                | External encryption without KMS API | ❌                 | **✅**                               |
+            AWS Owned Keys — 🆓 Free:
+                owned and managed completely by AWS.
+                cannot manage the key or its rotation.
+                    S3  → SSE-S3
+                    SQS → SSE-SQS
+                    DynamoDB → default encryption
+            AWS Managed Keys — 🆓 Free:
+                KMS keys managed by AWS for a particular AWS service, but the key appears in your KMS account view.
+                You don't have full control over the key.
+                    aws/rds
+                    aws/ebs
+                    aws/s3
+                The naming pattern is:
+                    aws/<service-name>
+                Rotation: Automatically rotated every 1 year
+            Customer Managed Keys — 💰 $1/month:
+                You get much more control:
+                    IAM permissions
+                    Key policy
+                    Rotation
+                    Disable/enable
+                    Grants
+                    Deletion scheduling
+                    Alias
+                    etc.
+                two way:
+                    Create the key in KMS
+                        AWS KMS
+                        ↓
+                        Create Key
+                        ↓
+                        🔑 Customer Managed Key
+                        Rotation: If rotation enabled, you control.
+                    Import your own key material
+                        Your key material
+                            ↓
+                            KMS
+                            ↓
+                        🔑 Customer Managed Key
+                        Rotation: 
+                            KMS cannot automatically generate a replacement for your imported key material.
+                            Imported key material → manual rotation
+                            A common approach is to create/import new key material and
+                            use an alias to point applications to the current key.
+                Both are generally:
+                    $1/month per KMS key
+                    And KMS API usage is charged separately.
+            Main Note:
+                AWS Managed Key = AWS creates/manages the KMS key in your account.
+
+                AWS Owned Key = AWS owns and manages the key completely; it's not a customer-managed KMS key in your account.
+
+                Customer Managed Key = you manage the KMS key.
+        KMS Key Policy:
+            esource-based policy
+            Main point:
+                KMS Key Policy is required to control access to a KMS key.
+                Be careful. IAM permission alone may not be enough.
+                Default KMS Key Policy:
+                    When you create a KMS key and don't provide your own key policy, AWS creates a default key policy.
+                    The important part is:
+                        The AWS account root principal gets full access to the KMS key.
+                    This does not mean only the root user can use the key.
+                    It effectively allows the account to use IAM policies to delegate access.
+                    account-level control
+                Custom KMS Key Policy:
+                    You can control things such as:
+                        Key users
+                            Who can:
+                                kms:Encrypt
+                                kms:Decrypt
+                                kms:GenerateDataKey
+                        Key administrators
+                            kms:CreateGrant
+                            kms:EnableKey
+                            kms:DisableKey
+                            kms:ScheduleKeyDeletion
+                            kms:PutKeyPolicy
+                                KMS Key
+                                    │
+                        ┌─────────┴─────────┐
+                        ▼                   ▼
+                    Key Users          Key Administrators
+                        │                   │
+                    Encrypt/Decrypt       Manage the key
+                Compare KMS Key Policy and IAM Policy
+                    IAM Policy
+                        │
+                        │ Allow
+                        ▼
+                    KMS Key
+                        ▲
+                        │
+                        │ Allow
+                    Key Policy
+                    both policy mechanisms may work together.
+                Exam trap:
+                    If you see:
+                        “Give a role permission to use a KMS key.”
+
+                    Don't look only for:
+                    kms:Decrypt in the IAM policy.
+                    Also think:
+                    Does the KMS Key Policy allow this principal/account? 🔑
+        Copying Snapshots across accounts:
+            Because KMS keys are account-specific, so you cannot simply share the encrypted snapshot and 
+            let the target account use your KMS key forever.
+            Example
+                Suppose:
+                    Account A = Source
+                    Account B = Target
+                You have an EBS volume in Account A:
+                    Account A
+                    │
+                    ▼
+                    EBS Volume
+                    │
+                    │ Snapshot
+                    ▼
+                    📸 Snapshot 🔐
+                        │
+                        ▼
+                    KMS Key A 🔑
+                You want Account B to use this snapshot.
+
+                Step 1 — Create the Snapshot
+                    In Account A, create the EBS Snapshot.
+                    The snapshot must be encrypted using a Customer Managed KMS Key (CMK).
+                        Account A
+
+                        EBS Volume
+                            │
+                            ▼
+                        Snapshot 🔐
+                            │
+                            ▼
+                        KMS Key A 🔑
+                    Why Customer Managed Key?
+                    Because you need to modify its KMS Key Policy to allow Account B to use the key.
+                Step 2 — Update KMS Key Policy
+                    Account A must allow Account B to access/use the KMS key.
+                        KMS Key A 🔑
+                            │
+                            ▼
+                        Key Policy
+                            │
+                            └── Account B → allowed ✅
+                    Without this:
+                        Account B
+                        │
+                        ▼
+                        Snapshot 🔐
+                        │
+                        ▼
+                        KMS Key A 🔑
+                        │
+                        ❌ Access denied
+                    So remember:
+                        Cross-account encrypted snapshot → KMS Key Policy must allow the target account.
+                Step 3 — Share the Snapshot
+                    Now Account A shares the snapshot with Account B.
+                        Account A
+                        ───────────────
+                        Snapshot 🔐
+                            │
+                            │ Share
+                            ▼
+                        Account B
+                    But the snapshot is still encrypted with:
+                    KMS Key A 🔑
+                Step 4 — Account B copies the Snapshot
+                    This is the most important step.
+                    Account B should copy the snapshot and encrypt the new copy using a KMS key owned by Account B.
+                        Account A                     Account B
+                        ─────────                     ─────────
+
+                        Snapshot 🔐
+                        KMS Key A 🔑
+                            │
+                            │ Share
+                            ▼
+                                                Copy Snapshot
+                                                    │
+                                                    ▼
+                                                New Snapshot 🔐
+                                                    │
+                                                    ▼
+                                                KMS Key B 🔑
+                    Now Account B owns its own encrypted snapshot and its own KMS key.
+                    Why copy it?
+                    Because we don't want Account B to permanently depend on Account A's KMS key.
+                        After copying:
+                        Original:
+                        Account A
+                        Snapshot 🔐
+                        ↓
+                        KMS Key A 🔑
+
+
+                        Copy:
+                        Account B
+                        Snapshot 🔐
+                        ↓
+                        KMS Key B 🔑
+                    Now Account B controls its copy.
+
+                        Step 5 — Create EBS Volume
+
+                        Finally:
+
+                        Account B
+
+                        Snapshot 🔐
+                            │
+                            ▼
+                        EBS Volume 🔐
+
+                    The volume is encrypted using Account B's KMS key.
+
+                🧠 Entire process
+
+                Memorize this sequence:
+
+                ACCOUNT A
+                ──────────────
+
+                1. Create encrypted Snapshot
+                        ↓
+                Customer Managed KMS Key A 🔑
+                        ↓
+                2. KMS Key Policy
+                → Allow Account B
+                        ↓
+                3. Share Snapshot
+                        ↓
+                ACCOUNT B
+                ──────────────
+                        ↓
+                4. Copy Snapshot
+                        ↓
+                Encrypt with KMS Key B 🔑
+                        ↓
+                5. Create EBS Volume
+        KMS Muli-Region Keys:
+            same cryptographic key in multiple Regions
+            The keys in different Regions are related replicas of the same key material, rather than two completely unrelated keys.
+            Normally:
+                Tokyo Region
+                    │
+                    ▼
+                KMS Key 🔑
+                    │
+                    ▼
+                Encrypted Data 🔐
+                That key exists in one Region.
+                If your application moves to another Region:
+                    Tokyo                    Singapore
+                    │                          │
+                    KMS Key A 🔑              ??? 
+                The Singapore application cannot simply use Tokyo's regional KMS key as if it were local.
+            Why is this[related replicas of the same key material] useful?
+            Imagine your application is running in:
+                Tokyo
+                │
+                ▼
+                Application
+                │
+                ▼
+                Database 🔐
+                Then you want disaster recovery in Singapore:
+                    Tokyo                         Singapore
+                    ─────                         ─────────
+
+                    Application                   DR Application
+                        │                              │
+                        ▼                              ▼
+                    Data 🔐                         Data 🔐
+                With ordinary regional KMS keys, the encryption keys are different.
+                With a Multi-Region Key:
+                    Tokyo                         Singapore
+                    ─────                         ─────────
+
+                    KMS Key 🔑  ◀── related ──▶  KMS Key 🔑
+                        │                              │
+                        ▼                              ▼
+                    Data 🔐                         Data 🔐
+                This makes cross-Region encrypted data replication / disaster recovery much easier.
+            Very important: It's NOT one global KMS key
+                Primary Key
+                Tokyo 🔑
+                │
+                │ replicate
+                ▼
+                Replica Key
+                Singapore 🔑
+                The primary key can create/update replicas.
+                You can have multiple replicas in other Regions.
+            Especially when the question involves:
+                Multi-Region application
+                Disaster Recovery
+                Cross-Region replication
+                Global application
+                Encrypted data moving between Regions
+                Same encryption key across Regions
+                Multi-Region Key does NOT mean automatic cross-Region data replication.
+
+                It only solves the key side.
+                You still need something such as S3 Cross-Region Replication, 
+                    DynamoDB Global Tables, Aurora Global Database, etc., to replicate the actual data.
+            Note:
+                If you see:
+
+                "Encrypt in one Region, decrypt in another Region"
+
+                → KMS Multi-Region Key
+
+                If you see:
+
+                "Global DynamoDB/Aurora + client-side encryption"
+
+                → KMS Multi-Region Key
+
+                If you see:
+
+                "Protect sensitive fields before storing in database"
+
+                → Client-side encryption
+
+                If you see:
+
+                "Move/replicate the actual data"
+
+                → DynamoDB Global Tables / Aurora Global Database / S3 CRR, NOT KMS.
+
+                If you see:
+
+                "Who can use this KMS key?"
+
+                → KMS Key Policy + IAM permissions
+        S3 Replication + Encryption relationship:
+            SSE-S3 / Unencrypted:
+                Unencrypted objects နဲ့ encrypted objects with SSE-S3 → default replication
+            SSE-KMS → Extra configuration:
+                S3 Replication မှာ SSE-KMS replication enable
+                Target bucket အတွက် KMS Key သတ်မှတ်
+                IAM Role:
+                    Source KMS Key → kms:Decrypt
+                    Target KMS Key → kms:Encrypt
+                Target KMS Key Policy ကိုလည်း permission ပေးရမယ်
+                main:
+                    SSE-KMS replication = Decrypt source + Encrypt target
+            KMS throttling
+                Replication များလွန်းလို့ KMS API requests များပြီး throttling ဖြစ်နိုင်
+                Service Quotas increase တောင်းနိုင်
+            SSE-C:
+                SSE-C objects can be replicated
+            Multi-Region KMS Key:
+                S3 က Multi-Region KMS Keys ကို independent keys လို့ treat လုပ်
+                Multi-Region KMS Key ဖြစ်တယ်ဆိုပြီး S3 က encryption ကို cross-Region direct reuse မလုပ်ဘူး။
+                exam မှာ—
+                    "S3 replication with SSE-KMS"
+                    တွေ့ရင် KMS permissions + source decrypt + target encrypt ကိုစဉ်းစားပါ။
+
+                    "Using Multi-Region KMS keys eliminates S3's decrypt/re-encrypt process"
+                    ❌ False
+        AMI Sharing Process — Encrypted via KMS:
+            1. Source Account
+                AMI ရဲ့ snapshots တွေကို Source Account ရဲ့ KMS Key နဲ့ encrypt လုပ်ထားတယ်။
+                    Source Account
+                        │
+                        ├── AMI
+                        │    └── Encrypted EBS Snapshot
+                        │             ↓
+                        │        Source KMS Key
+                        │
+                        └── Share AMI
+            2. Share the AMI
+                AMI ရဲ့ Launch Permission ကို modify လုပ်ပြီး Target AWS Account ID ကိုထည့်ရမယ်။
+                    AMI
+                    ↓
+                    Launch Permission
+                    ↓
+                    Target Account
+            3. Share the KMS Key
+                AMI က reference လုပ်ထားတဲ့ encrypted snapshots တွေကို decrypt လုပ်နိုင်ဖို့ Source KMS Key Policy မှာ Target Account / IAM Role / User ကို permission ပေးရမယ်။
+                Target side မှာ လိုအပ်နိုင်တဲ့ KMS permissions:
+                    kms:DescribeKey
+                    kms:ReEncrypt*
+                    kms:CreateGrant
+                    kms:Decrypt
+            4. Launch EC2 from the Shared AMI
+                Target Account က shared AMI ကိုအသုံးပြုပြီး EC2 instance launch လုပ်နိုင်တယ်။
+                Launch လုပ်တဲ့အချိန်မှာ Target Account ရဲ့ own KMS Key ကို specify လုပ်ပြီး EBS volumes ကို re-encrypt လုပ်နိုင်တယ်။
+                    Source Account
+                        │
+                        │ Shared AMI
+                        ↓
+                    Target Account
+                        │
+                        │ Launch EC2
+                        ↓
+                    Re-encrypt EBS
+                        │
+                        ↓
+                    Target Account's KMS Key
+    SSM Parameter Store:
+        Application configuration နဲ့ secrets တွေကို central place တစ်ခုမှာ သိမ်းထားဖို့
+        Parameter Store က—
+            Configuration
+            Password
+            API key
+            Database connection information
+            Other application parameters
+        တွေကို store လုပ်နိုင်တယ်။
+        Parameter types
+            အဓိကအားဖြင့်—
+                String
+                StringList
+                SecureString
+            Sensitive data ဆိုရင်:
+                SecureString
+                    +
+                KMS
+            SecureString + KMS:
+                Parameter Store က SecureString ကို KMS နဲ့ encrypt လုပ်နိုင်တယ်။
+                flow: Secret → SecureString → KMS encryption
+        Security through IAM:
+            IAM permission မရှိရင် parameter ကို read မလုပ်နိုင်ဘူး။
+        Version tracking:
+            Parameter value ပြောင်းတိုင်း version ရှိတယ်။
+        Notifications with EventBridge:
+            Parameter ပြောင်းသွားတဲ့ event တွေကို Amazon EventBridge နဲ့ detect လုပ်ပြီး action trigger လုပ်နိုင်တယ်။
+        CloudFormation integration:
+            CloudFormation template ထဲမှာ Parameter Store values ကို reference လုပ်နိုင်
+        SSM Parameter Store Hierarchy:
+            /my-department/
+                │
+                ├── my-app/
+                │   ├── dev/
+                │   │   ├── db-url
+                │   │   └── db-password
+                │   │
+                │   └── prod/
+                │       ├── db-url
+                │       └── db-password
+                │
+                └── other-app/
+            /other-department/
+            / ကိုသုံးပြီး hierarchy တည်ဆောက်
+            ဘာအတွက်ကောင်းလဲ?
+            Development နဲ့ Production ကို ခွဲထားနိုင်
+        Special Hierarchy 1 — Secrets Manager:
+            /aws/reference/secretsmanager/secret_ID
+            Parameter Store ကနေ Secrets Manager secret ကို reference လုပ်တဲ့ path
+                Application
+                    ↓
+                Parameter Store
+                    ↓
+                Secrets Manager
+                    ↓
+                Secret
+            ဒါကြောင့် Parameter Store နဲ့ Secrets Manager က completely separate ဖြစ်ပေမယ့် integration ရှိတယ်။
+        Special Hierarchy 2 — Public AMI parameters:
+            /aws/service/ami-amazon-linux-latest/...
+            public parameters ဖြစ်ပြီး latest AMI ID လို information တွေကို dynamically retrieve လုပ်ဖို့သုံး
+            ဒါကြောင့် AMI ID ကို hard-code လုပ်စရာမလိုဘူး။
+        Standard and Advanced parameter tiers:
+            |                     | **Standard** | **Advanced** |
+            | ------------------- | -----------: | -----------: |
+            | Max parameters      |   **10,000** |  **100,000** |
+            | Max parameter value |     **4 KB** |     **8 KB** |
+            | Parameter policies  |         ❌ No |        ✅ Yes |
+            | Storage cost        |     **Free** |  **Charged** |
+            | KMS SecureString    |            ✅ |            ✅ |
+
+            Only in Advanced, Parameter policies let you manage things such as:
+                Expiration(TTL) — parameter expires after a certain time
+                Expiration notification(EventBridge)
+                No-change notification(EventBridge)— notify if parameter hasn't changed for a specified period
+            REMEMBER:
+                Standard = 10K / 4 KB / Free / No policies
+                Advanced = 100K / 8 KB / Paid / Policies
+
+        Note:
+            SAA exam မှာ—
+                "Need automatic rotation of database credentials/secrets"
+
+                ဆိုရင် Secrets Manager ကို စဉ်းစားပါ။
+
+                "Need to store application configuration / parameters"
+
+                ဆိုရင် SSM Parameter Store ကို စဉ်းစားပါ။
+            |                           | SSM Parameter Store | Secrets Manager |
+            | ------------------------- | ------------------- | --------------- |
+            | Configuration             | ⭐⭐⭐                 | ⭐               |
+            | Secrets                   | ✅                   | ⭐⭐⭐             |
+            | SecureString              | ✅                   | —               |
+            | KMS encryption            | ✅                   | ✅               |
+            | Versioning                | ✅                   | ✅               |
+            | Hierarchy `/app/prod/...` | ✅                   | —               |
+            | Automatic secret rotation | ❌                   | ⭐ **YES**       |
+            | RDS credential rotation   | —                   | ⭐ **YES**       |
+            | Usually simpler/cheaper   | ⭐                   | —               |
+            
+
+
+
+
+
+
 
 
 
