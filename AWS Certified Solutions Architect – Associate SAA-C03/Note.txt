@@ -14371,7 +14371,7 @@ AWS Security & Encryption:
             You can audit KMS API usage through CloudTrail.
         KMS + AWS services:
             KMS integrates with many AWS services. eg: EBS, S3, RDS,
-        Never store plaintext secrets in code
+        Never store plaintext secrets in code.
         Instead, use services such as:
             AWS Secrets Manager
             AWS Systems Manager Parameter Store
@@ -14390,37 +14390,37 @@ AWS Security & Encryption:
                 MyPassword123
                 You don't want to put this directly in your code.
                 Step 1 — Encrypt the password
-                You use an encryption key:
-                    Password
-                    MyPassword123
-                        │
-                        │ 🔑 Encryption Key
-                        ▼
-                    Encrypt
-                        │
-                        ▼
-                    Encrypted Password
-                    X8a91K...xyz
-                So now you can store:
-                    ENCRYPTED_PASSWORD=X8a91K...xyz
-                That's safer because someone who sees X8a91K...xyz doesn't immediately know the password.
+                    You use an encryption key:
+                        Password
+                        MyPassword123
+                            │
+                            │ 🔑 Encryption Key
+                            ▼
+                        Encrypt
+                            │
+                            ▼
+                        Encrypted Password
+                        X8a91K...xyz
+                    So now you can store:
+                        ENCRYPTED_PASSWORD=X8a91K...xyz
+                    That's safer because someone who sees X8a91K...xyz doesn't immediately know the password.
                 Step 2 — But you need the key to decrypt it
-                To get the original password back:
-                    Encrypted Password
-                    X8a91K...xyz
-                        │
-                        │ 🔑 Encryption Key
-                        ▼
-                        Decrypt
-                        │
-                        ▼
-                    MyPassword123
-                This is the problem.
-                If you put both in your code:
-                    CODE
-                    ├── encrypted_password = X8a91K...xyz
-                    └── encryption_key     = ABC123...key
-                an attacker who gets your code has both things.
+                    To get the original password back:
+                        Encrypted Password
+                        X8a91K...xyz
+                            │
+                            │ 🔑 Encryption Key
+                            ▼
+                            Decrypt
+                            │
+                            ▼
+                        MyPassword123
+                    This is the problem.
+                    If you put both in your code:
+                        CODE
+                        ├── encrypted_password = X8a91K...xyz
+                        └── encryption_key     = ABC123...key
+                    an attacker who gets your code has both things.
                 So where should the key go?
                 This is where AWS KMS becomes useful.
                 you can have:
@@ -14577,12 +14577,10 @@ AWS Security & Encryption:
                     And KMS API usage is charged separately.
             Main Note:
                 AWS Managed Key = AWS creates/manages the KMS key in your account.
-
                 AWS Owned Key = AWS owns and manages the key completely; it's not a customer-managed KMS key in your account.
-
                 Customer Managed Key = you manage the KMS key.
         KMS Key Policy:
-            esource-based policy
+            resource-based policy
             Main point:
                 KMS Key Policy is required to control access to a KMS key.
                 Be careful. IAM permission alone may not be enough.
@@ -14629,9 +14627,9 @@ AWS Security & Encryption:
                         “Give a role permission to use a KMS key.”
 
                     Don't look only for:
-                    kms:Decrypt in the IAM policy.
+                        kms:Decrypt in the IAM policy.
                     Also think:
-                    Does the KMS Key Policy allow this principal/account? 🔑
+                        Does the KMS Key Policy allow this principal/account? 🔑
         Copying Snapshots across accounts:
             Because KMS keys are account-specific, so you cannot simply share the encrypted snapshot and 
             let the target account use your KMS key forever.
@@ -14753,7 +14751,6 @@ AWS Security & Encryption:
 
                 ACCOUNT A
                 ──────────────
-
                 1. Create encrypted Snapshot
                         ↓
                 Customer Managed KMS Key A 🔑
@@ -14800,7 +14797,6 @@ AWS Security & Encryption:
                 Then you want disaster recovery in Singapore:
                     Tokyo                         Singapore
                     ─────                         ─────────
-
                     Application                   DR Application
                         │                              │
                         ▼                              ▼
@@ -14809,7 +14805,6 @@ AWS Security & Encryption:
                 With a Multi-Region Key:
                     Tokyo                         Singapore
                     ─────                         ─────────
-
                     KMS Key 🔑  ◀── related ──▶  KMS Key 🔑
                         │                              │
                         ▼                              ▼
@@ -14839,33 +14834,23 @@ AWS Security & Encryption:
                     DynamoDB Global Tables, Aurora Global Database, etc., to replicate the actual data.
             Note:
                 If you see:
-
                 "Encrypt in one Region, decrypt in another Region"
-
                 → KMS Multi-Region Key
 
                 If you see:
-
                 "Global DynamoDB/Aurora + client-side encryption"
-
                 → KMS Multi-Region Key
 
                 If you see:
-
                 "Protect sensitive fields before storing in database"
-
                 → Client-side encryption
 
                 If you see:
-
                 "Move/replicate the actual data"
-
                 → DynamoDB Global Tables / Aurora Global Database / S3 CRR, NOT KMS.
 
                 If you see:
-
                 "Who can use this KMS key?"
-
                 → KMS Key Policy + IAM permissions
         S3 Replication + Encryption relationship:
             SSE-S3 / Unencrypted:
@@ -15031,17 +15016,1065 @@ AWS Security & Encryption:
             | Automatic secret rotation | ❌                   | ⭐ **YES**       |
             | RDS credential rotation   | —                   | ⭐ **YES**       |
             | Usually simpler/cheaper   | ⭐                   | —               |
+    AWS Secrets Manager:
+        dedicated service for storing and managing secrets.
+        Examples:
+            DB username
+            DB password
+            API secret
+            OAuth credentials
+        Automatic Secret Rotation:
+            Rotate this secret every xx days.
+            by using Lambda.
+        RDS Integration:
+            with
+                Amazon RDS for MySQL
+                Amazon RDS for PostgreSQL
+                Amazon Aurora
+        KMS Encryption:
+            encrypted using AWS KMS.
+        Multi-Region Secrets:
+            can replicate the secret to another Region.
+            Secrets Manager keeps the replica synchronized with the primary secret.
+                    Primary Secret
+                    Tokyo Region
+                        │
+                        │ Replication
+                        ↓
+                ┌─────────────────┐
+                │ Singapore Region│
+                │ Read Replica    │
+                └─────────────────┘
+            Why Multi-Region Secrets?
+                Each application can access the secret in its local Region.
+                Benefits:
+                    Lower latency
+                    Multi-Region application support
+                    Disaster recovery
+                    Multi-Region database architectures
+            Promote Replica → Standalone Secret:
+                can promote the replica to a standalone secret.
+                    Before:
+                        Tokyo              Singapore
+                        Primary ─────────→ Replica
+                    After promotion:
+                        Tokyo              Singapore
+                        Primary             Standalone
+        Note:
+            | Requirement                                | Service                                  |
+            | ------------------------------------------ | ---------------------------------------- |
+            | Store application configuration            | **SSM Parameter Store**                  |
+            | Store encrypted parameter                  | **Parameter Store SecureString + KMS**   |
+            | Store secrets                              | **Secrets Manager**                      |
+            | Automatic secret rotation                  | ⭐ **Secrets Manager**                    |
+            | Rotate RDS credentials                     | ⭐ **Secrets Manager + Lambda**           |
+            | Encrypt secrets                            | **KMS**                                  |
+            | Secret needed in multiple Regions          | **Secrets Manager Multi-Region**         |
+            | Keep regional secret replicas synchronized | **Secrets Manager**                      |
+            | DR: promote replica                        | **Promote replica to standalone secret** |
+    AWS Certificate Manager (ACM):
+        mainly about HTTPS/TLS certificates
+        Enable HTTPS / encryption in transit for websites and applications.
+        TLS encrypts data in transit.
+        Public vs Private Certificates:
+            Public TLS Certificate:
+                free.
+            Private TLS Certificate:
+                Used for internal/private applications.
+        Automatic Renewal:
+            don't want to manually renew certificates every year.
+            can automatically renew eligible ACM certificates.
+        Where can ACM certificates be used?
+            ACM integrates with:
+                ACM Certificate
+                    │
+                    ├── Application Load Balancer (ALB)
+                    ├── Classic Load Balancer (CLB)
+                    ├── Network Load Balancer (NLB)
+                    ├── CloudFront
+                    └── API Gateway
+                ALB + ACM:
+                    The ALB handles the HTTPS/TLS connection.
+                    The EC2 application can then receive HTTP internally if appropriate.
+                CloudFront + ACM:
+                    If ACM is used with CloudFront, the ACM certificate must be in:
+                        ⭐ US East (N. Virginia) — us-east-1
+                    unlike ALB, 
+                        For ALB, the ACM certificate is normally in the same Region as the load balancer.
+        ACM — Public Certificate:
+            Requesting a Public Certificate:
+                1.Domain name ထည့်
+                    ဥပမာ— corp.example.com
+                    ဒါက FQDN (Fully Qualified Domain Name) ဖြစ်တယ်။
+                    Wildcard လည်းသုံးနိုင်တယ်—*.example.com
+                    ဒါဆို—
+                        www.example.com
+                        api.example.com
+                        app.example.com
+                    လို subdomains တွေကို cover လုပ်နိုင်တယ်။
+                2. Domain Validation ⭐
+                    Certificate ထုတ်ပေးမယ့်သူက—
+                        "ဒီ domain ကို တကယ်ပိုင်/ထိန်းချုပ်နိုင်လား?"
+                    ဆိုတာ verify လုပ်ရတယ်။
+                    ACM မှာ အဓိက validation နှစ်မျိုးရှိတယ်။
+                    DNS Validation ⭐ Preferred
+                        ACM က CNAME record ပေးတယ်။
+                            ACM
+                            │
+                            │ CNAME record
+                            ↓
+                            Route 53 / DNS
+                            │
+                            ↓
+                            Domain verified ✅
+                        Automation အတွက် DNS Validation ကို preferred လုပ်တယ်။
+                        Exam clue:
+                            "Automate certificate validation/renewal"
+                            DNS Validation
+                    Email Validation:
+                        ACM က domain owner ရဲ့ contact addresses တွေကို email ပို့တယ်။
+                            ACM
+                            ↓
+                            Email
+                            ↓
+                            Domain owner
+                            ↓
+                            Approve
+                            ↓
+                            Verified ✅
+                        WHOIS/contact information မှာရှိတဲ့ addresses ကို အသုံးပြုနိုင်တယ်။
+                Automatic Renewal:
+                    ACM ကိုယ်တိုင် request လုပ်ပြီး generate လုပ်ထားတဲ့ public certificate ဆိုရင်
+                    ACM က certificate expiry မတိုင်ခင် 60 days အလိုမှာ automatic renewal လုပ်ပေးတယ်။
+                    ACM-generated = Automatic renewal
+            Importing Public Certificates:
+                Certificate ကို ACM က generate မလုပ်ဘူး။
+                external Certificate Authority (CA) ကနေ ရပြီး ACM ထဲ import လုပ်
+                    External CA
+                        ↓
+                    Certificate
+                        ↓
+                    Import into ACM
+                No Automatic Renewal:
+                    automatic renew မလုပ်ပေးဘူး။
+                    Certificate expire မဖြစ်ခင် ကိုယ်တိုင်လုပ်ရတယ်
+                Expiration Events:
+                    Imported certificates အတွက် ACM က expiry မတိုင်ခင် 45 days အလိုကနေ daily expiration events ပို့တယ်။
+                AWS Config:
+                    managed rule: acm-certificate-expiration-check ရှိတယ်
+                    ဒီ rule က certificate expiry နီးလာတာကို check လုပ်နိုင်တယ်။
+        ACM + ALB Integration:
+            initial setup/configuration:
+                step 1: Request certificate from ACM:
+                    ACM မှာ example.com အတွက် public certificate request လုပ်တယ်။
+                    ပြီးရင် domain validation လုပ်တယ်။
+                step 2: ALB မှာ HTTPS Listener create:
+                    ALB မှာ listener တစ်ခု create လုပ်မယ်:
+                        Protocol: HTTPS
+                        Port: 443
+                    ပြီးတော့ ACM certificate ကို listener နဲ့ attach လုပ်တယ်။
+            Normal user request:
+                user request -> ALB
+                ALB က ACM certificate ကိုသုံးပြီး TLS handshake လုပ်တယ်။
+                ALB forwards to EC2
+                ပြီးရင် ALB က request ကို target group ထဲက EC2 ကို forward လုပ်တယ်။
+                TLS termination at ALB လို့ခေါ်တယ်။
+        API Gateway Endpoint Types:
+            Edge-Optimized(default):
+                for Global clients,
+                    User (Myanmar)
+                        │
+                        ↓
+                    CloudFront Edge Location
+                        │
+                        ↓
+                    API Gateway
+                    (Region တစ်ခု)
+                    API Gateway ကိုယ်တိုင်က one Region ထဲမှာပဲရှိတယ်။ Edge locations တွေက 
+                    API Gateway ကို globally deploy လုပ်ပေးတာမဟုတ်ဘူး။
+            Regional:
+                API Gateway နဲ့ client တွေ same Region / nearby Region ဖြစ်ရင် သုံး
+                Global users အတွက် CloudFront ကို ကိုယ်တိုင်ထပ်တင်နိုင်တယ်။
+                ဒါက Edge-Optimized နဲ့မတူတာက CloudFront ကို ကိုယ်တိုင် control လုပ်နိုင်တယ်။
+                remember:
+                    Same Region → Regional
+                    Need custom CloudFront control → Regional + CloudFront
+            Private:
+                for internal/private API
+                                 AWS VPC
+                        ┌──────────────────────────┐
+                        │                          │
+                        │  EC2                     │
+                        │   │                      │
+                        │   ↓                      │
+                        │ VPC Endpoint (ENI)       │
+                        │   │                      │
+                        │   ↓                      │
+                        │ Private API Gateway      │
+                        │                          │
+                        └──────────────────────────┘
+                To access, use Interface VPC Endpoint (ENI).
+                control who can access, use API Gateway Resource Policy
+        ACM- Integration with API Gateway:
+            ပုံမှန် API URL အစား ကိုယ်ပိုင် domain သုံးချင်တယ်—
+                https://api.example.com
+                ဆိုရင် API Gateway Custom Domain Name create လုပ်ပြီး ACM TLS certificate ကို attach လုပ်တယ်။
+                    ACM
+                    │
+                    │ TLS Certificate
+                    ↓
+                    API Gateway
+                    │
+                    │ Custom Domain
+                    ↓
+                    api.example.com
+            Edge-Optimized:
+                for global clients,
+                ACM certificate ကို ⭐ us-east-1 မှာထားရမယ်။
+                Route 53
+                ပြီးရင် domain ကို API Gateway ကို point လုပ်မယ်။
+                အကောင်းဆုံးက: Route 53 A — Alias record
+                    api.example.com
+                        ↓
+                    Route 53 A Alias
+                        ↓
+                    API Gateway Custom Domain
+            Regional:
+                ACM certificate က ⭐ API Gateway ရှိတဲ့ same Region
+            Note:
+                |                 | Edge-Optimized        | Regional                 |
+                | --------------- | --------------------- | ------------------------ |
+                | Clients         | Global                | Same/near Region         |
+                | CloudFront      | Built-in/managed path | Can add manually         |
+                | API Gateway     | One Region            | One Region               |
+                | ACM Certificate | ⭐ **us-east-1**       | ⭐ **Same Region as API** |
+                | Route 53        | A Alias               | A Alias                  |
+        Note:
+            | Exam clue                              | Answer                             |
+            | -------------------------------------- | ---------------------------------- |
+            | ACM public certificate domain          | FQDN / Wildcard                    |
+            | Automated domain validation            | ⭐ **DNS Validation**               |
+            | DNS validation record                  | **CNAME**                          |
+            | Manual domain validation               | Email Validation                   |
+            | ACM-generated public certificate       | ⭐ **Automatic renewal**            |
+            | ACM renewal timing                     | **60 days before expiry**          |
+            | External certificate imported into ACM | ❌ No automatic renewal             |
+            | Imported certificate expiring          | **EventBridge expiration events**  |
+            | Imported certificate event starts      | **45 days before expiry**          |
+            | Check expiring cert with AWS Config    | `acm-certificate-expiration-check` |
+
+            Question:
+                "A company wants to enable HTTPS on an Application Load Balancer."
+                → AWS Certificate Manager (ACM) certificate ကို ALB ရဲ့ HTTPS listener မှာ attach လုပ်ပါ။
+
+            Question:
+                "Where should the ACM certificate be attached?"
+                → ALB HTTPS Listener
+
+            Question:
+                "Who handles the TLS connection?"
+                → ALB
+
+            Question:
+                "Who manages the TLS certificate?"
+                → ACM
             
+            Edge-Optimized → CloudFront Edge Locations
+            Regional        → Regional endpoint
+            Private         → VPC Interface Endpoint
+
+            Exam trap:
+                "API Gateway is deployed globally with Edge-Optimized"
+
+                ❌ မမှန်ပါ။
+                API Gateway က Region တစ်ခုထဲမှာပဲရှိတယ်။ 
+                CloudFront Edge Locations က client နဲ့ API Gateway ကြား latency လျှော့ပေးတာပါ။
+    CloudHSM:
+        HSM = Hardware Security Module
+        AWS က dedicated hardware HSM device ကို provision ပေးပြီး
+        encryption key ကို customer ကိုယ်တိုင် control/manage လုပ်နိုင်တဲ့ service
+        KMS:
+            │
+            ├── AWS manages KMS infrastructure/software
+            └── You use AWS KMS API
+        CloudHSM:
+            │
+            ├── Dedicated HSM hardware
+            ├── Customer controls keys
+            └── Customer manages HSM/client interaction
+        ဒါကြောင့် hardware-level control လိုတဲ့ organization တွေအတွက် သင့်တော်
+        Tamper Resistant + FIPS:
+            CloudHSM hardware က tamper-resistant ဖြစ်တယ်။
+                ပြီးတော့:
+                FIPS 140-2 Level 3
+                compliance ကို support လုပ်တယ်။
+                Exam မှာ—
+                    "Need FIPS 140-2 Level 3 hardware security"
+                    → ⭐ CloudHSM
+        Symmetric + Asymmetric  နှစ်မျိုးလုံး support လုပ်တယ်။
+        Redshift + CloudHSM:
+            Amazon Redshift က CloudHSM ကို database encryption နဲ့ key management အတွက် support လုပ်တယ်။
+        CloudHSM + SSE-C:
+            SSE-C = Server-Side Encryption with Customer-Provided Keys
+            Customer က encryption key ကို provide/manage လုပ်တယ်။
+            CloudHSM က customer-controlled keys အတွက် သင့်တော်တဲ့ hardware security option တစ်ခုဖြစ်နိုင်တယ်။
+        IAM Permissions → Manage the HSM Cluster:
+            AWS CloudHSM service resources.
+                IAM
+                │
+                ├── Create Cluster
+                ├── Delete Cluster
+                ├── Add HSM
+                └── Manage Cluster configuration
+            CloudHSM Software → Manage Keys and Users:
+                use CloudHSM Client Software
+                CloudHSM Client Software
+                        │
+                        ├── Keys
+                        │    ├── Create
+                        │    ├── Delete
+                        │    ├── Encrypt/Decrypt
+                        │    └── Sign/Verify
+                        │
+                        └── HSM Users
+                            ├── Create
+                            ├── Delete
+                            └── Manage permissions
+            Note:
+                IAM → Cluster
+                CloudHSM Client → Keys + Users
+                if the exam says:
+                    "An administrator needs to create/delete/manage a CloudHSM cluster."
+                    → IAM permissions
+
+                    "An administrator needs to create/manage encryption keys inside CloudHSM."
+                    → CloudHSM Client Software + HSM credentials
+
+                    One important concept
+                        Don't confuse IAM users with CloudHSM users.
+                        AWS IAM User
+                            ↓
+                        manages AWS CloudHSM resource
+                            ↓
+                        CloudHSM Cluster
+                            ↓
+                        CloudHSM User
+                            ↓
+                        manages keys inside HSM
+        High Availability:
+            contain multiple HSMs distributed across multiple Availability Zones (AZs).
+            So, you got:
+                High Availability (HA) → service can continue if an HSM/AZ fails.
+                Durability → cryptographic key material is protected through redundant HSMs.
+                Fault tolerance → avoid depending on a single HSM/AZ.
+                High Availability vs Fault tolerance:
+                    High Availability (HA) = "The service stays available."
+                    Fault Tolerance (FT) = "The system keeps working even when a component fails."
+                        |                  | High Availability            | Fault Tolerance                    |
+                        | ---------------- | ---------------------------- | ---------------------------------- |
+                        | Main goal        | Minimize downtime            | Continue operation despite failure |
+                        | Failure allowed? | Yes                          | Yes                                |
+                        | Interruption     | **Possible** during failover | **Little/no interruption**         |
+                        | Usually          | Redundant + failover         | Redundant + immediate continuation |
+                        | Cost             | Usually lower                | Usually higher                     |
+        Integration wiht AWS Services:
+            integration with KMS.
+                KMS still provides the AWS-facing key management API, 
+                while the actual key material for keys in the custom key store is protected by your CloudHSM cluster.
+            configure KMS Custom Key Store with CloudHSM.
+            | Service                  | Main idea                                                    |
+            | ------------------------ | ------------------------------------------------------------ |
+            | **KMS**                  | Managed key management                                       |
+            | **CloudHSM**             | Dedicated HSM hardware + more direct control of key material |
+            | **KMS Custom Key Store** | Use **CloudHSM** as the backing store for KMS keys           |
+            example: EBS, S3, RDS, ...
+                    AWS Service
+                        ↓
+                        KMS
+                        ↓
+                    KMS Custom Key Store
+                        ↓
+                    CloudHSM
+                eg: EBS:
+                    EC2
+                    │
+                    ▼
+                    EBS
+                    │
+                    ▼
+                    KMS
+                    │
+                    ▼
+                    KMS Key
+                    │
+                    ▼
+                    CloudHSM-backed Custom Key Store
+            exam like:
+                "The company requires KMS integration but wants greater control over the cryptographic key material and dedicated HSMs."
+                Think:
+                    KMS Custom Key Store + CloudHSM
+        Tenancy:
+            Hardware ကို customer တစ်ယောက်တည်းသုံးတာလား၊
+            customer အများကြီးက shared infrastructure ကိုသုံးတာလား
+            KMS = Multi-Tenant
+                Customer A, B, C တွေက KMS service infrastructure ကို အသုံးပြုကြပါတယ်။
+                but, Customer A ရဲ့ key ကို Customer B က သုံးလို့မရပါဘူး။
+                and,
+                    CloudTrail, CloudWatch
+            CloudHSM = Single-Tenant / Dedicated:
+                ဒီ HSM hardware ကို သင့်အတွက် dedicated ဖြစ်ပါတယ်။
+                အခြား customer တွေနဲ့ HSM hardware ကို မျှဝေသုံးတာမဟုတ်
+                CloudTrail, CloudWatch, MFA support
+        Note:
+            |                | KMS                              | CloudHSM              |
+            | -------------- | -------------------------------- | --------------------- |
+            | Infrastructure | AWS managed                      | AWS provides hardware |
+            | Key control    | AWS KMS service model            | ⭐ Customer controlled |
+            | Hardware       | Abstracted                       | ⭐ Dedicated HSM       |
+            | FIPS           | Depends on KMS configuration/use | ⭐ FIPS 140-2 Level 3  |
+            | Symmetric      | ✅                                | ✅                     |
+            | Asymmetric     | ✅                                | ✅                     |
+            | Free tier      | —                                | ❌ No                  |
+    WAF(Web Application Firewall):
+        malicious HTTP/HTTPS requests တွေကနေ ကာကွယ်ပေးတဲ့ firewall
+        Layer 7 — Application Layer မှာအလုပ်လုပ်ပါတယ်
+        ဘယ် AWS Services တွေမှာသုံးလဲ?
+                         AWS WAF
+                                │
+                ┌────────────┼────────────┐
+                ▼            ▼            ▼
+                ALB      API Gateway   CloudFront
+                │
+                ├── AppSync GraphQL API
+                │
+                └── Cognito User Pool
+        Web ACL(Web Access Control List) ဆိုတာဘာလဲ?
+           WAF ရဲ့ rules တွေစုထားတဲ့ container
+           Web ACL
+                │
+                ├── Rule 1: Block bad IP
+                ├── Rule 2: Block SQL injection
+                ├── Rule 3: Block XSS
+                ├── Rule 4: Block specific country
+                └── Rule 5: Rate limit
+            WAF က request တစ်ခုရောက်လာတိုင်း rules တွေနဲ့ စစ်ပြီး—
+                Request
+                │
+                ▼
+                Web ACL
+                │
+                ├── Rule match → ❌ Block
+                │
+                └── No match   → ✅ Allow
+        WAF Rules တွေမှာ ဘာတွေစစ်နိုင်လဲ?
+            IP address:
+                မကောင်းတဲ့ IP address တွေကို block လုပ်နိုင်ပါတယ်။
+                IP Set တစ်ခုမှာ up to 10,000 IP addresses ထည့်နိုင်
+                10,000 ကျော်လိုရင် multiple IP sets/rules
+            HTTP headers / body / URI:
+                Request ထဲက content ကို စစ်နိုင်
+                common web attacks တွေကို detect/block လုပ်နိုင်
+                for:
+                    SQL Injection
+                    Cross-Site Scripting (XSS)
+            Size Constraints:
+                Request ရဲ့ size ကို စစ်နိုင်
+                Request body က သတ်မှတ်ထားတဲ့ size ထက်ကြီးရင် block.
+            Geo-Match:
+                Country အလိုက် allow/block လုပ်နိုင်
+            Rate-Based Rules:
+                Rate-based rule က IP တစ်ခုက request အများကြီးပို့နေရင် detect/block လုပ်နိုင်
+                eg: IP တစ်ခုက 5 minutes အတွင်း request အရမ်းများလာရင် block.
+                for:
+                    Request flooding
+                    HTTP flood
+                    Application-layer attacks
+                    Basic DDoS mitigation
+        Web ACL Regional vs CloudFront:
+            Regional resource:
+                ALB / API Gateway / AppSync / Cognito စတာတွေနဲ့သုံးတဲ့ WAF Web ACL
+            CloudFront:
+                CloudFront အတွက် WAF Web ACL က global/CloudFront scope
+        Rule Group ဆိုတာဘာလဲ?
+            Rule Group = reusable collection of WAF rules
+            SQL Injection + XSS rules တွေကို application တစ်ခုချင်းစီမှာ ပြန်ရေးမယ့်အစား—
+                        Rule Group
+                    ┌─────────────┐
+                    │ SQLi Rule   │
+                    │ XSS Rule    │
+                    │ Bad IP Rule │
+                    └──────┬──────┘
+                            │
+                    ┌──────┼──────┐
+                    ▼      ▼      ▼
+                    ACL1   ACL2   ACL3
+                တစ်ခါရေးပြီး multiple Web ACLs တွေမှာ reuse လုပ်နိုင်ပါတယ်။
+        Note:
+            | Requirement                      | AWS WAF                         |
+            | -------------------------------- | ------------------------------- |
+            | Web application protection       | ✅                               |
+            | OSI Layer                        | **Layer 7**                     |
+            | Protocol                         | **HTTP/HTTPS**                  |
+            | SQL Injection                    | ✅                               |
+            | XSS                              | ✅                               |
+            | IP filtering                     | ✅                               |
+            | HTTP headers/body/URI inspection | ✅                               |
+            | Size constraints                 | ✅                               |
+            | Block countries                  | **Geo-match**                   |
+            | Too many requests                | **Rate-based rule**             |
+            | ALB                              | ✅                               |
+            | API Gateway                      | ✅                               |
+            | CloudFront                       | ✅                               |
+            | AppSync                          | ✅                               |
+            | Cognito User Pool                | ✅                               |
+            | Reusable rules                   | **Rule Group**                  |
+            | Web ACL scope                    | **Regional**, except CloudFront |
+
+            တစ်ခါတလေ requirement က—
+                "Web application ကို WAF နဲ့ protect လုပ်ချင်တယ်၊ ဒါပေမယ့် fixed/static IP address လည်းလိုတယ်။"
+
+            WAF → NLB ❌
+                NLB (Network Load Balancer) က Layer 4
+                AWS WAF ကို NLB နဲ့ direct attach မလုပ်နိုင်
+                ဒါပေမယ့် Fixed IP လိုချင်ရင်?
+                    ဒီမှာ AWS Global Accelerator ကို သုံးနိုင်ပါတယ်။
+                    Global Accelerator က static Anycast IP addresses ပေးပါတယ်။
+                                Internet
+                                    │
+                                    ▼
+                        Global Accelerator
+                            Static IPs
+                            x.x.x.x
+                            y.y.y.y
+                                    │
+                                    ▼
+                                ALB
+                                    │
+                                    ▼
+                                    WAF
+                                    │
+                                    ▼
+                                EC2
+                ဘာကြောင့် Global Accelerator?
+                    Client / partner က—
+                        "ကျွန်တော်တို့ firewall မှာ IP address ကို allowlist လုပ်ထားရမယ်။ Static IP လိုတယ်။"
+                    ဆိုရင် Global Accelerator ရဲ့ static IPs ကို အသုံးပြုနိုင်ပါတယ်။
+
+                    Requirement နှစ်ခုကို တွဲမှတ်ပါ။
+                        WAF + ALB + Static/Fix IP → Global Accelerator
+                    Don't choose:
+                    ❌ NLB + WAF
+                    ❌ WAF directly on NLB
+                    ❌ Security Group for Layer-7 SQL injection protection
+                    Choose:
+                        Global Accelerator → ALB → WAF → Application
+    AWS Shield: protect from DDoS attack
+        DDoS = Distributed Denial of Service
+        Attacker တွေက source အများကြီးကနေ request/traffic အများကြီးကို တစ်ချိန်တည်းပို့ပြီး service ကို overload လုပ်ဖို့ ကြိုးစားတာပါ။
+        AWS Shield Standard:
+            Free + Automatically enabled
+            Layer 3 / Layer 4 network-level DDoS attacks
+            ဥပမာ:
+                SYN floods
+                UDP floods
+                Reflection attacks
+                Other common L3/L4 attacks
+        AWS Shield Advanced:
+            Optional paid service
+            main features:
+                24/7 DDoS Response Team:
+                    Serious DDoS
+                        ↓
+                    Shield Advanced
+                        ↓
+                    AWS DDoS Response Team
+                        ↓
+                    Mitigation support
+                DDoS cost protection:
+                    DDoS attack ကြောင့် traffic အများကြီးတက်ပြီး AWS usage cost တက်လာနိုင်
+                    eligible AWS resources အတွက် DDoS-related cost protection ပေးနိုင်ပါတယ်။
+                Shield Advanced + WAF:
+                    Layer 7 DDoS attacks ကို mitigate လုပ်ဖို့ AWS WAF rules ကို automatically create/evaluate/deploy လုပ်နိုင်
+                                         DDoS Attack
+                                            │
+                                ┌───────────┴───────────┐
+                                ▼                       ▼
+                            L3 / L4                  L7
+                                │                       │
+                                ▼                       ▼
+                        Shield protection          Shield Advanced
+                                                        │
+                                                        ▼
+                                                    AWS WAF rules
+                                                        │
+                                                        ▼
+                                                    Block
+        Note:
+            |                 | AWS Shield                 | AWS WAF                   |
+            | --------------- | -------------------------- | ------------------------- |
+            | Main purpose    | **DDoS protection**        | **Web request filtering** |
+            | Main focus      | Availability / DDoS        | Malicious HTTP requests   |
+            | Layer           | Shield Standard → L3/L4    | **L7**                    |
+            | SQL Injection   | ❌                          | ✅                         |
+            | XSS             | ❌                          | ✅                         |
+            | Rate-based rule | Advanced + WAF integration | ✅                         |
+            | Free            | Standard                   | WAF is paid service       |
+            | Advanced option | Shield Advanced            | —                         |
+        
+            Exam keywords
+                "DDoS attack"
+                → AWS Shield
+
+                "SYN/UDP flood, reflection attack"
+                → Shield Standard
+
+                "Advanced/sophisticated DDoS protection"
+                → Shield Advanced
+
+                "24/7 DDoS Response Team"
+                → Shield Advanced
+
+                "DDoS causes unexpected AWS charges"
+                → Shield Advanced
+
+                "Layer 7 DDoS automatically creates WAF rules"
+                → Shield Advanced automatic application-layer DDoS mitigation
+
+                "SQL injection / XSS / HTTP headers / URI filtering"
+                → AWS WAF
+
+                "Our company frequently experiences DDoS attacks."
+                👉 Shield Advanced
+
+                "Need protection against sophisticated DDoS attacks."
+                👉 Shield Advanced
+    AWS Firewall Manager:
+        AWS Organization အတွင်း account အများကြီးရဲ့ security rules တွေကို centrally manage လုပ်ပေးတဲ့ service ပါ။
+            Organization ထဲမှာ AWS accounts 50 ခုရှိတယ်ဆိုပါစို့။
+            Account တစ်ခုချင်းစီကို ဝင်ပြီး
+                "ဒီ WAF rule ထည့်၊ ဒီ Security Group rule ထည့်..."
+            လုပ်နေရင် အရမ်းရှုပ်ပါတယ်။
+            Firewall Manager ကနေ policy တစ်ခုသတ်မှတ်ပြီး accounts အများကြီးကို centrally apply လုပ်
+        Security Policy ဆိုတာ?
+            common set of security rules
+                Firewall Manager Security Policy
+                        │
+                        ├── Block bad IPs
+                        ├── WAF rules
+                        ├── Shield Advanced
+                        ├── Security Group rules
+                        └── Network Firewall rules
+                ပြီးတော့ Organization ထဲက သတ်မှတ်ထားတဲ့ accounts/resources တွေမှာ apply လုပ်ပေးပါတယ်။
+        ဘာတွေကို Manage လုပ်နိုင်လဲ?
+            WAF:
+                ဥပမာ—
+                    Company ရဲ့ account အားလုံးမှာ common WAF rules ရှိစေချင်တယ်။
+                    👉 Firewall Manager
+            Shield Advanced:
+                multiple accounts/resources တွေမှာ centrally manage လုပ်နိုင်ပါတယ်။
+            Security Groups:
+                EC2, ALB, ENI စတဲ့ VPC resources တွေအတွက် Security Group policies ကို centrally manage လုပ်နိုင်
+            AWS Network Firewall:
+                VPC level network firewall policies တွေကို centrally manage လုပ်နိုင်
+            Route 53 Resolver DNS Firewall:
+                DNS queries တွေကို filter/block လုပ်ဖို့ DNS Firewall policies တွေကို centrally manage လုပ်နိုင်ပါတယ်။
+        Firewall Manager policy က Regional.
+            AWS Regions အလိုက် policy configuration လိုအပ်နိုင်
+        New Resources ကို Automatic Apply:
+            Firewall Manager Policy
+                    │
+                    ├── Existing ALB  → Apply ✅
+                    ├── Existing ALB  → Apply ✅
+                    │
+                    └── New ALB
+                            │
+                            ▼
+                        Automatically
+                            │
+                            ▼
+                        Apply Policy ✅
+            နောက်ထပ် account အသစ် Organization ထဲဝင်လာရင်လည်း သတ်မှတ်ထားတဲ့ policy scope ထဲမှာဆို
+                automatically enforce လုပ်နိုင်ပါတယ်။
+            ဒါကြောင့် compliance အတွက် အရမ်းအသုံးဝင်ပါတယ်။
+        Firewall Manager vs Control Tower:
+            Control Tower
+                    │
+                    └── Overall multi-account governance
+                        │
+                        ├── Landing Zone
+                        ├── Accounts
+                        ├── Guardrails
+                        └── Compliance
+            Firewall Manager
+                    │
+                    └── Central security policy management
+                        │
+                        ├── WAF
+                        ├── Shield
+                        ├── Security Groups
+                        ├── Network Firewall
+                        └── DNS Firewall
+        Note:
+            | Requirement                                            | Think                      |
+            | ------------------------------------------------------ | -------------------------- |
+            | Manage security rules across **multiple AWS accounts** | **Firewall Manager**       |
+            | AWS Organization-wide security policies                | **Firewall Manager**       |
+            | Common WAF rules across accounts                       | **Firewall Manager + WAF** |
+            | Centrally manage Shield Advanced                       | **Firewall Manager**       |
+            | Centrally manage Security Groups                       | **Firewall Manager**       |
+            | Network Firewall policies                              | **Firewall Manager**       |
+            | DNS Firewall policies                                  | **Firewall Manager**       |
+            | Automatically apply to **new resources**               | **Firewall Manager**       |
+            | Compliance across many accounts                        | **Firewall Manager**       |
+            | Overall multi-account governance                       | **Control Tower**          |
+            
+            One-line memory
+                AWS Firewall Manager = "One security policy → many accounts/resources in an AWS Organization."
+
+            And the key exam phrase is:
+                "Automatically apply security rules to existing and newly created resources across multiple AWS accounts."
+
+            👉 AWS Firewall Manager
+        WAF vs Shield vs Firewall Manager:
+            AWS WAF = "Which web requests should I allow/block?"
+                WAF is the actual web traffic filtering engine.
+                It looks at Layer 7 HTTP/HTTPS requests.
+                Web ACL + Rules in WAF.
+            Firewall Manager = "How do I manage security rules across many accounts?"
+                Firewall Manager isn't primarily the thing that decides whether a particular HTTP request is malicious.
+                Instead, it is the central management layer.
+            Shield = "Are you under DDoS attack?"
+                Shield's primary job is DDoS protection.
+                Shield Standard:
+                    Shield Standard
+                        ↓
+                    Free
+                        ↓
+                    Automatic
+                        ↓
+                    Common L3/L4 DDoS protection
+                Shield Advanced
+                    Shield Advanced
+                        ↓
+                    Advanced DDoS protection
+                        +
+                    24/7 Shield Response Team
+                        +
+                    Advanced visibility/reporting
+                        +
+                    DDoS cost protection
+                        +
+                    Automatic application-layer
+                    DDoS mitigation using WAF
+            Note:
+                                AWS Organization
+                                        │
+                                Firewall Manager
+                                        │
+                            Centrally manages policies
+                                        │
+                        ┌───────────────┼────────────────┐
+                        ▼               ▼                ▼
+                        Account A       Account B        Account C
+                        │               │                │
+                        ▼               ▼                ▼
+                        WAF             WAF              WAF
+                        │               │                │
+                    Web ACL         Web ACL          Web ACL
+                        │
+                        ▼
+                    HTTP/HTTPS filtering
+                    SQLi / XSS / IP / Geo / Rate
 
 
+                                Shield Advanced
+                                    │
+                                    ▼
+                            DDoS Protection
+                                    +
+                                WAF integration
+        DDoS resiliency architecture:
+                                INTERNET
+                                    │
+                                    ▼
+                                Route 53 (BP3)
+                                DNS at the edge
+                                    │
+                            ┌─────────┴─────────┐
+                            │                   │
+                            ▼                   ▼
+                    CloudFront (BP1)    Global Accelerator
+                            │                   │
+                        WAF (BP2)             │
+                            │                   │
+                            ▼                   ▼
+                    API Gateway (BP4)      Load Balancer (BP6)
+                            │                   │
+                            │                   ▼
+                            │                ASG (BP7)
+                            │                   │
+                            │              EC2 instances
+                            │
+                            ▼
+                        Backend
+            BP1 — CloudFront:
+                CloudFront = bring your application closer to users at Edge Locations.
+                100,000 requests
+                        │
+                        ▼
+                    CloudFront Edge Locations
+                        │
+                        ├── Cache → respond
+                        │
+                        └── Only necessary requests
+                                        ↓
+                                    Backend
+                CloudFront is integrated with AWS's DDoS protection capabilities, including Shield Standard.
+            BP2 — AWS WAF:
+                detect and filter malicious web requests.
+                    User
+                    │
+                    ▼
+                    CloudFront
+                    │
+                    ▼
+                    WAF
+                    │
+                    ├── SQL Injection → ❌
+                    ├── XSS            → ❌
+                    ├── Bad IP         → ❌
+                    ├── Bad reputation → ❌
+                    ├── Rate too high  → ❌
+                    │
+                    └── Legitimate     → ✅
+            BP3 — Route 53:
+                Route 53 = DNS at the edge.
+                    User
+                    │
+                    │ "www.example.com"
+                    ▼
+                    Route 53
+                    │
+                    ▼
+                    Find the appropriate endpoint
+            BP4 — API Gateway:
+                acts as a front door for your API.
+                    Client
+                    │
+                    ▼
+                    API Gateway
+                    │
+                    ├── throttling
+                    ├── request controls
+                    └── authorization/API controls
+                    │
+                    ▼
+                    Lambda / EC2 / backend
+                API keys are primarily for identifying/controlling API usage,
+                    not strong authentication by themselves.
+            BP5 — Security Groups + NACLs:
+                network-level filters.
+                Security Group: ENI/instance level and controls allowed inbound/outbound traffic.
+                NACL: Works at the subnet level.
+                    Internet
+                    │
+                    ▼
+                    Network
+                    │
+                    ▼
+                    NACL
+                    │
+                    ▼
+                    ENI
+                    │
+                    ▼
+                    Security Group
+                    │
+                    ▼
+                    EC2
+            BP6 — Elastic Load Balancing:
+                distributes traffic across multiple backend instances.
+            BP7 — Auto Scaling:
+                creates/removes EC2 instances according to demand.
+            Global Accelerator:
+                Provides static Anycast IP addresses and
+                sends users through the AWS global network to your application.
+            Why does the diagram have both CloudFront AND Global Accelerator?
+                |                   | CloudFront             | Global Accelerator                                                                                 |
+                | ----------------- | ---------------------- | -------------------------------------------------------------------------------------------------- |
+                | Main purpose      | CDN / content delivery | Global network acceleration                                                                        |
+                | Edge locations    | ✅                      | ✅                                                                                                  |
+                | Caching           | ✅                      | ❌                                                                                                  |
+                | Static content    | ⭐⭐⭐                    | ❌                                                                                                  |
+                | Static Anycast IP | ❌                      | **✅**                                                                                              |
+                | HTTP/HTTPS        | ✅                      | ✅                                                                                                  |
+                | TCP/UDP           | ❌                      | **✅**                                                                                              |
+                | WAF integration   | **✅**                  | Can front resources protected by Shield, but WAF association is with supported protected resources |
+                | DDoS protection   | Shield integration     | Shield integration                                                                                 |
 
+                | BP      | Service         | Remember                            |
+                | ------- | --------------- | ----------------------------------- |
+                | **BP1** | **CloudFront**  | Edge delivery + caching             |
+                | **BP2** | **WAF**         | Filter malicious HTTP requests      |
+                | **BP3** | **Route 53**    | DNS at the edge                     |
+                | **BP4** | **API Gateway** | Protect/control APIs                |
+                | **BP5** | **SG + NACL**   | Network-level filtering             |
+                | **BP6** | **ELB**         | Distribute + scale traffic          |
+                | **BP7** | **ASG**         | Add/remove EC2 during traffic surge |
 
-
-
-
-
-
-
+                CloudFront → WAF → ALB → ASG → EC2
+    Amazon GuardDuty:
+        GuardDuty = Threat Detection
+            AWS activity/data and tells you "This looks suspicious."
+            It does not primarily prevent/block traffic like WAF or Security Groups.
+            a managed intelligent threat detection service.
+            No agents/software installation
+            It uses:
+                Machine Learning
+                Anomaly detection
+                AWS threat intelligence
+                Third-party threat intelligence
+        flow:
+            AWS Activity
+                │
+                ├── CloudTrail
+                ├── VPC Flow Logs
+                ├── DNS Logs
+                └── Optional data sources
+                        │
+                        ▼
+                    Amazon GuardDuty
+                        │
+                Analyze / Detect
+                        │
+                        ▼
+                    Finding 🚨
+        Input Data:
+            GuardDuty က data source အမျိုးမျိုးကို analyze လုပ်ပါတယ်။
+            CloudTrail activity,
+            CloudTrail Management Events,
+            CloudTrail S3 Data Events,
+            VPC Flow Logs,
+            DNS Logs,
+            Optional Features: EKS Audit Logs, RDS & Aurora, EBS, Lambda, S3 Data Events
+        GuardDuty Finding ဆိုတာဘာလဲ?
+            threat တစ်ခုတွေ့ရင် Finding ထုတ်ပေးပါတယ်။
+        EventBridge Integration:
+            GuardDuty
+                │
+                │ Finding
+                ▼
+            EventBridge
+                │
+                ├──────────────┐
+                ▼              ▼
+            Lambda           SNS
+                │              │
+                ▼              ▼
+            Auto response    Notification
+        Crypto Mining:
+            cryptocurrency mining / crypto-related attacks ကို detect လုပ်နိုင်
+            attacker က stolen credentials သုံးပြီး EC2 instances တွေကို crypto mining လုပ်နေတယ်ဆိုပါစို့။
+                Attacker
+                ↓
+                Compromised AWS account
+                ↓
+                EC2
+                ↓
+                Crypto mining
+                ↓
+                GuardDuty 🚨
+                ↓
+                Finding
+    Amazon Inspector:
+        Find vulnerabilities
+        Amazon Inspector = Automated vulnerability assessment service.
+            It continuously scans supported AWS workloads and looks for security vulnerabilities.
+            Inspector က ကိုယ့် server/application ထဲမှာ "security weakness / vulnerability ရှိလား?" ဆိုတာ စစ်ပေးတဲ့ security scanner ပါ။
+        Inspector vs GuardDuty:
+            |                               | GuardDuty                            | Inspector                                  |
+            | ----------------------------- | ------------------------------------ | ------------------------------------------ |
+            | Main purpose                  | **Threat detection**                 | **Vulnerability assessment**               |
+            | Question                      | "Is something suspicious happening?" | "Does this workload have vulnerabilities?" |
+            | Detect malicious activity     | ✅                                    | Not its primary purpose                    |
+            | Find software vulnerabilities | Not primary                          | ✅                                          |
+            | EC2                           | ✅ activity detection                 | ✅ vulnerability scanning                   |
+            | ECR container images          | —                                    | ✅                                          |
+            | Lambda                        | —                                    | ✅                                          |
+        evaluate only for:
+            Amazon Inspector for EC2:
+                Inspector can assess EC2 instances.
+                It uses the AWS Systems Manager (SSM) Agent to gather information from the EC2 instance.
+                    EC2
+                    │
+                    └── SSM Agent
+                        │
+                        ▼
+                    Amazon Inspector
+                        │
+                        ├── OS vulnerabilities
+                        └── Network accessibility
+                What does it check?
+                    ① Known vulnerabilities
+                    ② Unintended network accessibility
+            Inspector + ECR:
+                Inspector can scan container images stored in Amazon ECR.
+            Inspector + Lambda:
+                Inspector can also scan Lambda functions.
+                It looks for vulnerabilities in:
+                    Function code
+                    Package dependencies
+        Inspector → Security Hub:
+            Inspector findings can integrate with AWS Security Hub.
+        Inspector → EventBridge:
+            Inspector findings can also be sent to Amazon EventBridge.
+        Note:
+                            AMAZON INSPECTOR
+                                │
+                "Is my workload vulnerable?"
+                                │
+                ┌──────────────┼──────────────┐
+                ▼              ▼              ▼
+                EC2            ECR           Lambda
+                │              │              │
+            OS / Network   Container       Code /
+            vulnerabilities vulnerabilities Dependencies
+                │              │              │
+                └──────────────┼──────────────┘
+                                ▼
+                            Findings
+                            /        \
+                            ▼          ▼
+                    Security Hub   EventBridge
+            
+            CloudTrail   → Who did what?
+            Config       → What is the configuration/compliance?
+            GuardDuty    → Is suspicious/malicious activity happening?
+            Inspector    → Does my workload have known vulnerabilities?
+            WAF          → Should I allow/block this web request?
+            Shield       → Is there a DDoS attack?
+    Amazon Macie:
+        Macie = Sensitive Data Discovery
+        a fully managed data security and data privacy service.
+        It uses:
+            Machine Learning
+            Pattern matching
+        to discover sensitive data in AWS, especially Amazon S3.
+                        Amazon S3
+                            │
+                ┌─────────┴─────────┐
+                ▼                   ▼
+            Normal data        Sensitive data
+                                    │
+                                    ▼
+                                Macie
+                                    │
+                            Detect / Alert 🚨
+        What is PII?
+            PII = Personally Identifiable Information
+            လူတစ်ယောက်ကို identify လုပ်နိုင်တဲ့ personal information ပါ။
+Networking VPC:
+    
 
 
 

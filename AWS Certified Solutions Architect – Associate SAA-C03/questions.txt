@@ -694,6 +694,83 @@ Which of the following IAM condition key you can use only to allow API calls to 
 
 ans: 4.
 ----------------------------------------------
+In Server-Side Encryption, where do the encryption and decryption happen?
+
+1. Both Encryption and Decryption happen on the server
+2. Both Encryption and Decrption happen on the client
+3. Encryption happens on the server and Decryption happens on the client
+4. Encryption happens on the client and Decyption happens on the server
+
+ans: 1.
+----------------------------------------------
+You have created a Customer-managed CMK in KMS that you use to encrypt both S3 buckets and EBS snapshots. 
+Your company policy mandates that your encryption keys be rotated every 6 months. 
+What should you do?
+
+1. Re-configure your KMS CMK and enable Automatic Key Rotation, and configure the Retention Period with 180 days
+2. Use AWS Managede Keys as they are automatically rotated by AWS every 3 months
+3. Rotate the KMS CMK manually. Create a new KMS CMK and use Key Aliases to reference the new KMS CMK.
+Keep the old KMS CMK so you can decrypt the old data.
+
+ans: 1.
+
+----------------------------------------------
+What should you use to control access to your KMS CMKs?
+
+1. KMS Key Policies
+2. KMS IAM Policy
+3. AWS GuardDuty
+4. KMS Access Control List (KMS ACL)
+
+ans: 1.
+----------------------------------------------
+You have a secret value that you use for encryption purposes, 
+and you want to store and track the values of this secret over time. 
+Which AWS service should you use?
+
+1. AWS KMS Versioning Feature
+2. SSM Parameter store
+3. Amazon S3.
+
+ans: 2.
+----------------------------------------------
+AWS GuardDuty scans the following data sources, EXCEPT ................
+
+1. CloutTrail logs
+2. VPC Flow logs
+3. DNS logs
+4. CloudWatch Logs
+
+ans: 4.
+----------------------------------------------
+Which AWS service helps you protect your sensitive data stored in S3 buckets?
+
+1. Amazon GuardDuty
+2. Amazon Shield
+3. Amazon Macie
+4. AWS KMS
+
+ans: 3.
+----------------------------------------------
+An online-payment company is using AWS to host its infrastructure. 
+The frontend is created using VueJS and is hosted on an S3 bucket and the backend is developed using PHP and 
+is hosted on EC2 instances in an Auto Scaling Group. As their customers are worldwide, 
+they use both CloudFront and Aurora Global database to implement multi-region deployments to provide the lowest latency and 
+provide availability, and resiliency. A new feature required which gives customers the ability to store data encrypted on the database 
+and this data must not be disclosed even by the company admins. 
+The data should be encrypted on the client side and stored in an encrypted format. 
+What do you recommend to implement this?
+
+1. Using Aurora Client-side Encryption and KMS Multi-region Keys
+2. Using Lambda Client-side Encryption and KMS Multi-region Keys
+3. Using Aurora Client-side Encryption and CloudHSM
+4. Using Lambda Client-side Encryption and CloudHSM
+
+ans: 1.
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
