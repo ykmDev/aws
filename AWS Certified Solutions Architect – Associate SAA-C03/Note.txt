@@ -16074,7 +16074,194 @@ AWS Security & Encryption:
             PII = Personally Identifiable Information
             လူတစ်ယောက်ကို identify လုပ်နိုင်တဲ့ personal information ပါ။
 Networking VPC:
-    
+    CIDR:
+        CIDR = Classless Inter-Domain Routing
+        a notation used to describe an IP address range.
+        Example: 192.168.0.0/24
+            It tells us:“This network contains a range of IPv4 addresses.”
+        You'll see CIDR everywhere in AWS networking:
+            VPC CIDR
+            Subnet CIDR
+            Security Group rules
+            NACL rules
+            Route tables
+        IPv4 basics:
+            32 bits.
+            Example: 192.168.0.0
+
+            Each number is 8 bits:
+                192       .168       .0        .0
+                │          │         │         │
+                8 bits     8 bits    8 bits    8 bits
+
+                8 + 8 + 8 + 8 = 32 bits
+                Each 8-bit section can have values: 0 → 255
+                So, theoretical IPv4 range is 0.0.0.0 → 255.255.255.255
+            What does /24 mean?
+                Take: 192.168.0.0/24
+                The /24 means:
+                First 24 bits are fixed.
+                The remaining bits can change.
+                    32 total bits
+                    │
+                    ├────────────── 24 fixed ──────────────┤├─ 8 can change ─┤
+                                network                    host
+                Since 8 bits can change:
+                2^8 = 256 addresses
+                    So:
+                        192.168.0.0/24
+                    contains:
+                        192.168.0.0
+                        through
+                        192.168.0.255
+                    That's 256 IP addresses.
+            General CIDR formula:
+                Number of IPs = 2^(32 - CIDR prefix)
+
+                example:
+                    /32
+                        2^(32-32)
+                        = 2^0
+                        = 1
+                        192.168.0.0/32
+                        → 1 IP
+
+                    /31
+                        2^(32-31)
+                        = 2^1
+                        = 2
+                        → 2 IPs
+
+                    /30
+                        2^(32-30)
+                        = 2^2
+                        = 4
+                        → 4 IPs
+            Pattern:
+                Every time the CIDR number decreases by 1: IP addresses × 2
+                Every time the CIDR number increases by 1: IP addresses ÷ 2
+        Subnet Mask:
+            CIDR can also be represented as a traditional subnet mask.
+            | CIDR  | Subnet Mask       |
+            | ----- | ----------------- |
+            | `/8`  | `255.0.0.0`       |
+            | `/16` | `255.255.0.0`     |
+            | `/24` | `255.255.255.0`   |
+            | `/32` | `255.255.255.255` |
+        key:
+            Think of / as: How many bits are locked/fixed?
+            Example:
+                192.168.0.0/24
+                    192.168.0.  |  xxx
+                    fixed    | change
+
+                    There are 8 bits left:
+                    2^8 = 256
+                    Therefore:
+                    192.168.0.0 → 192.168.0.255
+
+                192.168.0.0/16
+                    192.168.  |  xxx.xxx
+                    fixed    | change
+
+                    There are 16 bits left:
+                    2^16 = 65,536
+                    Therefore:
+                    192.168.0.0 → 192.168.255.255
+        practice:
+            AWS reserves 5 IP addresses in every subnet.
+            So a subnet with: /26
+            has: 64 total IPs
+            but only: 64 - 5 = 59 usable IPv4 addresses
+
+            if trouble on CIDR: just check : https://www.ipaddressguide.com/cidr
+
+            172.16.0.0/12
+                172.16.0.0 ~ 172.16.255.255
+    Private IP:
+        inside a private network/LAN.
+        exactly 3 private IPv4 ranges:
+            | Private CIDR     | Range                           | Common use                 |
+            | ---------------- | ------------------------------- | -------------------------- |
+            | `10.0.0.0/8`     | `10.0.0.0 – 10.255.255.255`     | Large networks / AWS VPC   |
+            | `172.16.0.0/12`  | `172.16.0.0 – 172.31.255.255`   | AWS VPC / private networks |
+            | `192.168.0.0/16` | `192.168.0.0 – 192.168.255.255` | Home/small networks        |
+        memorize:
+            Private IPv4
+                10.x.x.x
+                172.16.x.x → 172.31.x.x
+                192.168.x.x
+                Anything outside those reserved private ranges is generally public if it is a valid globally routable address.
+            
+            Private range:
+                172.16.0.0/12
+
+            AWS Default VPC:
+                172.31.0.0/16  ← common default
+    Public IPv4:
+        an Internet-routable IPv4 address.
+            Conceptually:
+                Internet
+                │
+                │ Public IP
+                ▼
+                EC2 / Load Balancer
+                │
+                │ Private IP
+                ▼
+                VPC internal network
+        Very important: Private ≠ "secure"
+            Don't think:
+                Private IP = Security
+                Public IP = Dangerous
+            That's not exactly correct.
+            Private IP means mainly:
+                Not directly routable on the public Internet.
+            Security is controlled by things such as:
+                Security Groups
+                NACLs
+                Route Tables
+                IAM
+                WAF
+            For example, an EC2 with a private IP can still be attacked by another compromised resource inside the network.
+
+            Public Subnet ≠ Public IP
+
+            Public Subnet = Route Table → Internet Gateway
+        AWS VPC example
+            Suppose we create:
+                VPC
+                10.0.0.0/16
+            Then create:
+                Public Subnet
+                10.0.1.0/24
+
+                Private Subnet
+                10.0.2.0/24
+            We could have:
+
+                        Internet
+                        │
+                        ▼
+                    Public IP
+                        │
+                    Public Subnet
+                    10.0.1.0/24
+                        │
+                        EC2
+                    Private IP
+                    10.0.1.10
+                        │
+                        ▼
+                Private Subnet
+                    10.0.2.0/24
+                        │
+                        RDS
+            Notice something important:
+                A subnet being called "Public" does not mean its IP addresses are automatically public IPs.
+                A subnet is considered public mainly because its Route Table has a route to an Internet Gateway.
+
+
 
 
 
