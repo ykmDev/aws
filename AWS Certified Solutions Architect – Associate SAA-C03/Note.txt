@@ -16087,6 +16087,11 @@ Networking VPC:
             Route tables
         IPv4 basics:
             32 bits.
+
+            Network bits = FIXED
+            Host bits    = CAN CHANGE
+            Total IP addresses = 2^(number of host bits)
+
             Example: 192.168.0.0
 
             Each number is 8 bits:
@@ -16100,12 +16105,12 @@ Networking VPC:
             What does /24 mean?
                 Take: 192.168.0.0/24
                 The /24 means:
-                First 24 bits are fixed.
+                First 24 bits are fixed(network bits) + 8 Host bits can change
                 The remaining bits can change.
                     32 total bits
                     │
                     ├────────────── 24 fixed ──────────────┤├─ 8 can change ─┤
-                                network                    host
+                                network                          host
                 Since 8 bits can change:
                 2^8 = 256 addresses
                     So:
@@ -16198,6 +16203,55 @@ Networking VPC:
 
             AWS Default VPC:
                 172.31.0.0/16  ← common default
+
+            Note for CIDR some calculation:
+                for 172.16.0.0/12:
+                    For /12, the first 12 bits are the network part.
+                        First octet        Second octet
+                        8 bits             8 bits
+                        ──────────────    ────────────────
+                           172                16
+                        ████████         ████████████░░░░░░░░░░░░░░░░░░░░
+                        fixed           4 bits fixed  4 bits can change
+                    4 bits can change, 2⁴ = 16
+                        So, the block size is 16.
+                            Like this:
+                                0 ───────── 15
+                                16 ──────── 31
+                                32 ──────── 47
+                                48 ──────── 63
+                                64 ──────── 79
+                                ...
+                        So, start IP is 172.16.0.0
+                        So, last IP is 172.31.255.255
+                    shorter way:
+                        172.16.0.0/12
+                            → /12 = 8 + 4, 
+                            → 4 host bits in 2nd octet can change
+                            → 2⁴ = 16
+                            → 16–31
+                            → 172.16.0.0 – 172.31.255.255
+                        192.168.0.0/20
+                            /20 = 8 + 8 + 4
+                            4 host bits in 3rd octet
+                            2^4 = 16
+                            0~15
+                            192.168.0.0 - 192.168.15.255
+                        10.0.0.0/18
+                            10.0.0.0 ~ 10.0.63.255
+                            total IP: 16,384
+                        10.0.0.0/20
+                            10.0.0.0 ~ 10.0.15.255
+                            total IP: 4096
+                        172.16.0.0/12
+                            172.16.0.0 ~ 172.31.255.255
+                            total IP: 1,048,576
+                        192.168.0.0/20
+                            192.168.0.0 ~ 192.168.15.255
+                            total IP: 4,096
+                        10.0.0.0/18
+                            10.0.0.0 ~ 10.0.63.255
+                            total IP: 16,384
     Public IPv4:
         an Internet-routable IPv4 address.
             Conceptually:
@@ -16260,9 +16314,55 @@ Networking VPC:
             Notice something important:
                 A subnet being called "Public" does not mean its IP addresses are automatically public IPs.
                 A subnet is considered public mainly because its Route Table has a route to an Internet Gateway.
-
-
-
+        Default VPC:
+            AWS account's ready-made network.
+                Every new AWS account has a Default VPC.
+                In each AWS Region, AWS provides a default VPC.
+            Exists per Region
+                EC2 without specifying a subnet
+                    EC2 Launch
+                    ↓
+                    No subnet specified
+                    ↓
+                    Default VPC
+                    ↓
+                    Default subnet
+                Default VPC has Internet connectivity
+                    with an Internet Gateway (IGW) and appropriate routing.
+                That's why an EC2 launched in a default subnet can communicate with the Internet.
+                EC2 gets a Public IPv4 address
+                    EC2 launched into a default subnet normally gets:
+                        EC2
+                        ├── Private IPv4
+                        └── Public IPv4
+                    The private IP is used inside the VPC.
+                    The public IP allows Internet communication.
+                    ⚠️ Important distinction:
+                        Public subnet ≠ automatically public IP
+                        A subnet is considered public mainly because its route table has a route to an Internet Gateway. 
+                Private and Public DNS names:
+                    An EC2 instance can have DNS names associated with its IP addresses.
+                    Conceptually:
+                        EC2
+                        │
+                        ├── Private IPv4
+                        │      ↓
+                        │   Private DNS
+                        │
+                        └── Public IPv4
+                                ↓
+                            Public DNS
+            Note:
+                Default VPC
+                    │
+                    ├─ Created by AWS
+                    ├─ Exists per Region
+                    ├─ Ready-made networking
+                    ├─ Internet Gateway
+                    ├─ Default subnets
+                    ├─ EC2 without subnet → default subnet
+                    ├─ EC2 in default subnet → public IPv4 by default
+                    └─ EC2 has private/public DNS names
 
 
 
