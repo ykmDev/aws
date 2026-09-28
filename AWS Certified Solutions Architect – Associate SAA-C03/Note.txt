@@ -649,7 +649,7 @@ EC2:
                         "ဒီ server 10 လုံး
                         ငါ့အတွက် သိမ်းထားပါ"
                         လို့ပြောထားတာပါ။
-    Private vs Public IP(IPv4)
+    Private vs Public IP(IPv4):
         IP Address = House Address
         networking has two IPS: IPv4 and IPv6.
         IPv4 with three dots: 1.160.10.240
@@ -658,6 +658,59 @@ EC2:
             [0-255].[0-255].[0-255].[0-255]
         IPv6 very long: 3ffe:1900:4545:3:200:f8ff:fe21:67cf
             newer and solve problems for IOT.
+            What is IPv6?
+                IPv6 = Internet Protocol version 6
+                IPv6 is the successor to IPv4 and was created mainly because the number of available IPv4 addresses is limited.
+                IPv4 uses 32 bits:
+                    2³² = 4,294,967,296
+                        ≈ 4.3 Billion addresses
+                IPv6 uses 128 bits:
+                    2¹²⁸
+                        ≈ 3.4 × 10³⁸ addresses
+                IPv6 Address Format
+                    8 groups (segments) ရှိပါတယ်။
+                    Each group = 4 hexadecimal digits
+                        2001:0db8:3333:4444:5555:6666:7777:8888
+                        ↑     ↑     ↑    ↑   ↑    ↑    ↑    ↑
+                        1     2     3    4   5    6    7    8
+                    Each hexadecimal digit can be:
+                        0 1 2 3 4 5 6 7 8 9 a b c d e f
+                    So one segment can range from:
+                        0000 → ffff
+                    Technically, leading zeros can be omitted:
+                    2001:0db8:3333:4444:5555:6666:7777:8888
+                         ↓
+                    2001:db8:3333:4444:5555:6666:7777:8888
+                :: — Zero Compression
+                    consecutive groups တွေ 0 ဖြစ်နေရင် :: နဲ့ အတိုကောက်ရေး
+                    For example:
+                        2001:db8:0000:0000:0000:0000:0000:0000
+                        can become: 2001:db8::
+                    other:
+                        :: → all 8 segments are 0000
+                        2001:db8:: → the last 6 segments are zero 
+                        ::1234:5678 → the first 6 segments are zero 
+                        200l:db8::1234:5678 → the middle 4 segments are zero
+                    Important Rule: :: only represents consecutive zeros.
+                        For example:
+                            2001:db8:0:0:1234:0:0:5678
+                            You can compress the consecutive zeros:
+                            2001:db8::1234:0:0:5678
+                            But you cannot use :: multiple times in the same IPv6 address.
+                            ❌ Invalid as like as => 2001::1234::5678
+                            Because we wouldn't know how many zero groups each :: represents.
+                Every IPv6 address in AWS is public and Internet-routable (no private range).
+                    But having an IPv6 address doesn't automatically mean the instance can communicate with the Internet.
+                    You still need the appropriate:
+                        Route Table
+                            ↓
+                        Internet Gateway
+                            ↓
+                        Security Group / NACL
+                    For an IPv6-enabled public subnet, the route table typically has:
+                        ::/0 → Internet Gateway
+                    Compare that with IPv4:
+                        0.0.0.0/0 → Internet Gateway
         Private vs Public IP (IPv4) Fundamental Differences
             Public IP:
                 Public IP means the machine can be identified on the internet (WWW) 
@@ -16363,6 +16416,1791 @@ Networking VPC:
                     ├─ EC2 without subnet → default subnet
                     ├─ EC2 in default subnet → public IPv4 by default
                     └─ EC2 has private/public DNS names
+    VPC:
+        VPC = Virtual Private Cloud
+        Multiple VPCs per Region
+        Max. CIDR per VPC is 5, for each CIDR:
+            Smallest: /28 → 16 IP addresses
+            Largest:  /16 → 65,536 IP addresses
+            BUT, AWS reserves 5 IP addresses in each subnet.
+            VPC is private:
+                10.0.0.0/8
+                172.16.0.0/12
+                192.168.0.0/16
+        VPC CIDR should NOT overlap:
+            CIDR should NOT overlap = CIDR များ ထပ်နေခြင်း မရှိစေရပါ။
+            Imagine your company network:
+                Corporate Network
+                10.0.0.0/16
+                Then you create:
+                AWS VPC
+                10.0.0.0/16
+                ❌ Bad — overlapping networks
+
+                Because AWS cannot clearly determine where traffic should go.
+                Better:
+                    Corporate
+                    10.0.0.0/16
+                    AWS VPC
+                    10.1.0.0/16
+                ✅ Non-overlapping.
+                Why does this matter?
+                The networks need non-overlapping CIDRs for routing to work properly.
+        subnet:
+            a smaller IP range inside your VPC.
+                VPC:     10.0.0.0/16
+                │
+                ├── Subnet A: 10.0.1.0/24
+                ├── Subnet B: 10.0.2.0/24
+                └── Subnet C: 10.0.3.0/24
+            AWS reserves 5 IPs in every subnet:
+                For a /24:
+                AWS reserves the first 4 + last 1 = 5 IPs.
+                    10.0.0.0    Network address
+                    10.0.0.1    VPC router
+                    10.0.0.2    Amazon DNS
+                    10.0.0.3    Future use
+                    10.0.0.255  Broadcast address
+            if you need 29 IP addresses for EC2 instances:
+                You can't choose a subnet of size /27(32 IP addresses, 32 - 5 = 27 < 29) 
+                You need to choose a subnet of size /26 (64 IP addresses, 64 - 5 = 59 > 29)
+    Internet Gateway (IGW):
+        door/gateway between your VPC and the Internet.
+        it connects your VPC to the Internet
+        but, IGW alone does NOT make a subnet/EC2 Internet-accessible.
+        But EC2 also needs a public IPv4 address (or appropriate public addressing/NAT architecture)
+                        🌐 Internet
+                            │
+                            ▼
+                    ┌─────────────┐
+                    │     IGW     │
+                    └─────────────┘
+                            │
+                            ▼
+                        VPC
+                            │
+                        Route Table
+                            │
+                            ▼
+                            EC2
+        Highly available and scalable
+            don't need to manage servers for an IGW.
+        IGW must be attached to a VPC
+            A VPC can have one attached IGW.
+            Eactly: one VPC at a time.
+        Route Table:
+            simply attaching: VPC → IGW
+                does not automatically give EC2 Internet access.
+                You need a route such as:
+                    Destination        Target
+                    0.0.0.0/0     →    Internet Gateway
+                Example:
+                    Route Table
+                    ┌──────────────────────────┐
+                    │ 10.0.0.0/16 → local      │
+                    │ 0.0.0.0/0   → igw-12345  │
+                    └──────────────────────────┘
+                That 0.0.0.0/0 means:
+                Any IPv4 destination not inside my VPC → send it to the IGW.
+        flow:
+            VPC
+            │
+            ├── Public Subnet
+            │      │
+            │      ├── Route: 0.0.0.0/0 → IGW
+            │      │
+            │      └── EC2 + Public IP
+            │
+            └── Private Subnet
+                │
+                └── No direct route to IGW
+    Bastion Hosts:
+        a controlled entry point for SSH access to private EC2 instances.
+        Normally, a private EC2 should not be directly reachable from the Internet.
+        So we create one EC2 in a public subnet as the entry point.
+                            🌐 Internet
+                                │
+                                │ SSH :22
+                                ▼
+                        ┌─────────────────┐
+                        │  Bastion Host   │
+                        │  Public Subnet  │
+                        └────────┬────────┘
+                                │
+                            Private Network
+                                │
+                    ┌───────────┴───────────┐
+                    ▼                       ▼
+            ┌─────────────┐         ┌─────────────┐
+            │ Private EC2 │         │ Private EC2 │
+            │   :22       │         │   :22       │
+            └─────────────┘         └─────────────┘
+        Bastion is in a Public Subnet
+            Because you need to reach the Bastion from outside AWS.
+        Bastion Security Group:
+            should allow SSH:
+                Inbound
+                    TCP 22
+                    Source: YOUR CORPORATE PUBLIC CIDR
+                For example:
+                    TCP 22
+                    203.0.113.0/24
+                ❌ Avoid: 0.0.0.0/0 → TCP 22
+                because that allows SSH from anywhere on the Internet.
+        Private EC2 Security Group:
+            must be only:
+                Inbound:
+                    TCP 22
+                    Source: Bastion SG
+                ❌ Avoid: 0.0.0.0/0 → TCP 22
+                Even better, use the Bastion Security Group as the source, rather than hard-coding its private IP.
+                If the Bastion's private IP changes, the SG relationship still works.
+    NAT:
+        private EC2 connects OUT to the Internet.
+        NAT= Network Address Translation
+            flow:
+                        🌐 Internet
+                              │
+                              ▼
+                        Internet Gateway
+                              │
+                              ▼
+                    ┌──────────────────┐
+                    │   NAT Instance   │
+                    │   Public Subnet  │
+                    │   Elastic IP     │
+                    └────────┬─────────┘
+                             │
+                       Private Subnet
+                             │
+                       ┌─────┴─────┐
+                       ▼           ▼
+                  Private EC2  Private EC2
+            Example
+                Private EC2 needs to:
+                    apt update
+                    download package
+                    call external API
+                    download software
+                But it doesn't have a public IP.
+            So:
+                Private EC2
+                    ↓
+                NAT Instance
+                    ↓
+                Internet Gateway
+                    ↓
+                🌐 Internet
+        NAT Instance must be in Public Subnet
+            Because the NAT Instance itself needs to reach the Internet.
+                NAT Instance
+                    ↓
+                Public Subnet
+                    ↓
+                Route: 0.0.0.0/0 → IGW
+                    ↓
+                Internet
+
+                It normally has an Elastic IP.
+        Disable Source/Destination Check
+            a NAT Instance is forwarding traffic on behalf of other EC2 instances.
+        Elastic IP:
+            NAT Instance needs a stable public IP:
+            Private EC2s don't need public IPs.
+            The NAT Instance provides the public-side address.
+        Route Table:
+            the route table is basically a traffic direction sign.
+            Private subnet route table:
+                Destination       Target
+                10.0.0.0/16       local
+                0.0.0.0/0         NAT Instance
+            Private subnet should NOT directly route to the Internet Gateway for Internet access.
+            Instead: Private Subnet → NAT Instance → IGW → Internet
+        Request/Response flow:
+                Private EC2
+                10.0.2.10
+                |
+                | ① Request
+                v
+                Private Subnet Route Table
+                |
+                | 0.0.0.0/0 → NAT Gateway
+                v
+                NAT Gateway
+                (public subnet)
+                |
+                | ② NAT translates private IP → public IP
+                v
+                Internet Gateway
+                |
+                v
+                Internet
+        NAT Instance — Comments:
+            Old / legacy:
+                AWS provided a pre-configured Amazon Linux NAT AMI, but it reached standard support end on December 31, 2020.
+                So:
+                    NAT Instance = legacy approach
+                    For modern architecture:
+                    NAT Gateway → preferred
+            NAT Instance is NOT highly available by default
+                If that EC2 instance fails:
+                    Private EC2
+                        ↓
+                    ❌ NAT Instance
+                        ↓
+                    No Internet
+                    So you need to design HA yourself.
+            Bandwidth depends on EC2 instance type
+                NAT Instance is just an EC2 instance.
+                    Larger EC2 instance
+                        ↓
+                    More network capacity
+
+                    Smaller EC2 instance
+                        ↓
+                    Less network capacity
+
+                    So NAT Instance performance depends on the EC2 instance type.
+
+                    This is one reason NAT Gateway is generally preferred.
+            You manage Security Groups
+                For example:
+                    HTTP  :80   ← Private subnet
+                    HTTPS :443  ← Private subnet
+                    If administrators need SSH access to the NAT Instance:
+                    SSH :22 ← Your home/corporate public CIDR
+                    ⚠️ Not: SSH :22 ← 0.0.0.0/0 ❌
+            Use as bastion host.
+            on lab, if you try with ping google.com,
+                ping traffic is using ICMP not HTTP/HTTPS.
+                so, on NAT instance's sg, allow Inbound rule for All ICMP to private's VPC CIDR.
+        NAT Gateway (NATGW):
+            modern replacement for NAT Instance
+            AWS-managed NAT for private subnet → Internet access.
+                AWS manages it
+                AWS handles scaling
+                AWS handles infrastructure
+                No SG to manage
+            NAT Gateway is created in ONE AZ:
+                you choose a specific subnet, and therefore it belongs to a specific AZ.
+                It uses an Elastic IP.
+                flow: Private → NATGW → IGW → Internet
+            No Security Group
+            Can't be used from the same subnet.
+                NAT Gateway is placed in a PUBLIC subnet and is used by PRIVATE subnets.
+                eg: can use this flow:
+                        VPC: 10.0.0.0/16
+
+                        Public Subnet:
+                        10.0.1.0/24
+                            │
+                            └── NAT Gateway
+
+                        Private Subnet:
+                        10.0.2.0/24
+                            │
+                            └── EC2
+                    cannot use this flow: ec2 is on same subnet.
+                        Public Subnet: 10.0.1.0/24
+                            │
+                            ├── NAT Gateway
+                            │
+                            └── EC2
+            NAT Gateway is resilient within ONE AZ
+                NAT Gateway is highly available within its Availability Zone, 
+                but it isn't automatically a multi-AZ resource.
+                Each private subnet uses the NAT Gateway in its own AZ.
+                    AZ-A                         AZ-B
+                    │                            │
+                    ▼                            ▼
+                    NAT Gateway A              NAT Gateway B
+                    │                            │
+                    ▲                            ▲
+                    │                            │
+                    Private Subnet A          Private Subnet B
+            cannot use as bastion host.
+                NAT Gateway is an AWS-managed NAT service. You cannot SSH into it.
+                    NAT Gateway
+                        ❌ SSH
+                        ❌ Bastion Host
+            Availability mode:
+                Regional NAT Gateway (RNAT): default.
+                    one NAT service for the whole VPC instead of one per AZ.
+                        unlike traditional NAT Gateway per AZ.
+                    No Public Subnet needed for RNAT
+                    has its own route tables
+                    Automatically handles new AZs
+                Zonal: traditional NAT gateway.
+                    per AZ.
+                        For multiple AZs:
+                            AZ-A                  AZ-B
+                            │                     │
+                            NAT GW A             NAT GW B
+                            │                     │
+                            Private A             Private B
+        NAT Instance vs Bastion
+            This is an excellent exam distinction:
+            |                          | Bastion Host    | NAT Instance             |
+            | ------------------------ | --------------- | ------------------------ |
+            | Purpose                  | Admin access    | Internet access          |
+            | Direction                | **IN**          | **OUT**                  |
+            | From                     | Admin PC        | Private EC2              |
+            | Port                     | Usually SSH :22 | Various outbound traffic |
+            | Location                 | Public subnet   | Public subnet            |
+            | Elastic IP               | Usually yes     | **Yes**                  |
+            | Source/Destination Check | Normal          | **Disable**              |
+
+            Bastion:
+                Internet → Public → Private
+                        "I want to GET IN"
+
+            NAT:
+                Private → Public → Internet
+                        "I want to GET OUT"
+        NAT Gateway vs NAT Instance
+            |                                 | NAT Gateway        | NAT Instance      |
+            | ------------------------------- | ------------------ | ----------------- |
+            | AWS managed                     | ✅                  | ❌                 |
+            | EC2 instance                    | ❌                  | ✅                 |
+            | HA by default                   | ✅ within AZ        | ❌                 |
+            | Need Source/Dest Check disabled | ❌                  | ✅                 |
+            | Manage SG                       | ❌                  | ✅                 |
+            | Bandwidth                       | AWS-managed/scales | EC2 instance type |
+            | Legacy                          | ❌                  | ✅                 |
+            | Modern default choice           | **NAT Gateway**    | Usually avoid     |
+        NACL = Network ACL:
+            NACL (Network Access Control List) is a firewall at the subnet level.
+                each subnet is associated with exactly one NACL,
+                but one NACL can be associated with multiple subnets.
+            NACL = Stateless
+                does NOT remember connections.
+                Every direction is evaluated independently.
+                    NACL
+                    │
+                    ├── Inbound Rules
+                    │
+                    └── Outbound Rules
+                NACL commonly needs to account for ephemeral ports in return traffic.
+                    First: what is a port?
+                        An IP address identifies the machine.
+                        A port identifies the application/service on that machine.
+                            IP address          Port
+                            10.0.1.10           443
+                                │                │
+                                │                └── HTTPS service
+                                └── EC2
+                            So a connection is roughly:
+                                Source IP : Source Port
+                                        ↓
+                                Destination IP : Destination Port
+                        Client → Server
+                            Client                         Web Server
+
+                            10.0.1.10:50000  ───────────→  93.184.216.34:443
+                                        ↑                                 ↑
+                                    ephemeral port                  defined port
+
+                            So:
+                                Client source port      = 50000
+                                Server destination port = 443
+                            The client didn't normally say: "I want to use port 50000."
+                            The OS automatically selected an available ephemeral port.
+                    What are ephemeral ports?
+                        a random port. eg fixed port(defined port): SSH: 22, HTTPS: 443.
+                        different OS use different ports:
+                            MS Window => 49152 - 65535
+                            Linex Kernel => 32768 - 60999
+                        Therefore, with a stateless NACL, you often need rules allowing the appropriate ephemeral port range for return traffic.
+                NACL rules are evaluated by rule number
+                    Rules have numbers.
+                    AWS checks lower number first. and if match -> stop.
+                    * rule: at the end,  * DENY
+                    This means: If no numbered rule matches → DENY
+                    Example:
+                        NACL
+                            Rule 100
+                            203.0.113.10/32 → DENY
+                            Rule 200
+                            0.0.0.0/0 → ALLOW
+                    Traffic from: 203.0.113.10
+                    matches rule 100 first.
+                    Therefore:
+                        DENY
+                    Rule 200 doesn't matter.
+                    Memory:
+                        NACL = lowest rule number wins first match.
+                    after a matching rule is found, evaluation stops.
+                Default NACL vs custom NACL
+                    Default NACL:
+                        allows all inbound and outbound traffic.
+                        do not modify the default nacl.
+                    Custom NACL: When created, it starts with rules that effectively deny traffic
+        Security Group = Instance/ENI level.
+            works at the resource level
+            Only: ALLOW
+                There is no explicit DENY rule in an SG.
+                If something isn't allowed, it is implicitly denied.
+            Security Group = Stateful
+                SG remembers the connection.
+                if request is allow, response will automatically allow. he is remember.
+        | Feature         | Security Group          | NACL                          |
+        | --------------- | ----------------------- | ----------------------------- |
+        | Level           | **Instance / ENI**      | **Subnet**                    |
+        | Stateful?       | ✅ **Stateful**          | ❌ **Stateless**               |
+        | Inbound rules   | Allow                   | Allow / Deny                  |
+        | Outbound rules  | Allow                   | Allow / Deny                  |
+        | Explicit DENY   | ❌                       | ✅                             |
+        | Return traffic  | Automatically allowed   | Must be separately allowed    |
+        | Rule evaluation | All applicable rules    | **Lowest number first**       |
+        | Applies to      | Selected resources      | **All resources in subnet**   |
+        | Typical use     | Instance-level firewall | Subnet-level network boundary |
+    VPC Peering:
+        two VPCs communicate privately using the AWS network.
+        There is no Internet Gateway/NAT Gateway required
+        Why do we need it?
+            Imagine your company has:
+                VPC A = Application
+                VPC B = Database
+            You want:
+                Application EC2
+                    ↓
+                Database EC2
+            but they are in different VPCs.
+            Normally, different VPCs are isolated.
+            VPC Peering creates a private connection:
+                Application VPC
+                    │
+                    │ VPC Peering
+                    │
+                    ▼
+                Database VPC
+            The traffic stays on the AWS private network.
+        CIDRs MUST NOT overlap:
+        Route Tables:
+            Creating VPC Peering does not automatically make traffic flow.
+            You need to update the route tables in BOTH VPCs.
+            Add route in VPC A
+                VPC A subnet route table:
+                    Destination        Target
+                    10.0.0.0/16        local
+                    10.1.0.0/16        pcx-xxxx
+            Add route in VPC B too
+                VPC B route table:
+                    Destination        Target
+                    10.1.0.0/16        local
+                    10.0.0.0/16        pcx-xxxx
+            Why BOTH route tables?
+                A route table says: "Where should I send this packet?"
+                The request: A → B
+                needs a route in A.
+                The response: B → A
+                needs a route in B.
+                So:
+                    REQUEST
+                    VPC A
+                    ↓
+                    A Route Table
+                    ↓
+                    Peering
+                    ↓
+                    VPC B
+
+
+                    RESPONSE
+                    VPC B
+                    ↓
+                    B Route Table
+                    ↓
+                    Peering
+                    ↓
+                    VPC A
+        Security Groups still matter
+            VPC Peering does not bypass Security Groups.
+            Route Table → allows the path
+            SG          → allows the traffic
+        VPC Peering is NOT transitive:
+            Suppose:
+                VPC A
+                │
+                │ Peering
+                │
+                ▼
+                VPC B
+                │
+                │ Peering
+                │
+                ▼
+                VPC C
+            You might think: A → B → C
+            therefore: A → C
+            ❌ No.
+             VPC Peering is not transitive.
+            Why "not transitive"?
+                VPC Peering is a direct relationship.
+                A ←→ B
+                means: A can communicate with B.
+                It does not mean: A can use B as a router to reach other VPCs.
+        Compare with a Transit Gateway:
+            If you have many VPCs
+            With VPC Peering, you may need many individual connections:
+                A ←→ B
+                A ←→ C
+                B ←→ C
+            With AWS Transit Gateway, you can have:
+                        VPC A
+                        │
+                        ▼
+                    ┌──────────────┐
+                    │    Transit   │
+                    │    Gateway   │
+                    └──────────────┘
+                    ▲     ▲
+                    │     │
+                    VPC B  VPC C
+            Transit Gateway is designed as a central network hub.
+            "Many VPCs need to communicate" / "hub-and-spoke" / "central routing"
+            → Think Transit Gateway.
+        Cross-account Peering:
+            can work between different AWS accounts.
+        Cross-Region Peering:
+            can also connect VPCs in different AWS Regions.
+            Traffic uses the AWS network rather than the public Internet.
+        SG referencing across peered VPCs:
+            important limitation: cross accounts - same region
+            rather than specifying an IP CIDR.
+    VPC Endpoint:
+        VPC Endpoint = Private access from VPC → AWS service
+        The problem first:
+            How can my private EC2 access AWS services without going through the public Internet/NAT Gateway?
+            Suppose you have:
+                Private EC2
+                10.0.1.10
+                    │
+                    │ wants to access S3
+                    ▼
+                    S3
+            A private EC2 normally doesn't have direct Internet access.
+            Without a VPC Endpoint, you might need:
+                Private EC2
+                    ↓
+                NAT Gateway
+                    ↓
+                Internet Gateway
+                    ↓
+                Public AWS endpoint
+                    ↓
+                    S3
+            This works, but:
+                NAT Gateway costs money
+                Traffic goes through the NAT path
+                You need appropriate routing
+            VPC Endpoint solves this.
+        With VPC Endpoint:
+            With a VPC Endpoint:
+                Private EC2
+                    │
+                    │ private AWS network
+                    ▼
+                VPC Endpoint
+                    │
+                    ▼
+                AWS Service
+                S3
+                No:
+                    ❌ Internet Gateway
+                    ❌ NAT Gateway
+                    ❌ Public Internet
+        TWO important types:
+            Gateway Endpoint:
+                Free, simple, No ENI, NO SG.
+                primarily for:
+                    S3
+                    DynamoDB
+                The key point: Gateway Endpoint → route table
+                So when troubleshooting a Gateway Endpoint, think: Route Table
+            Interface Endpoint:
+                paid
+                uses AWS PrivateLink.
+                creates an ENI (Elastic Network Interface) inside your subnet.
+                ENI can have a Security Group.
+                        EC2
+                        ↓
+                        Interface Endpoint ENI
+                        ↓
+                        AWS PrivateLink
+                        ↓
+                        AWS Service
+                    Examples include services such as:
+                            Secrets Manager
+                            Systems Manager
+                            CloudWatch
+                            KMS
+                            many other AWS services
+                    So: Interface Endpoint → ENI + PrivateLink.
+                Why does DNS matter?
+                    Private DNS can make that normal AWS service hostname resolve to the private endpoint ENI.
+                    Conceptually:
+                            Application
+                                │
+                                │ secretsmanager.ap-northeast-1.amazonaws.com
+                                ▼
+                            DNS
+                                │
+                                │ resolves to private IP
+                                ▼
+                            Interface Endpoint ENI
+                                │
+                                ▼
+                            Secrets Manager
+                    So if your Interface Endpoint doesn't work, check:
+                        1. DNS
+                        2. Route/network connectivity
+                        3. Endpoint Security Group
+                Route Table vs DNS — don't mix them up:
+                    Gateway Endpoint → Route Table
+                    Interface Endpoint → DNS + ENI + Security Group
+                on-premises:
+                    Interface Endpoint gives you a private IP address (ENI) inside the VPC,
+                    your on-premises network can reach that private endpoint through:
+                        Site-to-Site VPN
+                        Direct Connect
+                Different VPC, Different Region:
+                    eg: "Does another VPC need private access?"
+                        YES → Interface Endpoint / PrivateLink
+            Compare Gateway vs Interface:
+                |                | Gateway Endpoint          | Interface Endpoint                |
+                | -------------- | ------------------------- | --------------------------------- |
+                | Uses           | S3, DynamoDB              | Many AWS services                 |
+                | Technology     | VPC endpoint              | **AWS PrivateLink**               |
+                | Creates ENI?   | ❌                         | ✅                                 |
+                | Route table    | ✅ Important               | Usually normal VPC routing to ENI |
+                | Private DNS    | Not the main mechanism    | ✅ Important                       |
+                | Security Group | ❌                         | ✅                                 |
+                | Typical cost   | No endpoint hourly charge | Hourly + data processing          |
+                | Main memory    | **Route Table**           | **ENI + PrivateLink + DNS**       |
+
+                | If question says...                      | Think                  |
+                | ---------------------------------------- | ---------------------- |
+                | Private EC2 → S3 without NAT             | **Gateway Endpoint**   |
+                | Private EC2 → DynamoDB without NAT       | **Gateway Endpoint**   |
+                | Private access to many AWS services      | **Interface Endpoint** |
+                | AWS PrivateLink                          | **Interface Endpoint** |
+                | Creates ENI                              | **Interface Endpoint** |
+                | Private DNS                              | **Interface Endpoint** |
+                | Security Group on endpoint               | **Interface Endpoint** |
+                | Route table entry for S3/DynamoDB        | **Gateway Endpoint**   |
+                | Avoid NAT Gateway for AWS service access | **VPC Endpoint**       |
+
+                VPC Endpoint = private path from VPC to AWS services; 
+                Gateway Endpoint is mainly S3/DynamoDB via route tables, 
+                while Interface Endpoint uses ENI + PrivateLink + private DNS.
+            Every AWS service is publicly exposed:
+                AWS services generally have public service endpoints.eg:
+                    S3
+                    ↓
+                    s3.ap-northeast-1.amazonaws.com
+
+                    Secrets Manager
+                    ↓
+                    secretsmanager.ap-northeast-1.amazonaws.com
+                Without VPC Endpoints, your VPC may need a path through:
+                    Private EC2
+                    ↓
+                    NAT Gateway
+                    ↓
+                    IGW
+                    ↓
+                    AWS public endpoint
+                With VPC Endpoint:
+                    Private EC2
+                    ↓
+                    VPC Endpoint
+                    ↓
+                    AWS service
+                    That's the main reason VPC Endpoints exist.
+            Redundant and scale horizontally:
+                AWS-managed endpoint infrastructure is designed to be highly available/scalable.
+                For Interface Endpoints, you can place endpoint ENIs in multiple AZs as appropriate:
+                    AZ-a                    AZ-b
+
+                    EC2                     EC2
+                    │                       │
+                    ▼                       ▼
+                    Endpoint ENI            Endpoint ENI
+                    │                       │
+                    └──────── PrivateLink ──┘
+
+                    This avoids making one AZ's endpoint a single point of failure.
+    VPC Flow Logs:
+        records of IP traffic going to/from network interfaces.
+        It does not capture packet contents.
+        It records metadata about the traffic.
+        Where can you enable Flow Logs?
+            3 levels:
+                VPC
+                └── Subnet
+                    └── ENI
+                VPC Flow Logs
+                    Captures traffic for network interfaces in the VPC.
+                Subnet Flow Logs
+                    Captures traffic for network interfaces in that subnet.
+                ENI Flow Logs
+                    Captures traffic for a specific Elastic Network Interface.
+        What information should you care about?
+            | Field      | Meaning              |
+            | ---------- | -------------------- |
+            | `srcaddr`  | Source IP            |
+            | `dstaddr`  | Destination IP       |
+            | `srcport`  | Source port          |
+            | `dstport`  | Destination port     |
+            | `protocol` | Network protocol     |
+            | `action`   | `ACCEPT` or `REJECT` |
+            | `bytes`    | Number of bytes      |
+            | `packets`  | Number of packets    |
+        Flow Logs are useful for troubleshooting:
+            question:
+                An EC2 instance cannot connect to another EC2 instance. How can you troubleshoot the network connection?
+            Think:
+                VPC Flow Logs
+                    ↓
+                Check srcaddr / dstaddr
+                    ↓
+                Check srcport / dstport
+                    ↓
+                Check ACCEPT / REJECT
+                    ↓
+                Investigate SG / NACL / routing
+        Where can Flow Logs send data?
+            VPC Flow Logs
+                │
+                ├── CloudWatch Logs for eal-time-ish investigation / Logs Insights querying.
+                ├── S3 for long-term storage.
+                └── Kinesis Data Firehose for streaming flow-log data to destinations
+        If Flow Logs are sent to CloudWatch Logs, the IAM role needs permissions:
+        to publish the logs!
+            logs:CreateLogGroup
+            logs:CreateLogStream
+            logs:PutLogEvents
+        Analytics
+            Flow Logs → S3 → Athena
+            Flow Logs → CloudWatch Logs → Logs Insights
+    Site-to-Site VPN:
+        securely connect your on-premises network to an AWS VPC over the Internet.
+                    On-Premises                         AWS
+
+                    ┌──────────────┐                  ┌──────────────┐
+                    │ Office       │                  │     VPC      │
+                    │ Network      │                  │              │
+                    │ 10.10.0.0/16 │                  │ 10.0.0.0/16  │
+                    └──────┬───────┘                  └──────┬───────┘
+                            │                                  │
+                        Customer Gateway                  Virtual Private
+                            (CGW)                              Gateway
+                            │                                  │
+                            └────────── VPN Tunnel ────────────┘
+                                        🔒 Internet
+                                The VPN tunnel is encrypted.
+        AWS side → VGW
+            Virtual Private Gateway (VGW)
+            Think:
+                VGW = AWS-side VPN concentrator
+        On-premises side → CGW
+            Customer Gateway (CGW)
+            Think:
+                CGW = configuration/representation of the customer's VPN device
+        Customer Gateway Device:
+            actual VPN device/software at your office/data center.
+                Physical VPN appliance
+                Software VPN appliance
+            AWS needs information about this device when creating the Customer Gateway.
+        What public IP should you use?
+            Case 1 — Device has public IP:
+                On-prem VPN Device
+                Public IP: 203.x.x.x
+                    │
+                    ▼
+                    Internet
+                    │
+                    ▼
+                    AWS
+            Case 2 — Device is behind NAT:
+                VPN Device
+                10.10.1.10
+                    │
+                    ▼
+                NAT Device
+                203.0.113.10
+                    │
+                    ▼
+                Internet
+                    │
+                    ▼
+                AWS
+        Route Propagation/Route Table:
+            Creating the VPN tunnel alone is not enough.
+            Your VPC route table needs to know:
+                "For on-premises network traffic, send it through the VGW."
+            flow:
+                On-premises
+                10.10.0.0/16
+                    │
+                    │ VPN
+                    ▼
+                    VGW
+                    │
+                    ▼
+                VPC Route Table
+                    │
+                    └── 10.10.0.0/16 → VGW
+            You can enable: Route Propagation for the VGW.
+                If the question says:
+                    VPN tunnel is established, but EC2 cannot communicate with on-premises resources.
+                Check:
+                    Route Propagation / route table
+            Security Group still matters.
+                VPN does not bypass Security Groups.
+                    still need:
+                        Route
+                        Security Group
+                        NACL if applicable
+                        Correct VPN configuration
+            flow:
+                EC2
+                ↓
+                VGW
+                ↓
+                VPN Tunnel 🔒
+                ↓
+                CGW
+                ↓
+                On-premises
+        summary:
+            | Concept                     | Remember                                |
+            | --------------------------- | --------------------------------------- |
+            | AWS-side VPN                | **Virtual Private Gateway (VGW)**       |
+            | Customer-side configuration | **Customer Gateway (CGW)**              |
+            | Actual on-prem device       | **Customer Gateway Device(VPN Device)**             |
+            | AWS VPN endpoint            | VGW                                     |
+            | On-prem VPN endpoint        | Customer Gateway Device                 |
+            | VPN transport               | Public Internet                         |
+            | Encryption                  | VPN tunnel                              |
+            | AWS route to on-prem        | **Route Propagation → VGW**             |
+            | CGW behind NAT              | Use NAT device's public IP if **NAT-T** |
+            | Ping EC2                    | SG must allow **ICMP**                  |
+
+            Customer Gateway Device
+                    ↓
+            actual device
+
+            Customer Gateway
+                    ↓
+            AWS configuration representing that device
+    VPN CloudHub:
+        On-premises ↔ On-premises, using AWS as the hub
+        Suppose your company has multiple offices:
+                        AWS
+                    VPN CloudHub
+                    /     |     \
+                    /      |      \
+                Tokyo   Osaka   Singapore
+        Each office/site has its own VPN connection to the same AWS VGW.
+            Site A ── VPN ──┐
+                            │
+            Site B ── VPN ──┼── VGW
+                            │
+            Site C ── VPN ──┘
+        CloudHub is VPN-only.
+            the VPN connections use the public Internet.
+            Low-cost hub-and-spoke model
+        How do you configure it?
+            ① Multiple VPN connections on the same VGW
+            ② Dynamic routing
+                uses BGP (Border Gateway Protocol).
+                to tell AWS: "These are the networks I can reach."
+                    Tokyo
+                    │
+                    │ "I have 10.1.0.0/16"
+                    ▼
+                    AWS/VGW
+                    │
+                    │ "Tokyo has 10.1.0.0/16"
+                    ▼
+                    Osaka
+            Route tables are still required
+        CloudHub vs VPC Peering vs Transit Gateway:
+            | Technology           | Main idea                                               |
+            | -------------------- | ------------------------------------------------------- |
+            | **Site-to-Site VPN** | On-premises ↔ AWS                                       |
+            | **VPN CloudHub**     | On-premises ↔ On-premises through AWS VGW               |
+            | **VPC Peering**      | VPC ↔ VPC direct private connection                     |
+            | **Transit Gateway**  | Central hub connecting many VPCs + on-premises networks |
+    Direct Connect (DX):
+        dedicated private connection between your on-premises network and AWS.
+        unlike Site-to-Site VPN = encrypted connection over the public Internet.
+            Site-to-Site VPN:
+                On-prem ── Internet ── 🔒 VPN ── AWS
+            Direct Connect:
+                On-prem ─────── Dedicated private connection ─────── AWS
+        AWS Direct Connect location:
+            Your company doesn't simply plug a cable directly into your VPC.
+                Your Data Center
+                    │
+                    │ dedicated connection
+                    ▼
+                Direct Connect Location
+                    │
+                    ▼
+                    AWS
+                Dedicated connection must be setup between your DC(Data Center) and AWS Direct Connect locations.
+        Virtual Private Gateway (VGW):
+            Just like Site-to-Site VPN, your VPC can use a Virtual Private Gateway.
+                On-Prem
+                    │
+                    │ Direct Connect
+                    ▼
+                    AWS DX Location
+                    │
+                    ▼
+                    VGW
+                    │
+                    ▼
+                    VPC
+                    │
+                    ▼
+                    EC2
+        Can DX access S3?
+            yes, 
+            The same Direct Connect connection can provide access to:
+                Private AWS resources: ec2, rds
+                Public AWS resources: s3, DynamoDB
+        Why use Direct Connect?
+            3 major exam reasons:
+                Higher bandwidth / large datasets
+                    need to transfer large amounts of data regularly.
+                More consistent network experience.
+                    need a more consistent network experience can benefit.
+                Hybrid environment
+                    Part of your application remains on-premises, while another part runs in AWS.
+                        On-Premises
+                        ┌──────────┐
+                        │ Database │
+                        │ Servers  │
+                        └────┬─────┘
+                                │
+                        Direct Connect
+                                │
+                                ▼
+                        ┌──────────┐
+                        │   AWS    │
+                        │   EC2    │
+                        └──────────┘
+        Direct Connect vs Site-to-Site VPN:
+            |                     | Site-to-Site VPN        | Direct Connect                                |
+            | ------------------- | ----------------------- | --------------------------------------------- |
+            | Connection          | Public Internet         | Dedicated private connection                  |
+            | Encryption          | VPN encryption          | DX itself is not automatically encrypted      |
+            | Network consistency | Internet-dependent      | More consistent                               |
+            | Setup               | Faster/easier           | More setup                                    |
+            | Cost                | Generally lower         | Generally higher                              |
+            | Bandwidth           | Internet-dependent      | Dedicated capacity                            |
+            | Use case            | Quick secure connection | Large data / consistent connectivity / hybrid |
+            | AWS side            | VGW                     | VGW can be used                               |
+
+        Direct Connect is private, but don't automatically say it is encrypted.
+            If you specifically need encryption over Direct Connect, 
+            can use additional encryption mechanisms, 
+                such as Site-to-Site VPN over Direct Connect in appropriate architectures.
+            Think:
+                DX = private connectivity
+                VPN = encryption
+            7. DX + VPN together
+            This is a useful architecture.
+                            Direct Connect
+                On-Prem ───────────────────── AWS
+                        │
+                        │ primary
+                        ▼
+
+                            VPN
+                On-Prem ─────────────── Internet ───── AWS
+                        │
+                        │ backup
+                        ▼
+            You can use:
+                DX as primary
+                VPN as backup
+            This gives better resilience.
+        Direct Connect Gateway (DXGW):
+            want to reach one or more VPCs in multiple Regions.
+            instead of building separate DX connections for every Region(same account)
+        Connection Types:
+            Dedicated connections: 1Gbps to 400 Gbps.
+                Physical port is dedicated to one customer
+                You request the connection through AWS Direct Connect
+                The physical connection can be established through an AWS Direct Connect location/partner
+            Hosted Connections: from 50Mbps to 25 Gops
+                Typically lower bandwidth options than dedicated connections
+                Provided by a Direct Connect Partner
+                Capacity can be adjusted depending on the partner/service
+                Useful when you don't need or can't obtain your own dedicated physical DX connection
+        Encryption:
+            Data in transit is not encrypted but is private
+            AWS Direct Connect + VPN
+        Resiliency:
+            Resiliency = ability to keep your hybrid connection working even when something fails.
+                Resiliency (ခံနိုင်ရည်ရှိမှု/ပြန်လည်ကောင်းမွန်နိုင်စွမ်း) = တစ်စုံတစ်ရာ ချို့ယွင်းပျက်စီးသွားသည့်တိုင်အောင် သင့်ရဲ့ hybrid connection ကို ဆက်လက်လည်ပတ်နေစေနိုင်စွမ်း။
+                If that one Direct Connect connection fails, your on-premises network loses connectivity to AWS.
+                So we add redundancy:
+                                ┌── Direct Connect #1 ──→ AWS
+                    On-Premises ─┤
+                                └── Direct Connect #2 ──→ AWS
+            3 resiliency levels:
+                | Option                 | Main idea                                                     |
+                | ---------------------- | ------------------------------------------------------------- |
+                | **Maximum Resiliency** | Protect against failures of an entire Direct Connect location |
+                | **High Resiliency**    | Protect against failure of a single Direct Connect connection |
+                | **No Resiliency**      | One connection                                                |
+
+                High Resiliency:
+                    High = 2 connections
+                    protection against connection/device failure, but NOT complete location failure.
+                    Concept
+                        You use two Direct Connect connections.
+                    But importantly:
+                            The two connections should terminate at different devices in the same Direct Connect location.
+                        Think:
+
+                                            AWS
+                                            |
+                                ┌──────────┴──────────┐
+                                ↓                     ↓
+                            DX Connection 1       DX Connection 2
+                                |                     |
+                            DX Device A           DX Device B
+                                |                     |
+                                └─────────┬───────────┘
+                                            |
+                                    On-Premises
+                        If one Direct Connect connection or device fails:
+                            DX Connection 1 ❌
+                            DX Connection 2 ✅
+                                |
+                                ↓
+                                AWS
+                        You still have connectivity.
+                        What failure does it protect against?
+                        It protects against:
+                            failure of one Direct Connect connection
+                            failure of one Direct Connect device
+                        But there's a limitation
+                        Both connections are still associated with the same Direct Connect location.
+                        So:
+                                    Same DX Location
+                                ┌─────────────────────────┐
+                                │                         │
+                                │ DX #1       DX #2       │
+                                │   ↓           ↓         │
+                                │ Device A    Device B    │
+                                │                         │
+                                └─────────────────────────┘
+                        If the entire Direct Connect location has a problem, both connections could be affected.
+                Maximum Resiliency:
+                    Maximum = 2 connections + 2 locations
+                    protects against:
+                        Direct Connect connection failure
+                        Direct Connect device failure
+                        entire Direct Connect location failure
+            Note:
+                | Architecture           | Connections | DX Locations | Protects against connection failure | Protects against location failure |
+                | ---------------------- | ----------: | -----------: | ----------------------------------- | --------------------------------- |
+                | Single connection      |           1 |            1 | ❌                                   | ❌                                 |
+                | **High Resiliency**    |       **2** |        **1** | ✅                                   | ❌                                 |
+                | **Maximum Resiliency** |       **2** |        **2** | ✅                                   | ✅                                 |
+
+                High = 2 DX connections in 1 location
+                Maximum = 2 DX connections in 2 locations
+    Transit Gateway:
+        Imagine you have several VPCs,
+        Without Transit Gateway, you might create many VPC peering connections.
+        As the number of VPCs grows, this becomes difficult to manage.
+        VPC Peering is not transitive.
+        So, Transit Gateway should be use.
+        a hub-and-spoke architecture
+        central hub.
+        transitive peering between thousands of VPCs and on-premises networks
+        Transit Gateway can connect on-premises networks too.
+            TGW isn't only for VPC-to-VPC communication.
+        Transit Gateway can work with:
+            VPCs
+            Site-to-Site VPN
+            Direct Connect through a Direct Connect Gateway
+        Transit Gateway + Direct Connect Gateway
+            This is a common SAA-C03 combination.
+            The architecture looks roughly like:
+                On-Premises
+                    |
+                    | Direct Connect
+                    ↓
+                Direct Connect Gateway
+                    |
+                    ↓
+                Transit Gateway
+                /   |   \
+                ↓    ↓    ↓
+                VPC  VPC  VPC
+            This allows an on-premises network to access multiple VPCs through a centralized architecture.
+        Transit Gateway is regional
+            regional resource, can work cross-region using Transit Gateway Peering.
+        Cross-account sharing with AWS RAM:
+            don't necessarily want to create a separate TGW for every account.
+            You can share a Transit Gateway with other AWS accounts using:
+                AWS Resource Access Manager (RAM).
+        Route Tables:
+            They determine where traffic can go.
+            Why are TGW route tables important?
+                Imagine all VPCs are connected:
+                            TGW
+                    ┌─────┼─────┐
+                    ↓     ↓     ↓
+                    VPC A VPC B VPC C
+                Connection alone doesn't mean everything should communicate freely.
+                You may want:
+                    VPC A → VPC B   ❌
+                    VPC A → VPC C   ✅
+                    VPC B → VPC C   ✅
+                You use TGW routing and route-table associations/propagation to control this.
+        IP Multicast:
+            One stream can be delivered to multiple receivers.
+                Multicast means: One sender → multiple receivers
+        Putting everything together
+            Here's the big picture:
+
+                                    AWS
+                                    |
+                ┌──────────────────┼──────────────────┐
+                |                  |                  |
+                VPC A              VPC B              VPC C
+                \                  |                  /
+                    \                 |                 /
+                    └──────── Transit Gateway ────────┘
+                                    |
+                            ┌────────┴────────┐
+                            ↓                 ↓
+                        VPN          Direct Connect
+                            |                 |
+                            ↓                 ↓
+                    On-Premises       DX Gateway
+            And across Regions:
+                            Tokyo
+                        TGW Tokyo
+                            |
+                            |
+                    TGW Peering
+                            |
+                            |
+                        TGW Osaka
+                            |
+                        Osaka VPC
+            Across accounts:
+                Account A VPC ─┐
+                Account B VPC ─┤
+                Account C VPC ─┼──→ TGW
+                Account D VPC ─┘      ↑
+                                    |
+                                    RAM
+        Transit Gateway + Site-to-Site VPN:
+            ECMP = Equal-Cost Multi-Path routing.
+                Routing အရ တန်ဖိုးတူညီတဲ့ လမ်းကြောင်းများစွာရှိရင် အဲဒီလမ်းကြောင်းတွေကို traffic forwarding အတွက် အသုံးပြုနိုင်တဲ့ routing method ဖြစ်ပါတယ်။
+            use multiple VPN tunnels/connections at the same time instead of leaving the extra paths idle.
+            Without ECMP, one path might be preferred while the other is primarily used as a backup.
+            With ECMP, when multiple routes have the same routing cost, traffic can be distributed across those paths.
+            Why use ECMP with Site-to-Site VPN?
+                Increase available bandwidth
+                    Suppose one VPN connection gives you approximately:
+                        VPN #1 = 1 Gbps
+                    You create another:
+                        VPN #2 = 1 Gbps
+                    With ECMP, traffic can use both paths.
+                        Conceptually:
+                                        ┌── 1 Gbps ──→ VPN #1
+                            On-Premises ─┤
+                                        └── 1 Gbps ──→ VPN #2
+
+                                        ≈ 2 Gbps total capacity
+                        So instead of:
+                            1 active
+                            1 standby
+                        you can have:
+                            1 active + 1 active
+                        with traffic distributed across the equal-cost paths.
+        ECMP does NOT mean "any multiple paths":
+            "Multiple Paths" ရှိတာနဲ့ ECMP မဖြစ်ဘူး
+                ဒီအချက်က အရေးကြီးဆုံးပါ။
+                ဥပမာ—
+                    On-Premises
+                        |
+                        ├── VPN #1 ──────┐
+                        |                |
+                        └── VPN #2 ──────┤
+                                        ↓
+                                    Transit Gateway
+                                        |
+                                        ↓
+                                        VPC
+                ဒီမှာ VPN #1 နဲ့ VPN #2 ဆိုပြီး လမ်း ၂ လမ်းရှိတယ်။
+                ဒါပေမယ့်—
+                လမ်း ၂ လမ်းရှိတာနဲ့ ECMP automatically ဖြစ်တာမဟုတ်ပါဘူး။
+                ဘာကြောင့်လဲ?
+                Routing system က လမ်းတစ်လမ်းကို ပိုကောင်းတယ် လို့ သတ်မှတ်ထားနိုင်လို့ပါ။
+            3. ဥပမာနဲ့ကြည့်မယ်
+                ဆိုပါစို့—
+                    On-Premises
+                        |
+                        ├── VPN #1 ── Cost 100 ──→ TGW
+                        |
+                        └── VPN #2 ── Cost 200 ──→ TGW
+                လမ်း ၂ လမ်းရှိပါတယ်။
+                ဒါပေမယ့်—
+                    VPN #1 = Cost 100
+                    VPN #2 = Cost 200
+                မတူပါဘူး။
+                Routing system အနေနဲ့— 100 < 200
+                ဆိုတော့ VPN #1 ကို ပိုကောင်းတဲ့ path အဖြစ်ရွေးနိုင်ပါတယ်။
+                ဒီအခြေအနေမှာ—
+                ❌ Equal-Cost မဟုတ်ဘူး
+                ဒါကြောင့် ECMP အတွက် "equal-cost paths" မဖြစ်သေးဘူး။
+            4. ECMP ဖြစ်တဲ့အခြေအနေ
+                အခု—
+                    On-Premises
+                        |
+                        ├── VPN #1 ── Cost 100 ──→ TGW
+                        |
+                        └── VPN #2 ── Cost 100 ──→ TGW
+                အခုတော့—
+                    VPN #1 = 100
+                    VPN #2 = 100
+                တူသွားပြီ။
+                ဒါကြောင့် routing system က— "ဟာ... ဒီလမ်း ၂ လမ်းလုံးက cost တူတယ်။ ဘယ်လမ်းကိုပဲသုံးသုံး routing အရ တူတူပဲ။"
+                ဆိုပြီး paths နှစ်ခုလုံးကို forwarding အတွက် အသုံးပြုနိုင်ပါတယ်။
+            5. ဒါကြောင့် "Equal-Cost" က ဘာကိုဆိုလိုတာလဲ?
+                ဒီနေရာမှာ Cost = ပိုက်ဆံကုန်ကျစရိတ် လို့ မတွေးပါနဲ့။
+        ECMP vs redundancy:
+            Without ECMP
+                VPN #1 ─── ACTIVE ───→ AWS
+                VPN #2 ─── STANDBY
+                VPN #2 mainly provides failover/redundancy.
+            With ECMP
+                VPN #1 ─── ACTIVE ───→ AWS
+                VPN #2 ─── ACTIVE ───→ AWS
+            ECMP can provide both redundancy and increased aggregate bandwidth
+        a question like:
+            A company wants to increase bandwidth between its on-premises network and AWS using multiple Site-to-Site VPN connections. 
+            The company wants to use all available VPN connections simultaneously.
+            Think:
+            ✅ Transit Gateway + ECMP
+            But if the question says:
+                "The company wants a dedicated private connection with higher bandwidth."
+            Then think about:
+                AWS Direct Connect
+        Transit Gateway: throughput with ECMP:
+            On-premises office ကနေ AWS VPC ထဲကို Internet ကနေ encrypted connection တစ်ခုလုပ်တယ်ဆိုပါစို့။
+                On-Premises
+                    |
+                    | Site-to-Site VPN
+                    |
+                    ↓
+                AWS
+                    |
+                    VPC
+            AWS ဘက်မှာ VPN ကို terminate လုပ်ဖို့ အဓိက architecture နှစ်မျိုးကို ဒီနေရာမှာတွေ့ရပါမယ်။
+                Option 1 — VPN → Virtual Private Gateway
+                    On-Premises
+                        |
+                        | VPN
+                        ↓
+                        VGW
+                        |
+                        ↓
+                        VPC
+                    ဒီ architecture မှာ VPN က VPC တစ်ခုကို တိုက်ရိုက်ချိတ်ထားတာ
+                Option 2 — VPN → Transit Gateway
+                    On-Premises
+                        |
+                        | VPN
+                        ↓
+                        TGW
+                    / | \
+                    ↓  ↓  ↓
+                    VPC VPC VPC
+                    On-premises က TGW တစ်ခုကို VPN နဲ့ချိတ်ပြီး VPC အများကြီးကို central hub ကနေ access လုပ်နိုင်ပါတယ်။
+            ဒီနှစ်ခုရဲ့ အဓိကကွာခြားချက်က TGW က centralized network hub ဖြစ်တာ ပါ။
+                |                                    | VPN → VGW                     | VPN → TGW                              |
+                | ---------------------------------- | ----------------------------- | -------------------------------------- |
+                | Gateway                            | Virtual Private Gateway       | Transit Gateway                        |
+                | Main purpose                       | VPC တစ်ခုနဲ့ VPN ချိတ်        | Network အများကြီးကို central hub ချိတ် |
+                | Multiple VPCs                      | တိုက်ရိုက် architecture မဟုတ် | ✅ Excellent use case                   |
+                | Hub-and-spoke                      | ❌                             | ✅                                      |
+                | Transitive routing                 | ❌                             | ✅                                      |
+                | ECMP with Site-to-Site VPN         | TGW feature မဟုတ်             | ✅                                      |
+                | Aggregate VPN throughput with ECMP | —                             | ✅                                      |
+    Traffic Mirroring:
+        VPC ထဲမှာ ဖြတ်သန်းနေတဲ့ network traffic ရဲ့ copy တစ်份ကို ယူပြီး security / monitoring system ဆီ ပြန်ပို့ပေးတဲ့အရာ
+        မူရင်း traffic ကို မပြောင်းဘဲ traffic ရဲ့ copy ကို monitoring/security system ဆီ ပို့ပေးတာ
+        ဘာကြောင့် "Mirror" လို့ခေါ်တာလဲ?
+            Original Traffic
+                |
+                ├────────→ Original Destination
+                |
+                └────────→ Copy → Security Tool
+            Security tool ဆီသွားတဲ့ traffic က မူရင်း traffic မဟုတ်ပါဘူး။
+            Copy ဖြစ်ပါတယ်။
+        Source = ENI
+        Target = ENI or NLB.
+        Security Appliance နဲ့ ဘယ်လိုသုံးလဲ?
+            Security appliance က—
+                suspicious traffic
+                malicious packets
+                unusual network behavior
+                unauthorized communication
+            တွေကို inspect လုပ်နိုင်ပါတယ်။
+        Capture all packets.
+        Packet Truncation:
+            Packet တစ်ခုက အရမ်းကြီးတယ်ဆိုပါစို့—
+                Original packet
+                ┌─────────────────────────────┐
+                │ Header + Data + More Data   │
+                └─────────────────────────────┘
+                Traffic Mirroring မှာ packet ကို truncate လုပ်ပြီး—
+                    Mirrored packet
+                    ┌───────────────┐
+                    │ Header + Data │
+                    └───────────────┘
+                လိုမျိုး packet အရှည်ကို လျှော့ပြီး capture လုပ်နိုင်ပါတယ်။
+                Security tool ဆီပို့ရမယ့် traffic volume ကို လျှော့နိုင်
+        Same VPC / Different VPC:
+            for Different VPC, using VPC Peering.
+        Traffic Mirroring က Traffic ကို "block" လုပ်တာမဟုတ်
+            Inspect လုပ်ဖို့ traffic copy ယူတာ
+            Security appliance က copy ကို inspect လုပ်တာပါ။
+        VPC Flow Logs vs Traffic Mirroring:
+            |                             | **VPC Flow Logs**                                                     | **VPC Traffic Mirroring**                      |
+            | --------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
+            | What does it capture?       | **Metadata about traffic**                                            | **Actual network packets**                     |
+            | Content                     | Source IP, destination IP, port, protocol, accept/reject, bytes, etc. | Packet contents / payload                      |
+            | Purpose                     | **Monitoring & troubleshooting**                                      | **Deep packet inspection / security analysis** |
+            | Storage                     | CloudWatch Logs / S3                                                  | Sends copied packets to a monitoring appliance |
+            | Does it copy packets?       | ❌ No                                                                  | ✅ Yes                                          |
+            | Can inspect packet content? | ❌ No                                                                  | ✅ Yes                                          |
+            | Example                     | “Who connected to port 443?”                                          | “What exactly was inside this packet?”         |
+            If the question says:
+                Monitor connections
+                Troubleshoot network connectivity
+                Source/destination IP
+                Port/protocol
+                Accept/Reject
+            ➡️ VPC Flow Logs
+            If it says:
+                Capture packets
+                Inspect packet contents
+                IDS/IPS
+                Deep packet inspection
+                Security appliance
+                Network traffic analysis
+            ➡️ VPC Traffic Mirroring
+    IPv6 in VPC — Dual-Stack:
+        AWS VPC မှာ IPv4 ကို disable လုပ်လို့မရပါဘူး။
+        ဒါကြောင့် VPC ကို IPv6 သုံးချင်ရင် IPv4 ကိုဖယ်ပြီး IPv6-only လုပ်တာမဟုတ်ဘဲ Dual-Stack အနေနဲ့သုံးတာ
+        IPv4 + IPv6 နှစ်မျိုးလုံးကို တစ်ပြိုင်နက် support လုပ်တာ
+        IPv4 cannot be disabled
+            ဒီဟာကို exam မှာ မှတ်ထားပါ။
+                VPC
+                ↓
+                IPv4 is always enabled
+            IPv6 ထည့်ချင်ရင်:
+                IPv4
+                +
+                IPv6
+                =
+                Dual-stack
+        EC2 gets IPv4 + IPv6:
+            IPv4 မှာ:
+                Private IPv4
+                    ↓
+                NAT Gateway
+                    ↓
+                Internet
+            ဆိုတဲ့ architecture ကို frequently သုံးနိုင်ပါတယ်။
+            IPv6 မှာတော့:
+                EC2 IPv6
+                    ↓
+                Internet Gateway
+                    ↓
+                Internet
+            ဆိုပြီး NAT မလိုဘဲ Internet Gateway ကိုဖြတ်ပြီး communicate လုပ်နိုင်ပါတယ်။
+            Internet Gateway က နှစ်မျိုးလုံး support လုပ်နိုင်တယ်            
+        IPv6 addresses are public/global.
+            ဒါပေမယ့် address ရှိတာနဲ့ Internet access အလိုအလျောက်ရတာ မဟုတ်ပါဘူး။
+            Route table + Internet Gateway + Security Group/NACL rules လိုအပ်ပါတယ်။
+        IPv4 Troubleshooting:
+            IPv4 ကို VPC/Subnet မှာ disable မလုပ်နိုင်ဘူး
+            AWS VPC တစ်ခုမှာ IPv4 CIDR က အမြဲရှိနေမှာပါ။
+            Problem: EC2 launch မရတဲ့အခါ
+                subnet က: 10.0.1.0/24
+                ဆိုရင် total IPv4 addresses: 2⁸ = 256 addresses
+                AWS က subnet ထဲမှာ 5 IP addresses ကို reserve လုပ်ထားတဲ့အတွက် usable IPv4 က:
+                    256 - 5 = 251
+                EC2 တွေများများ launch လုပ်ပြီး IPv4 addresses ကုန်သွားရင်:
+                    Subnet
+                    10.0.1.0/24
+
+                    IPv4 addresses
+                    ████████████████████  ← USED
+                    No available IPv4
+                EC2 အသစ် launch လုပ်တဲ့အခါ: ❌ No available IPv4 addresses
+                ဖြစ်နိုင်ပါတယ်။
+                3. IPv6 ရှိတာနဲ့ ဒီပြဿနာကို မဖြေရှင်းနိုင်ဘူး
+                ဥပမာ:
+                    Subnet
+                    ├── IPv4: 10.0.1.0/24
+                    │        ❌ No addresses available
+                    │
+                    └── IPv6: 2001:db8:....::/64
+                            ✅ Huge address space
+                IPv6 address အများကြီး available ဖြစ်နေပေမယ့် EC2 launch လုပ်တဲ့အခါ IPv4 address လိုနေသေးတာကြောင့် launch မရနိုင်ပါတယ်။
+                ဒီအချက်က exam မှာ အရေးကြီးပါတယ်။
+                IPv6 address space အရမ်းကြီးတယ်ဆိုပြီး IPv4 requirement ပျောက်မသွားဘူး။
+            Solution:
+                Subnet မှာ IPv4 addresses မလောက်တော့ရင် additional IPv4 CIDR block ထည့်နိုင်
+                    VPC
+                    │
+                    └── Subnet
+                        ├── 10.0.1.0/24
+                        └── 10.0.2.0/24
+                            ↑
+                        Additional IPv4 CIDR
+                AWS မှာ subnet တစ်ခုကို multiple IPv4 CIDR blocks ထည့်နိုင်ပါတယ်။ ဒါကို secondary IPv4 CIDR block လို့ခေါ်ပါတယ်။
+    Egress-only Internet Gateway:
+        IPv6 အတွက် outbound-only Internet gateway
+            IPv4 အတွက် outbound-only Internet access လိုရင် ပုံမှန်အားဖြင့် NAT Gateway ကိုသုံးပါတယ်။
+        VPC → Internet ကို ထွက်လို့ရတယ်၊ Internet → VPC ကို connection စတင်လို့မရဘူး။
+            |                           | NAT Gateway               | Egress-only IGW    |
+            | ------------------------- | ------------------------- | ------------------ |
+            | Address type              | IPv4                      | **IPv6**           |
+            | Outbound Internet         | ✅                         | ✅                  |
+            | Internet initiate inbound | ❌                         | ❌                  |
+            | Purpose                   | Private subnet → Internet | IPv6 outbound-only |
+            | NAT translation           | ✅                         | ❌                  |
+        Route Table update လုပ်ရမယ် ⭐
+            Egress-only IGW ကို create လုပ်ရုံနဲ့ traffic အလိုအလျောက် အဲဒီကနေသွားမှာ မဟုတ်ပါဘူး။
+                Destination       Target
+                --------------------------------
+                ::/0              Egress-only IGW
+                ::/0 ဆိုတာ: All IPv6 addresses
+    Summary:
+        CIDR -IP Range
+            IP address range ကို သတ်မှတ်တဲ့ notation
+        VPC - Virtual Private Cloud => we define a list of IPv4 & IPv6 CIDR
+            AWS ထဲမှာ ကိုယ်ပိုင် virtual network တစ်ခု, VPC တည်ဆောက်တဲ့အခါ CIDR သတ်မှတ်
+        Subnets - tied to an AZ, we define a CIDR
+            Subnet က VPC ရဲ့ IP range ကို ပိုသေးတဲ့ network အဖြစ်ခွဲထား
+            Subnet = one AZ
+        Internet Gateway - at the VPC level, provide IPv4 & IPv6 Internet Access
+            VPC level resource ဖြစ်ပါတယ်။
+            IPv4 / IPv6 နှစ်မျိုးလုံးအတွက် Internet connectivity ကို support လုပ်ပါတယ်။
+        Route Tables - must be edited to add routes from subnets to the IGW, VPC Peering Connections, VPC Endpoints, ...
+            "Traffic ဘယ်ကိုပို့ရမလဲ?" ဆိုတာ ဆုံးဖြတ်
+        Bastion Host - public EC2 instance to SSH into, that has SSH connectivity to EC2 Instances in private subnets
+            public subnet ထဲမှာရှိတဲ့ EC2 ဖြစ်ပြီး private subnet ထဲက EC2 တွေကို SSH access လုပ်ဖို့ အသုံးပြုနိုင်
+        NAT Instances - gives Internet access to EC2 instances in private subnets. Old, must be setup in a public subnet, disable Source / Destination check flag
+            private subnet ထဲက EC2 တွေကို IPv4 Internet access ပေးနိုင်
+            old / legacy approach ဖြစ်
+            Source/Destination Check ကို disable လုပ်ရမယ်
+        NAT Gateway - managed by AWS, provides scalable Internet access to private EC2 instances, when the target is an IPv4 address
+            Private subnet ထဲက EC2 တွေကို IPv4 Internet access ပေးပါတယ်။
+            Private EC2 က Internet ကို outbound connection စလုပ်နိုင်ပါတယ်။
+            Internet က private EC2 ကို directly initiate လုပ်လို့မရပါဘူး။
+        NAT Gateway vs Egress-only IGW:
+            |                              | NAT Gateway | Egress-only IGW |
+            | ---------------------------- | ----------- | --------------- |
+            | IPv4                         | ✅           | ❌               |
+            | IPv6                         | ❌           | ✅               |
+            | Outbound Internet            | ✅           | ✅               |
+            | Internet → Instance initiate | ❌           | ❌               |
+            | AWS Managed                  | ✅           | ✅               |
+        NACL - stateless, subnet rules for inbound and outbound, don't forget Ephemeral Ports
+            stateless ဖြစ်
+            Stateless ဆိုတာ?
+                Request ဝင်လာရင် inbound rule စစ်ပါတယ်။
+                Response ပြန်ထွက်တဲ့အခါ outbound rule ကိုလည်း သီးခြားစစ်ရပါတယ်။
+            Ephemeral Ports:
+                Server response က client ရဲ့ ephemeral port ကို ပြန်သွားနိုင်ပါတယ်
+            NACL မှာ inbound/outbound နှစ်ဖက်လုံးကို appropriate ports ခွင့်ပြုထားဖို့လို
+        Security Groups - stateful, operate at the EC2 instance level
+            stateful ဖြစ် network interface level မှာ သက်ရောက်ပါ
+                Inbound connection ကို allow လုပ်ထားရင် response traffic ကို outbound rule ထပ်ရေးစရာမလိုဘဲ automatically allow
+        VPC Peering - connect two VPCs with non overlapping CIDR, non-transitive
+            VPC နှစ်ခုကို private network အနေနဲ့ connect
+            CIDR must NOT overlap
+            Non-transitive
+        VPC Endpoints - provide private access to AWS Services (S3, DynamoDB, CloudFormation, SSM) within a VPC
+            VPC ထဲက resource တွေကို AWS services တွေဆီ private connectivity ပေး
+            S3 / DynamoDB အထူးသဖြင့်: Gateway Endpoint
+            Interface Endpoint = ENI + Private IP
+        VPC Flow Logs - can be setup at the VPC / Subnet / ENILevel, for ACCEPT and REJECT traffic, helps identifying attacks,
+            analyze using Athena or CloudWatch Logs Insights
+                traffic ရဲ့ metadata ကို capture လုပ်
+                Flow Logs ≠ packet capture
+        Site-to-Site VPN - setup a Customer Gateway on DC, a Virtual Private Gateway on VPC, and site-to-site VPN over public Internet
+            On-premises network ကို AWS VPC နဲ့ VPN tunnel ဖြင့် connect လုပ်တာပါ။
+            On-premises side:
+                Customer Gateway (CGW)
+            AWS side:
+                Virtual Private Gateway (VGW)
+        VPN CloudHub - hub-and-spoke VPN model to connect your sites
+            multiple on-premises sites တွေကို AWS ကို hub အဖြစ်သုံးပြီး connect လုပ်တဲ့ hub-and-spoke model
+        Direct Connect - setup a Virtual Private Gateway on VPC, and establish a rect private connection to an AWS Direct Connect Location
+            On-Premises ↔ AWS ကို dedicated private network connection နဲ့ ချိတ်
+            VPC နဲ့ချိတ်တဲ့ traditional architecture မှာ Virtual Private Gateway (VGW) ကို VPC ဘက်မှာ အသုံးပြုနိုင်
+        Direct Connect Gateway - setup a Direct Connect to many VPCs in different AWS regions
+            Direct Connect တစ်ခုကနေ VPC တစ်ခုထက်ပိုပြီး၊ Region တစ်ခုထက်ပိုတဲ့ VPC တွေ ကို connect လုပ်ချင်ရင် Direct Connect Gateway ကိုသုံးနိုင်
+            global resource ဖြစ်ပြီး different AWS Regions ရှိ VPCs တွေနဲ့ DX connectivity ကို centralize လုပ်နိုင်
+        AWS PrivateLink / VPC Endpoint Services:
+            Connect services privately from your service VPC to customers VPC
+            Doesn't need VPC Peering, public Internet, NAT Gateway, Route Tables
+            Must be used with Network Load Balancer & ENI
+                VPC-to-VPC connectivity နဲ့ မတူ
+                Suppose Company A က service တစ်ခုတည်ဆောက်ထားတယ်:
+                    Service Provider
+                        VPC
+                        │
+                        ▼
+                    Network Load Balancer
+                        │
+                        ▼
+                    Service
+                Company B ရဲ့ VPC က အဲဒီ service ကို access လုပ်ချင်တယ်။
+                    PrivateLink သုံးရင်:
+                        Provider VPC
+                            │
+                            │ AWS PrivateLink
+                            ▼
+                        Customer VPC
+                First: Who is Provider and Customer?
+                    Company A
+                    └── Has an application/service
+                        → "Payment API"
+                    Company B
+                    └── Wants to use that Payment API
+
+                    Company A = Service Provider
+                    Company B = Service Consumer / Customer
+                    Provider VPC = the VPC where the service/application is running.
+                        Provider VPC
+                            10.0.0.0/16
+                                    ┌──────────────────┐
+                                    │      NLB         │
+                                    │        │         │
+                                    │        ▼         │
+                                    │  Payment API     │
+                                    │    EC2s          │
+                                    └──────────────────┘
+                    Customer VPC = Company B's VPC want to use that payment API service.
+                                     Company B
+                                        Customer
+                                            │
+                                            ▼
+                                    ┌──────────────┐
+                                    │ Customer VPC │
+                                    │              │
+                                    │    EC2       │
+                                    │      │       │
+                                    └──────┼───────┘
+                    အရေးကြီးတာ
+                    Customer VPC နဲ့ Provider VPC ကြားမှာ:
+                        ❌ VPC Peering မလို
+                        ❌ Public Internet မလို
+                        ❌ NAT Gateway မလို
+                        ❌ Route Table changes မလို
+                    PrivateLink က service ကို private endpoint အနေနဲ့ expose လုပ်ပေးပါတယ်။
+                Architecture:
+                    Provider side:
+                        Provider VPC
+                            │
+                            ▼
+                        Network Load Balancer
+                            │
+                            ▼
+                        Service
+                    Customer side:
+                        Customer VPC
+                            │
+                            ▼
+                        Interface VPC Endpoint
+                            │
+                            ▼
+                        PrivateLink
+                            │
+                            ▼
+                        NLB
+                            │
+                            ▼
+                        Service
+                    Provider side မှာ:
+                        Network Load Balancer
+                    Customer side မှာ:
+                        Interface Endpoint / ENI
+                VPC Peering vs PrivateLink:
+                    VPC Peering: VPC A နဲ့ VPC B ရဲ့ network တွေကို connect လုပ်တာ
+                    PrivateLink: Customer က specific service ကို consume လုပ်တာ။
+                        Provider VPC
+                            │
+                            ▼
+                        Service
+                            │
+                            ▼
+                        Customer VPC
+                VPC Peering vs PrivateLink:
+                    |                  | VPC Peering                | PrivateLink                                     |
+                    | ---------------- | -------------------------- | ----------------------------------------------- |
+                    | Connects         | VPC ↔ VPC                  | Service ↔ Customer                              |
+                    | Network access   | Broad/private connectivity | Specific service                                |
+                    | Overlapping CIDR | ❌ Not supported            | Can work with overlapping CIDRs                 |
+                    | Internet         | Not required               | Not required                                    |
+                    | NAT              | Not required               | Not required                                    |
+                    | Route table      | Requires routes            | Provider/customer don't need VPC peering routes |
+                    | Provider uses    | —                          | NLB                                             |
+                    | Customer uses    | —                          | Interface Endpoint                              |
+        ClassicLink - connect EC2-Classic EC2 instances privately to your VPC
+            old AWS feature ဖြစ်ပြီး EC2-Classic instances တွေကို VPC နဲ့ private connectivity ပေးဖို့ အသုံးပြု
+            modern AWS design မှာ ClassicLink ကို မသုံးပါဘူး။ ဒီ note ကို historical concept အဖြစ်ပဲ သိထားရင် လုံလောက်
+        Transit Gateway - transitive peering connections for VPC, VPN & DX
+            central networking hub, transitive routing ကို support လုပ်နိုင်
+        Traffic Mirroring - copy network traffic from ENIs for further analysis
+            network traffic ကို copy လုပ်ပြီး security/monitoring appliance ဆီပို့
+            Source: ENI
+            Target:ENI or Network Load Balancer
+        Egress-only Internet Gateway - like a NAT Gateway, but for IPv6
+            IPv6 only ဖြစ်ပြီး outbound-only Internet access ပေး
+            Internet က EC2 ကို connection စတင်လို့ မရပါဘူး။
+            NAT Gateway → IPv4 outbound
+            Egress-only IGW → IPv6 outbound
+    Networking Costs in AWS per GB:
+        same AZ:
+            free for traffic in
+            free if using private IP.
+        difference AZs,
+            using private IP => $0.01
+            using public/Elastic IP => $0.02
+        difference region:
+            Inter-region => $0.02
+        So, use private IP instead of Public IP for good savings and better network performance.
+        Use same AZ for max savings.
+        To optimize networking costs:
+            minimizing egress traffic network cost:
+                Egress traffic: outbound traffic (from AWS to outside)
+                Ingress traffic: inbound traffic (from outside to AWS) (typically free)
+            Try to keep as much internet traffic within AWS to minimize costs
+            Direct Connect location that are co-located in the same AWS Region result in lower cost for egress network
+        S3 Data Transfer Pricing(Analysis for USA):
+            S3 ingress: free
+            S3 to Internet: $0.09 per GB
+            S3 Transfer Acceleration:
+                Faster transfer times (50 to 500% better)
+                Additional cost on top of Data Transfer Pricing: +$0.04 to $0.08 per GB
+            S3 to CloudFront: $0.00 per GB
+            CloudFront to Internet: $0.085 per GB (slightly cheaper than S3)
+                Caching capability (lower latency)
+                Reduce costs associated with S3 Requests Pricing (7x cheaper with CloudFront)
+            S3 Cross Region Replication: $0.02 per GB
+        NAT Gateway vs Gateway VPC Endpoint:
+            using NAT Gateway:
+                $0.045 NAT Gateway / hour
+                $0.045 NAT Gateway data processed / GB
+                $0.09 Data transfer out to S3 (cross-region)
+                $0.00 Data transfer out to S3 (same-region)
+            using VPC Endpoint:
+                No cost for using Gateway Endpoint.
+                $0.01 Data transfer in/out (same-region)
+    AWS Network Firwall:
+        To protect network on AWS, we've seen
+            Network Access Control Lists (NACLs)
+            Amazon VPC security groups
+            AWS WAF (protect against malicious requests)
+            AWS Shield & AWS Shield Advanced
+            AWS Firewall Manager (to manage them across accounts)
+        But what if we want to protect in a sophisticated way our entire VPC?
+        use AWS Network Firewall:
+            Protect your entire Amazon VPC
+            ဘာတွေကို Protect လုပ်နိုင်လဲ?
+            In any direction, you can inspect:
+                    Layer 3 → Layer 7 အထိ
+                        ① Outbound → Internet
+                        ② Inbound ← Internet
+                        ③ VPC → VPC
+                        ④ On-Premises → AWS
+            AWS Network Firewall vs Security Group vs NACL:
+                | Feature           | Security Group | NACL         | Network Firewall      |
+                | ----------------- | -------------- | ------------ | --------------------- |
+                | Level             | ENI / Instance | Subnet       | VPC/network           |
+                | Stateful          | ✅              | ❌            | ✅/advanced inspection |
+                | Allow             | ✅              | ✅            | ✅                     |
+                | Deny              | ❌              | ✅            | ✅                     |
+                | Layer             | Mainly L3/L4   | L3/L4        | **L3 → L7**           |
+                | Centralized rules | Limited        | Subnet-level | **Yes**               |
+                | Deep inspection   | ❌              | ❌            | ✅                     |
+            Internally uses Gateway Load Balancer
+                AWS Network Firewall ရဲ့ underlying architecture မှာ AWS Gateway Load Balancer (GWLB) ကို အသုံးပြုပါတယ်။
+            AWS Firewall Manager:
+                AWS Organizations ထဲက account/VPC အများကြီး ကို centrally manage ချင်ရင်
+                                 AWS Firewall Manager
+                                            │
+                                Centralized Policy / Rules
+                                            │
+                            ┌────────────────┼────────────────┐
+                            ▼                ▼                ▼
+                        Account A        Account B        Account C
+                            │                │                │
+                        VPC A            VPC B            VPC C
+                            │                │                │
+                        Firewall         Firewall         Firewall
+            Fine-Grained Controls:
+                ဘာကြောင့် Network Firewall ကိုရွေးတာလဲ?
+                Network Firewall က simple allow/deny by IP ပဲမဟုတ်ဘဲ traffic ကို အသေးစိတ် rules တွေနဲ့ control လုပ်နိုင်ပါတယ်။
+                    Thousands of Rules
+                    IP + Port Filtering
+                    Protocol-based Filtering
+                    Domain-based Filtering
+                    Regex Pattern Matching
+                action သုံးမျိုးလုပ်နိုင်:
+                    ✅ Allow
+                        Traffic ကို ဆက်သွားခွင့်ပြု။
+                            Traffic → Rule Match → ALLOW → Continue
+                    ❌ Drop
+                        Traffic ကိုပစ်ချ။
+                            Traffic → Rule Match → DROP → X
+                    🚨 Alert
+                        Traffic ကိုခွင့်ပြု/သတ်မှတ်ထားတဲ့ behavior အတိုင်း ဆက်သွားစေပြီး alert/log ထုတ်နိုင်ပါတယ်။
+                            Traffic → Rule Match → ALERT
+                                                ↓
+                                                Log
+                Intrusion Prevention:
+                    active flow inspection လုပ်ပြီး network threats တွေကို detect/prevent လုပ်နိုင်
+                    intrusion-prevention capabilities (IPS-like) ရှိပါတယ်။
+                Logging:
+                    rule match ဖြစ်တဲ့ traffic တွေရဲ့ logs ကို external destinations တွေဆီ ပို့နိုင်
+                        AWS Network Firewall
+                            │
+                            ├── Amazon S3
+                            │
+                            ├── CloudWatch Logs
+                            │
+                            └── Kinesis Data Firehose
+                Note:
+                    Gateway Load Balancer (GWLB) က network security appliances တွေကို deploy/scale လုပ်ဖို့ infrastructure ပေးတဲ့ service ဖြစ်ပါတယ်။
+
+                    Network Firewall ကတော့ AWS-managed firewall service ဖြစ်ပြီး firewall rules + inspection + threat prevention ကို AWS က manage လုပ်ပေးပါတယ်။
+
+
 
 
 
