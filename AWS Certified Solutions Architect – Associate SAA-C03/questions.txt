@@ -768,8 +768,35 @@ What do you recommend to implement this?
 
 ans: 1.
 ----------------------------------------------
+You have a corporate network of size 10.0.0.0/8 and a satellite office of size 192.168.0.0/16. 
+Which CIDR is acceptable for your AWS VPC if you plan on connecting your networks later on?
+
+1. 172.16.0.0/12
+2. 172.16.0.0/16
+3. 10.0.16.0/16
+4. 192.168.4.0/18
+
+ans: #2, 172.16.0.0/16
 ----------------------------------------------
+You have attached an Internet Gateway to your VPC, but your EC2 instances still don't have access to the internet. 
+What is NOT a possible issue?
+
+1. Route tables are missing entries.
+2. ec2 instances don't have public IP.
+3. Security Group does not allow traffic in.
+4. NACL does not allow network traffic out.
+
+ans: 3.
 ----------------------------------------------
+A web application backend is hosted on EC2 instances in private subnets fronted by an Application Load Balancer in public subnets. 
+There is a requirement to give some of the developers access to the backend EC2 instances but without exposing the backend EC2 instances to the Internet. 
+You have created a bastion host EC2 instance in the public subnet and configured the backend EC2 instances Security Group to allow traffic from the bastion host.
+Which of the following is the best configuration for bastion host Security Group to make it secure?
+
+1. Allow traffic only on port 80 from the company's public CIDR
+1. Allow traffic only on port 22 from the company's public CIDR
+1. Allow traffic only on port 22 from the company's private CIDR
+1. Allow traffic only on port 80 from the company's private CIDR
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
