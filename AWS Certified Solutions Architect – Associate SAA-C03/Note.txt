@@ -18348,10 +18348,314 @@ Disaster Recovery & Migrations:
                 | **Warm Standby**          | App running at reduced capacity | ⚡          | 💰💰💰    |
                 | **Hot Site / Multi-Site** | Full environment running        | 🚀 Fastest | 💰💰💰💰  |
         DR tips:
-            
-
-
-
+            Backup:
+                ပထမဆုံးအရေးကြီးဆုံးက data ကို backup လုပ်ထားခြင်း
+                EBS Snapshots
+                    EC2 ရဲ့ EBS volume ကို snapshot လုပ်ထားနိုင်ပါတယ်။
+                RDS Automated Backups / Snapshots
+                    Automated backups
+                    Manual DB snapshots
+                S3 / S3 IA / Glacier
+                    Data ကို S3 ထဲ regular backup/push လုပ်ထားနိုင်ပါတယ်။
+                    Lifecycle Policy
+                        Data ကို manually move လုပ်နေစရာမလိုဘဲ Lifecycle Policy နဲ့ automatically transition လုပ်နိုင်
+                S3 Cross-Region Replication
+                    Disaster က Region တစ်ခုလုံး ဖြစ်နိုင်တယ်ဆိုရင် backup ကို same Region ထဲမှာပဲ ထားရင် မလုံလောက်နိုင်ပါဘူး။
+                    ဒါကြောင့် S3 data ကို another Region ကို replicate လုပ်နိုင်ပါတယ်။
+                On-Premise → AWS Backup
+                    AWS Snowball
+                        Large amount of data ကို physical device နဲ့ AWS ကို transfer လုပ်ဖို့
+                        Internet bandwidth မလုံလောက်တဲ့အခါ အထူးအသုံးဝင်
+                    AWS Storage Gateway
+                        On-premise environment နဲ့ AWS storage services ကြား hybrid storage integration
+            High Availability:
+                DR က disaster ဖြစ်ပြီးမှ recover လုပ်တာပဲ မဟုတ်ပါဘူး။
+                Downtime မဖြစ်အောင် HA (High Availability) လည်း တည်ဆောက်ထားနိုင်ပါတယ်။
+                Route 53:
+                    Region A ပျက်သွားရင် traffic ကို Region B ဆီ route ပြောင်း
+                RDS Multi-AZ:
+                    RDS မှာ Multi-AZ သုံးရင် standby database ကို another AZ မှာ ထားနိုင်ပါတယ်။
+                    Primary fail ဖြစ်ရင် RDS က failover လုပ်ပေးနိုင်ပါတယ်။
+                ElastiCache Multi-AZ
+                    ElastiCache မှာလည်း Multi-AZ / replication group architecture ကို အသုံးပြုပြီး availability မြှင့်နိုင်ပါတယ်။
+                EFS
+                    Amazon EFS က multiple AZs အကြား accessible ဖြစ်တဲ့ managed file system ဖြစ်တာကြောင့်
+                        application ရဲ့ shared file storage အတွက် highly available architecture တည်ဆောက်နိုင်ပါတယ်။
+                S3
+                    S3 က inherently highly durable ဖြစ်ပြီး AWS က multiple facilities/AZs အတွင်း data ကို redundantly store လုပ်ပေး
+                Direct Connect → Site-to-Site VPN Backup
+                    DX connection ပျက်သွားရင် backup connectivity အနေနဲ့ Site-to-Site VPN
+            Replication:
+                Backup က အချိန်အပိုင်းအခြားနဲ့ copy သိမ်းတာ ဖြစ်နိုင်ပေမယ့်
+                replication က data ကို အခြားနေရာဆီ ဆက်တိုက်/မကြာခဏ copy လုပ်ထားတာပါ
+                RDS Cross-Region Read Replica:
+                    RDS database ကို another Region ကို replicate လုပ်နိုင်ပါတယ်။
+                Aurora Global Database:
+                    global / cross-Region database architecture
+                On-Premise Database → RDS:
+                    On-premise database ကို AWS database environment ဆီ migrate/replicate လုပ်နိုင်ပါတယ်။
+            Automation:
+                DR ကို manual steps အများကြီးလုပ်ရရင် recovery time ကြာနိုင်ပါတယ်
+                ဒါကြောင့် automation သုံးပါတယ်။
+                CloudFormation:
+                    Infrastructure တစ်ခုလုံးကို code နဲ့ define ထားပြီး disaster ဖြစ်ရင် environment အသစ်ကို ပြန်တည်ဆောက်နိုင်ပါတယ်။
+                Elastic Beanstalk:
+                    Application environment ကို ပြန် create/deploy လုပ်ဖို့ အသုံးဝင်ပါတယ်။
+                CloudWatch + EC2 Recovery:
+                    EC2 instance failure ဖြစ်ရင် CloudWatch alarm နဲ့ automatic recovery action သတ်မှတ်နိုင်ပါတယ်။
+                    Auto Scaling → instances ကို add/remove/replace လုပ်ပြီး capacity manage
+                    EC2 AutoRecovery → supported instance failure အချို့မှာ instance ကို underlying hardware issue ကနေ recover လုပ်ရန်
+                AWS Lambda:
+                    DR process မှာ custom logic လိုရင် Lambda သုံးနိုင်ပါတယ်။
+            Chaos Engineering:
+                System ပျက်ရင် ဘာဖြစ်မလဲဆိုတာ စောင့်မနေဘဲ တမင်တကာ failure ဖြစ်အောင်လုပ်ပြီး
+                system ရဲ့ resilience(ခံနိုင်ရည်ရှိမှု) ကို စမ်းသပ်ခြင်း
+                Netflix ရဲ့ famous example က Simian Army ပါ။
+                    Conceptually—
+                        Production Environment
+                                │
+                                ▼
+                        Chaos Testing
+                                │
+                                ├── Kill EC2
+                                ├── Simulate failure
+                                └── Test recovery
+                                │
+                                ▼
+                        Can the system survive?
+        AWS Elastic Disaster Recovery (DRS)
+            AWS Elastic Disaster Recovery (AWS DRS) က server တစ်ခုလုံးကို AWS ထဲမှာ Disaster Recovery environment အဖြစ် 
+            replicate လုပ်ထားပြီး၊ disaster ဖြစ်တဲ့အခါ AWS ပေါ်ကို quickly recover လုပ်နိုင်တဲ့ service ပါ။
+            အရင်နာမည် = CloudEndure Disaster Recovery
+            protect your most critical databases
+                 (including Oracle, MysQL, and SQL Server), 
+                 enterprise apps (SAP), 
+                 protect your data from ransomware attacks
+            Continuous Block-Level Replication
+                source server ရဲ့ data ကို file တစ်ခုချင်းစီအနေနဲ့ backup လုပ်တာမဟုတ်ဘဲ disk blocks ပြောင်းလဲသမျှကို continuously replicate လုပ်တာပါ။
+                ဥပမာ—
+                    On-Prem Server
+                    ┌─────────────────────┐
+                    │ OS                  │
+                    │ Application         │
+                    │ Database            │
+                    │ Data                │
+                    └─────────────────────┘
+                            │
+                            │ Changed blocks
+                            │ continuously replicated
+                            ▼
+                    ┌──────────────────────────┐
+                    │ AWS DRS                  │
+                    │ Staging / Replication    │
+                    │ Environment              │
+                    └──────────────────────────┘
+                    Source server မှာ data block တချို့ပြောင်းသွားရင် changed blocks တွေကို AWS ဘက်ကို replicate လုပ်နေပါတယ်။
+                    ဒါကြောင့် disaster ဖြစ်တဲ့အချိန်မှာ အချိန်အများကြီးယူပြီး server ကို အစကနေ ပြန်တည်ဆောက်စရာမလိုဘဲ AWS မှာ recovery လုပ်နိုင်ပါတယ်။
+                    Disaster ဖြစ်ရင် AWS DRS က replicated data ကိုအသုံးပြုပြီး AWS ထဲမှာ recovery instances ကို launch လုပ်နိုင်ပါတယ်။
+                    Backup vs DRS:
+                        | Backup                 | AWS DRS                     |
+                        | ---------------------- | --------------------------- |
+                        | Periodic copy          | Continuous replication      |
+                        | Point-in-time recovery | Near-continuous replication |
+                        | Restore data           | Recover server/application  |
+                        | RTO generally slower   | Fast recovery               |
+                        | Backup-oriented        | Disaster Recovery-oriented  |
+                    ဥပမာ:
+                        EBS Snapshot
+                            10:00 ── Snapshot
+                            11:00 ── Snapshot
+                            12:00 ── Snapshot
+                        10:30 မှာ disaster ဖြစ်ရင် 10:00 snapshot ကနေ restore လုပ်ရနိုင်ပါတယ်။
+                        DRS ကတော့ — continuous block replicationဖြစ်လို့ source server ရဲ့ changes တွေကို continuously replicate လုပ်နေပါတယ်။
+        Database Migration Service(DMS):
+            Database တစ်ခုကနေ နောက် Database တစ်ခုကို migration / replication လုပ်ပေးတဲ့ managed service
+                Source Database
+                    │
+                    │ AWS DMS
+                    │
+                    ▼
+                Target Database
+            Quickly and securely migrate databases to AWS
+                DMS ကို database ကို AWS ထဲ migrate လုပ်ဖို့ အသုံးများပါတယ်။
+            Source Database remains available
+                အရေးကြီးတာက source database ကို migration လုပ်နေစဉ်မှာ ဆက်ပြီးအသုံးပြုနိုင်တယ်။
+                Traditional migration လို—
+                    Stop Database
+                        ↓
+                    Copy Data
+                        ↓
+                    Restore
+                        ↓
+                    Start Database
+                မျိုးမဟုတ်ဘဲ—
+                    Source DB
+                    │
+                    ├──────────────► Users continue using DB
+                    │
+                    │
+                    └────► AWS DMS ─────► Target DB
+                Source database က online ဖြစ်နေပြီး users တွေ ဆက်သုံးနိုင်ပါတယ်။
+                ဒါကြောင့် minimal downtime migration အတွက် DMS ကို အသုံးပြုနိုင်ပါတယ်။
+            Homogeneous Migration:
+                Database engine တူတူ → Database engine တူတူ
+                    Oracle -> DMS -> Oracle
+            Hetergeneous Migration:
+                Database engine မတူ → Database engine မတူ
+                Usage:
+                    OLTP: (SQL Server or Oracle) to Mysql, Postgresql, Aurora.
+                        OLTP = Online Transaction Processing
+                            နေ့စဉ် application တွေက database ကို အမြဲ INSERT / UPDATE / DELETE လုပ်နေတဲ့ workload ပါ။
+                    OLAP: (Teradata or Oracle) to Amazon Redshift.
+                        OLAP = Online Analytical Processing
+                        OLAP က data analysis / reporting / business intelligence အတွက်ပါ။
+                        eg: company က—
+                                "Last 5 years အတွင်း ဘယ် product က sales အများဆုံးလဲ?"
+                                "Japan region မှာ monthly revenue ဘယ်လောက်ရှိလဲ?"
+                            လိုမျိုး data အများကြီးကို query လုပ်ပြီး analysis လုပ်တာပါ။
+                    OLTP vs OLAP:
+                        |                    | OLTP                          | OLAP                         |
+                        | ------------------ | ----------------------------- | ---------------------------- |
+                        | Full name          | Online Transaction Processing | Online Analytical Processing |
+                        | Purpose            | Daily transactions            | Analytics / Reporting        |
+                        | Operations         | INSERT / UPDATE / DELETE      | Large SELECT / Aggregation   |
+                        | Example            | Order, Payment, Customer      | Sales analysis, BI           |
+                        | AWS target example | Aurora / RDS                  | Redshift                     |
+                        | Example migration  | Oracle → Aurora               | Teradata → Redshift          |
+            AWS Schema Conversion Tool (SCT):
+                DMS တစ်ခုတည်းနဲ့ အားလုံးကို automatically convert မလုပ်နိုင်ဘူး
+                Database engines မတူတဲ့အတွက် schema / SQL syntax / stored procedures စတာတွေမှာ conversion လိုနိုင်ပါတယ်။
+                အဲဒီအတွက် AWS မှာ AWS Schema Conversion Tool (SCT) ကို အသုံးပြုနိုင်
+            Continuous Data Replication using CDC
+                CDC = Change Data Capture
+                    Source DB မှာ migration စလုပ်ပြီးနောက် data အသစ်တွေ/ပြောင်းလဲမှုတွေရှိရင်
+                    DMS က အဲဒီ changes တွေကို capture လုပ်ပြီး target DB ကို ဆက်ပြီး replicate လုပ်ပေး
+            Cutover
+                DMS ကို minimal downtime migration အတွက် သုံး
+                flow:
+                            Initial Load
+                        Source DB ─────────────────────► Target DB
+                        │                                  │
+                        │                                  │
+                        └────── CDC Changes ──────────────►│
+                                                            │
+                                                    Almost in sync
+                                                            │
+                                                            ▼
+                                                        CUTOVER
+                                                            │
+                                                            ▼
+                                                    Application uses
+                                                    Target DB
+            You must create an EC2 instance:
+                DMS architecture မှာ Replication Instance လိုပါတယ်။
+                        Source DB
+                            │
+                            ▼
+                        ┌──────────────────────┐
+                        │ DMS Replication      │
+                        │ Instance              │
+                        │                      │
+                        │  Replication Tasks   │
+                        └──────────┬───────────┘
+                                │
+                                ▼
+                            Target DB
+                AWS DMS မှာ Replication Instance ကို create လုပ်ပြီး DMS က replication workload ကို run ပေးပါတယ်။
+            DMS Architecture:
+                            Source Endpoint
+                            ┌─────────────┐
+                            │ Source DB   │
+                            └──────┬──────┘
+                                │
+                                ▼
+                        ┌─────────────────┐
+                        │ Replication     │
+                        │ Instance        │
+                        └────────┬────────┘
+                                │
+                                ▼
+                            Target Endpoint
+                            ┌─────────────┐
+                            │ Target DB   │
+                            └─────────────┘
+                ① Source Endpoint
+                    ဘယ် database ကနေ data ယူမလဲ?
+                ② Target Endpoint
+                    ဘယ် database ကို data ပို့မလဲ?
+                ③ Replication Instance
+                    Migration / replication task ကို execute လုပ်ပေးတဲ့ compute resource။
+                DMS vs DRS:
+                    |                        | AWS DMS                        | AWS DRS                  |
+                    | ---------------------- | ------------------------------ | ------------------------ |
+                    | Purpose                | Database migration/replication | Server Disaster Recovery |
+                    | Focus                  | Database                       | Whole server             |
+                    | Example                | Oracle → Aurora                | On-prem server → AWS     |
+                    | CDC                    | ✅                              | Different mechanism      |
+                    | Continuous replication | Database changes               | Server block-level       |
+                    | Main keyword           | **Database migration**         | **Disaster recovery**    |
+            AWS DMS Multi-AZ Deployment:
+                Normal DMS
+                    ပုံမှန် DMS မှာ Replication Instance တစ်ခုရှိပါတယ်။
+                        Source DB
+                            │
+                            ▼
+                        ┌──────────────────┐
+                        │ DMS Replication  │
+                        │ Instance         │
+                        │ AZ-A             │
+                        └────────┬─────────┘
+                                │
+                                ▼
+                            Target DB
+                    Replication Instance ပျက်သွားရင် migration/replication task တွေ ထိခိုက်နိုင်ပါတယ်။
+                DMS Multi-AZ
+                    Multi-AZ enabled လုပ်ရင် AWS က different AZ မှာ standby Replication Instance တစ်ခု provision လုပ်ပြီး maintain လုပ်ပေးပါတယ်။
+                                    Source DB
+                                        │
+                                        ▼
+                            ┌─────────────────┐
+                            │ Primary         │
+                            │ Replication     │
+                            │ Instance        │
+                            │ AZ-A            │
+                            └────────┬────────┘
+                                    │
+                                Synchronous
+                                replication
+                                    │
+                                    ▼
+                            ┌─────────────────┐
+                            │ Standby         │
+                            │ Replication     │
+                            │ Instance        │
+                            │ AZ-B            │
+                            └─────────────────┘
+                Synchronous ဆိုတာ?
+                    Primary မှာ replication state/data ပြောင်းလဲတာကို standby ဘက်မှာလည်း အချိန်နီးပါးတူတူ update ဖြစ်အောင် ထိန်းသိမ်းတာပါ။
+                Primary ပျက်သွားရင် AWS DMS က standby ကိုအသုံးပြုပြီး failover လုပ်နိုင်ပါတယ်။
+                ဒါကြောင့် DMS replication task ကို ဆက်လက် run နိုင်ပြီး availability ပိုကောင်းလာပါတယ်။
+                Advantage:
+                    Data Redundancy
+                        AZ တစ်ခု failure ဖြစ်ရင် အခြား AZ မှာ standby ရှိပါတယ်။
+                    Eliminates I/O Freezes
+                        replication workload မှာ disk I/O များတဲ့အချိန်တွေမှာ performance ထိခိုက်နိုင်
+                        standby replication instance ကို maintain လုပ်ထားတာကြောင့်
+                        failure/recovery အချိန်မှာ replication environment ကို ပြန်တည်ဆောက်ရတဲ့ overhead ကို လျှော့ချနိုင်ပါတယ်။
+                    Minimizes Latency Spikes
+                        Replication workload က တစ်ခါတစ်ရံ resource usage မြင့်လာနိုင်ပါတယ်။
+                        Multi-AZ deployment က unexpected infrastructure issues ကြောင့် ဖြစ်လာနိုင်တဲ့ latency spikes / interruptions ကို လျှော့ချနိုင်ပါတယ်။
+                Important:
+                    DMS Multi-AZ ကို Source Database Multi-AZ လို့ မထင်ပါနဲ့။
+                    Multi-AZ က DMS ရဲ့ Replication Instance ကို protect လုပ်တာ ဖြစ်ပါတယ်။
+                    DMS Multi-AZ vs RDS Multi-AZ:
+                        |                    | DMS Multi-AZ                       | RDS Multi-AZ   |
+                        | ------------------ | ---------------------------------- | -------------- |
+                        | Protect လုပ်တာ     | DMS Replication Instance           | RDS Database   |
+                        | Purpose            | Migration/replication availability | Database HA    |
+                        | Standby            | DMS Replication Instance standby   | RDS standby DB |
+                        | Different AZ       | ✅                                  | ✅              |
+                        | Automatic failover | ✅                                  | ✅              |
 
 
 
