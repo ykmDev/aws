@@ -18199,8 +18199,156 @@ Networking VPC:
                     Gateway Load Balancer (GWLB) က network security appliances တွေကို deploy/scale လုပ်ဖို့ infrastructure ပေးတဲ့ service ဖြစ်ပါတယ်။
 
                     Network Firewall ကတော့ AWS-managed firewall service ဖြစ်ပြီး firewall rules + inspection + threat prevention ကို AWS က manage လုပ်ပေးပါတယ်။
-
-
+Disaster Recovery & Migrations:
+    Disaster Recovery:
+        Disaster ဆိုတာ company ရဲ့ business continuity ဒါမှမဟုတ်
+        finances ကို negative impact ဖြစ်စေတဲ့ event တစ်ခုခုကို ဆိုလို
+            eg:
+                🔥 Data center မီးလောင်ခြင်း
+                🌊 Flood
+                ⚡ Power failure
+                💻 Hardware failure
+                🦠 Cyber attack / ransomware
+                👨‍💻 Human error
+                🌎 Natural disaster
+                AWS Region တစ်ခုမှာ major outage ဖြစ်ခြင်း
+        Disaster Recovery (DR):
+            disaster ဖြစ်တဲ့အခါ
+            Business ကို ဘယ်လိုမြန်မြန်ပြန်လည်လုပ်ဆောင်နိုင်အောင် ကြိုတင်ပြင်ဆင်ထားမလဲ + 
+            disaster ဖြစ်ပြီးရင် ဘယ်လို recover လုပ်မလဲ
+            eg:
+                Company ရဲ့ application ကို On-Premise Data Center မှာ run ထားတယ်။
+                DR plan မရှိရင် business ကြီးကြီးမားမား ထိခိုက်နိုင်ပါတယ်။
+                DR plan ရှိရင် backup / replica / alternate environment ကနေ ပြန်တက်နိုင်ပါတယ်။
+        Disaster Recovery ဘယ်နေရာမှာလုပ်မလဲ?
+            On-Premise → On-Premise
+                        On-Premises
+                        Primary DC
+                            │
+                            │ Replication / Backup
+                            ▼
+                        On-Premises
+                        DR DC
+                ဒီ approach က—
+                    Data Center နှစ်ခုလိုတယ်
+                    Hardware နှစ်စုံလိုတယ်
+                    Networking နှစ်ခုလိုတယ်
+                    Maintenance လုပ်ရတယ်
+                    Infrastructure cost မြင့်တယ်
+                ဒါကြောင့် very expensive ဖြစ်နိုင်ပါတယ်။
+            On-Premise → AWS Cloud
+                ဒါကို Hybrid Disaster Recovery လို့ နားလည်နိုင်ပါတယ်။
+                            On-Premises
+                            Primary
+                                │
+                                │
+                        VPN / Direct Connect
+                                │
+                                ▼
+                            AWS Cloud
+                            DR Site
+                        AWS Cloud ကို DR site အနေနဲ့ အသုံးချ
+            AWS Region A → AWS Region B
+                AWS Cloud အတွင်းမှာ cross-Region Disaster Recovery ဖြစ်ပါတယ်။
+                        Normal
+                            │
+                            ▼
+                    ┌──────────────┐
+                    │ AWS Region A │
+                    │   PRIMARY    │
+                    └──────┬───────┘
+                            │
+                        Replication
+                            │
+                            ▼
+                    ┌──────────────┐
+                    │ AWS Region B │
+                    │     DR       │
+                    └──────────────┘
+                ဥပမာ—
+                    Region A = Tokyo
+                    Region B = Osaka
+                Region A မှာ major disaster ဖြစ်ရင် Region B ကို အသုံးပြုပြီး application ကို recover လုပ်နိုင်ပါတယ်။
+                ဒါက Region-level failure ကို protect လုပ်ဖို့ အသုံးဝင်ပါတယ်။
+            RPO = Recovery Point Objective
+                ဘယ်လောက်အထိ data loss ကို လက်ခံနိုင်လဲ?
+                Example
+                    Company က: "Maximum 1 hour worth of data ပဲဆုံးရှုံးလို့ရတယ်"
+                    လို့ သတ်မှတ်ထားရင် RPO = 1 hour
+            RTO = Recovery Time Objective
+                Disaster ဖြစ်ပြီးနောက် business/application ကို ဘယ်လောက်အတွင်း ပြန်အလုပ်လုပ်စေချင်လဲ?
+                eg: "Application ကို maximum 30 minutes အတွင်း ပြန်တက်ရမယ်"
+                    ဆိုရင် RTO = 30 minutes
+            RPO vs RTO ကို မရောပါနဲ့
+                RPO → Data
+                    "How much data can I afford to lose?"
+                    RPO = Data Loss ကို တိုင်းတာတယ်
+                RTO → Time
+                    "How much time can I afford to be down?"
+                    RTO = Downtime ကို တိုင်းတာတယ်
+                eg:
+                    "Disaster ဖြစ်ရင် customer order data 5 minutes ထက်ပိုပြီး မဆုံးရှုံးချင်ဘူး။ Application ကို 10 minutes အတွင်း ပြန်တက်စေချင်တယ်။"
+                    ဆိုရင်
+                        RPO = 5 minutes
+                        RTO = 10 minutes
+        DR Strategies:
+            RTO ပိုမြန်လာတယ် → Cost ပိုမြင့်လာတယ်
+                Backup & Restore → Pilot Light → Warm Standby → Hot Site / Multi-Site
+            Backup & Restore:
+                အရိုးရှင်းဆုံး DR strategy ဖြစ်ပါတယ်။
+                Normal time မှာ production system တစ်ခုပဲ run နေတယ်။
+                Disaster ဖြစ်သွားရင်—
+                Backup ထဲမှာ—
+                    Database backup
+                    Application files
+                    AMI
+                    EBS snapshots
+                ရှိတယ်။
+                Disaster ဖြစ်ပြီးမှ resources အသစ်တွေ create လုပ်ပြီး backup ကနေ restore လုပ်မယ်။
+                    RTO => Slowest
+                    Cost => Lowest
+                    Normal time မှာ full DR environment run ထားစရာ မလိုပါဘူး။
+                memory:
+                    Backup & Restore = Disaster ဖြစ်မှ ပြန်ဆောက်
+            Pilot Light:
+                အရေးကြီးတဲ့ core components တွေကို အမြဲ running ထားတယ်။
+                အများအားဖြင့် Database ကို continuously replicate လုပ်ထားပြီး
+                application servers တွေကို full scale မ run ထားပါဘူး။
+                RTO => higher than Backup & Restore
+                Cost => higher than Backup & Restore
+                memory:
+                    Pilot Light = Core/critical resources are already running
+            Warm Standby:
+                Warm Standby မှာ DR environment ကို အမြဲ running ထားတယ်။
+                ဒါပေမယ့် production နဲ့ယှဉ်ရင် smaller capacity နဲ့ run ထားပါတယ်။
+                RTO => higher than Pilot Light
+                Cost => higher than Pilot Light
+                Disaster ဖြစ်ရင်—Scale up.
+                Pilot Light vs Warm Standby:
+                    |                  | Pilot Light                  | Warm Standby    |
+                    | ---------------- | ---------------------------- | --------------- |
+                    | Core resources   | Running                      | Running         |
+                    | Application      | Mostly not running / minimal | **Running**     |
+                    | Capacity         | Very small                   | Small           |
+                    | Disaster ဖြစ်ရင်   | Start resources              | **Scale up**    |
+                    | RTO              | Faster                       | **Even faster** |
+                    | Cost             | Lower                        | Higher          |
+            Hot Site / Multi-Site Approach:
+                အမြန်ဆုံး recovery strategy ဖြစ်ပါတယ်။
+                Primary site နဲ့ DR site နှစ်ခုလုံး fully operational ဖြစ်နေပါတယ်။
+                RTO => fastest
+                Cost => Most expensive.
+                memory:
+                    Hot Site = Everything is already running
+            all compare:
+                | Strategy                  | DR Environment                  | RTO        | Cost      |
+                | ------------------------- | ------------------------------- | ---------- | --------- |
+                | **Backup & Restore**      | ❌ Not running                   | 🐢 Slowest | 💰 Lowest |
+                | **Pilot Light**           | Core resources running          | 🐢→        | 💰💰      |
+                | **Warm Standby**          | App running at reduced capacity | ⚡          | 💰💰💰    |
+                | **Hot Site / Multi-Site** | Full environment running        | 🚀 Fastest | 💰💰💰💰  |
+        DR tips:
+            
 
 
 
