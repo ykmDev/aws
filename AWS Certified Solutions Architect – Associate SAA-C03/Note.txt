@@ -18656,13 +18656,363 @@ Disaster Recovery & Migrations:
                         | Standby            | DMS Replication Instance standby   | RDS standby DB |
                         | Different AZ       | ✅                                  | ✅              |
                         | Automatic failover | ✅                                  | ✅              |
+            RDS & Aurora Mysql Migrations:
+                MySQL → Aurora MySQL migration:
+                    source database က RDS ဖြစ်တာလား၊ External ဖြစ်တာလား
+                                        MySQL → Aurora MySQL
+                                                │
+                                    ┌─────────────┴─────────────┐
+                                    │                           │
+                                RDS MySQL                    External MySQL
+                                    │                           │
+                            ┌─────┴─────┐               ┌─────┴─────┐
+                            │           │               │           │
+                        Snapshot    Read Replica   XtraBackup   mysqldump
+                            │           │               │           │
+                            ▼           ▼               ▼           ▼
+                            Aurora       Aurora          Aurora      Aurora
+                    RDS MySQL → Aurora MySQL:
+                        Option 1: DB Snapshot:
+                            flow:
+                                RDS MySQL
+                                    │
+                                    │ DB Snapshot
+                                    ▼
+                                Snapshot
+                                    │
+                                    │ Restore
+                                    ▼
+                                Aurora MySQL
+                            Advantage:
+                                Simple ဖြစ်ပါတယ်။
+                                ဒါပေမယ့် snapshot က point-in-time copy ဖြစ်တာကြောင့် migration လုပ်နေစဉ် source DB မှာ
+                                အသစ်ဝင်လာတဲ့ changes တွေကို automatically sync လုပ်နေမှာ မဟုတ်ပါဘူး။
+                                ဒါကြောင့် migration/cutover အချိန်မှာ downtime သို့မဟုတ် data synchronization plan လိုနိုင်ပါတယ်။
+                        Option 2: Aurora Read Replica:
+                            downtime လျှော့ချချင်တဲ့အခါ အရေးကြီးပါတယ်။
+                            RDS MySQL ကနေ Aurora Read Replica create လုပ်ပါတယ်။
+                                RDS MySQL
+                                    │
+                                    │ Replication
+                                    ▼
+                                Aurora Read Replica
+                            Source RDS MySQL မှာ data ပြောင်းလဲတာတွေကို Aurora ဘက်ကို replicate လုပ်နေပါမယ်။
+                            Replication Lag = 0
+                                Replication lag = 0 ဆိုတာ Aurora replica က source RDS MySQL နဲ့ data sync ဖြစ်နေပြီလို့ ဆိုလိုပါတယ်။
+                                အဲဒီအချိန်မှာ Aurora Read Replica ကို promote လုပ်ပြီး independent Aurora DB cluster အဖြစ်အသုံးပြုနိုင်ပါတယ်။
+                            Advantage:
+                                minimal downtime migration
+                                but, can take time and cost $
+                    External MySQL → Aurora MySQLExternal MySQL → Aurora MySQL
+                        External MySQL ဆိုတာ AWS RDS မဟုတ်တဲ့ MySQL: eg: On-Premises MySQL -> Aurora Mysql.
+                        Option 1: Percona XtraBackup → S3 → Aurora
+                            large database migration တွေအတွက် အသုံးဝင်တဲ့နည်းလမ်း
+                            Percona XtraBackup နဲ့ MySQL database ကို backup
+                            backup files တွေကို Amazon S3 ထဲ upload
+                            S3 ကနေ Aurora MySQL database ကို create/import
+                        Option 2: mysqldump
+                            traditional flow.
+                                External MySQL
+                                    │
+                                    │ mysqldump
+                                    ▼
+                                SQL Dump File
+                                    │
+                                    ▼
+                                Aurora MySQL
+                        XtraBackup vs mysqldump:
+                            |              | Percona XtraBackup | mysqldump                     |
+                            | ------------ | ------------------ | ----------------------------- |
+                            | Type         | Physical backup    | Logical backup                |
+                            | Large DB     | ပိုသင့်တော်        | နှေးနိုင်                     |
+                            | Method       | Backup files       | SQL statements                |
+                            | S3 migration | ✅                  | များသောအားဖြင့် direct import |
+                            | Speed        | Faster             | Slower                        |
+                    Use DMS if both databases are up and running:
+                        Source DB နဲ့ Target DB နှစ်ခုလုံး running ဖြစ်နေပြီး continuous replication လုပ်ချင်တယ် ဆိုရင်
+                    Summary:
+                        | Source                  | Method              | အဓိက Idea                    |
+                        | ----------------------- | ------------------- | ---------------------------- |
+                        | RDS MySQL → Aurora      | **Snapshot**        | Snapshot → Aurora            |
+                        | RDS MySQL → Aurora      | **Read Replica**    | Replicate → Lag 0 → Promote  |
+                        | External MySQL → Aurora | **XtraBackup + S3** | Backup → S3 → Aurora         |
+                        | External MySQL → Aurora | **mysqldump**       | SQL dump → Aurora            |
+                        | Both DBs running        | **DMS**             | Continuous replication / CDC |
+            RDS & Aurora PostgreSQL Migrations:
+                RDS PostgreSQL → Aurora PostgreSQL:
+                    Option 1: DB Snapshot
+                        flow:
+                            RDS PostgreSQL
+                                │
+                                │ DB Snapshot
+                                ▼
+                            Snapshot
+                                │
+                                │ Restore
+                                ▼
+                            Aurora PostgreSQL
+                        Snapshot = point-in-time copy
+                        Migration လုပ်နေချိန် source DB မှာ data အသစ်ပြောင်းတာတွေကို continuously sync မလုပ်ပေးပါဘူး။
+                    Option 2: Aurora Read Replica
+                        minimal downtime
+                        Source RDS PostgreSQL က ဆက် run နေပါတယ်။
+                        Aurora Read Replica က source database changes တွေကို replicate လုပ်နေ
+                        Replication Lag = 0 ဖြစ်တဲ့အချိန်မှာ Aurora Read Replica ကို promote လုပ်
+                        ပြီးရင် application ကို Aurora ဘက်ပြောင်းနိုင်
+                External PostgreSQL → Aurora PostgreSQL:
+                    Backup → S3:
+                        Backup → Amazon S3 → aws_s3 extension → Aurora
+                        Aurora PostgreSQL မှာ aws_s3 extension ကို အသုံးပြုပြီး S3 က data ကို Aurora ထဲ import
+                    Use DMS if both databases are up and running:
+                Summary:
+                    MySQL vs PostgreSQL Migration:
+                        | Source → Aurora                         | Main options                  |
+                        | --------------------------------------- | ----------------------------- |
+                        | RDS MySQL → Aurora MySQL                | Snapshot / Read Replica       |
+                        | External MySQL → Aurora MySQL           | XtraBackup → S3 / `mysqldump` |
+                        | RDS PostgreSQL → Aurora PostgreSQL      | Snapshot / Read Replica       |
+                        | External PostgreSQL → Aurora PostgreSQL | Backup → S3 → `aws_s3`        |
+                        | Both DBs running                        | **DMS + CDC**                 |
+        AWS Backup:
+            Centralized Backup Management Service
+            AWS services အများကြီးရဲ့ backup ကို central place တစ်ခုကနေ manage/automate လုပ်
+            Fully Managed Service
+                AWS က infrastructure ကို manage လုပ်ပေးပါတယ်။
+                    backup server တည်ဆောက်စရာမလို
+                    backup scripts ရေးစရာမလို
+                    cron jobs/manual process တွေ manage လုပ်စရာမလို
+            Backup Plans:
+                Backup Plan သတ်မှတ်ပြီး backup ကို automate လုပ်နိုင်ပါတယ်။
+                    Backup Plan
+                        Daily
+                        └── 01:00 AM → Backup
+                        Weekly
+                        └── Sunday → Backup
+                        Retention
+                        └── Keep for 30 days
+            Supported Services:
+                Compute / Block Storage
+                    Amazon EC2
+                    Amazon EBS
+                Database
+                    Amazon RDS
+                    Amazon Aurora
+                    Amazon DynamoDB
+                    Amazon DocumentDB
+                    Amazon Neptune
+                Storage
+                    Amazon S3
+                    Amazon EFS
+                    Amazon FSx for Lustre
+                    Amazon FSx for Windows File Server
+                    AWS Storage Gateway — Volume Gateway
+            Cross-Region Backup:
+                Region A တစ်ခုလုံး disaster ဖြစ်သွားရင် Region B မှာ backup ရှိနေလို့ recovery လုပ်နိုင်
+                Disaster Recovery အတွက် အရေးကြီး
+            Cross-Account Backup:
+                backup account / vault account ပုံစံ
+                Production account ထဲမှာပဲ backup ထားမယ့်အစား separate AWS account ထဲမှာ backup copy ထားနိုင်ပါတယ်။
+                ဒါကြောင့် production account compromise ဖြစ်သွားတဲ့အခါ backup ကိုလည်း တစ်ခါတည်းထိခိုက်သွားနိုင်တဲ့ risk ကို လျှော့ချနိုင်ပါတယ်။
+            AWS Backup vs Individual Service Backup:
+                RDS မှာ—
+                        RDS
+                        └── Automated Backup
+                        └── Manual Snapshot
+                    ဒီဟာတွေက RDS-specific backup features
+                multiple AWS services ကို centralized policy နဲ့ manage
+            AWS Backup vs S3 Lifecycle:
+                AWS Backup
+                    AWS resources အမျိုးမျိုးရဲ့ backup policy / backup management
+                S3 Lifecycle
+                    S3 objects တွေကို storage class ပြောင်းခြင်း / expiration လုပ်ခြင်း
+            AWS Backup Vault Lock:
+                AWS Backup Vault ထဲမှာသိမ်းထားတဲ့ backups တွေကို WORMအဖြစ်
+                lock လုပ်ပေးတဲ့ security feature
+                WORM: Write Once, Read Many
+                    Write Once → Backup ကိုသိမ်းထားနိုင်တယ်
+                    Read Many → Backup ကို အကြိမ်ကြိမ် restore/read လုပ်နိုင်တယ်
+                    Backup ကို ဖျက်ခြင်း / retention ကို လျှော့ခြင်း မလုပ်နိုင်အောင် lock လုပ်ထားတယ်
+            ဘာကြောင့်လိုအပ်တာလဲ?
+                အဓိကအားဖြင့် Ransomware / malicious deletion ကိုကာကွယ်ဖို့ပါ။
+                ဥပမာ attacker က AWS account access ရသွားပြီး—
+                    Production data
+                        ↓
+                    AWS Backup
+                        ↓
+                    Backup Vault
+                        ↓
+                    Attacker tries to delete backups
+                        ↓
+                        ❌ BLOCKED
+                ဒါကြောင့် production data ကို ransomware နဲ့ဖျက်ခံရရင်တောင် backup ကိုပါ လိုက်ဖျက်မရအောင် protection ထပ်ပေးနိုင်ပါတယ်။
+                Root User အတွက်ပါ Protection ရှိတယ်
+                    Vault Lock enabled ဖြစ်နေတဲ့အခါ root user တောင် backup ကို delete လုပ်လို့မရနိုင်ပါ။
+                    | Feature                                | AWS Backup Vault Lock |
+                    | -------------------------------------- | --------------------- |
+                    | WORM                                   | ✅                     |
+                    | Backup delete protection               | ✅                     |
+                    | Retention period ကို shorten လုပ်ခြင်း     | ❌                     |
+                    | Malicious deletion protection          | ✅                     |
+                    | Ransomware protection                  | ✅                     |
+                    | Root user က bypass လုပ်နိုင်?             | ❌                     |
+                    | Backup ကို restore လုပ်နိုင်?               | ✅                     |
+            Note:
+                Vault Lock = “Backup ကို မဖျက်နိုင်၊ Retention ကို မလျှော့နိုင်”
+        AWS Application Discovery Service:
+            inventory + dependency information စုဆောင်းတဲ့ service
+                ဘယ် server တွေရှိလဲ?
+                Server တစ်ခုချင်းစီရဲ့ CPU/Memory usage ဘယ်လောက်လဲ?
+                ဘယ် application က ဘယ် database ကိုသုံးလဲ?
+                ဘယ် server တွေက တစ်ခုနဲ့တစ်ခု communicate လုပ်နေလဲ?
+            စတာတွေကို စုဆောင်းပေးပါတယ်။
+            Agentless Discovery:
+                AWS Agentless Discovery Connector ကိုသုံးပါတယ်။
+                    VMware environment လိုမျိုး virtualization environment မှာ connector တစ်ခုထားပြီး VM information ကို စုဆောင်းနိုင်ပါတယ်။
+                    to get information:
+                        VM Inventory
+                        VM Configuration
+                        CPU usage
+                        Memory usage
+                        Disk usage
+                        Performance history
+            Agent-based Discovery:
+                Server တစ်ခုချင်းစီမှာ AWS Application Discovery Agent install
+                Agent က ပိုပြီး detailed information ရနိုင်
+                Dependency Mapping အတွက် အရေးကြီး
+                ဘယ် server က ဘယ် server ကိုမှီခိုနေလဲ သိနိုင်
+            Agentless vs Agent-based:
+                Agentless → Basic information
+                Agent-based → Detailed information
 
+                |                     | Agentless           | Agent-based     |
+                | ------------------- | ------------------- | --------------- |
+                | Tool                | Discovery Connector | Discovery Agent |
+                | Agent install       | ❌                   | ✅               |
+                | VM inventory        | ✅                   | ✅               |
+                | Configuration       | ✅                   | ✅               |
+                | CPU/Memory/Disk     | ✅                   | ✅               |
+                | Running processes   | Limited              | ✅               |
+                | Network connections | Limited              | ✅               |
+                | Dependency mapping  | Less detailed        | More detailed   |
+            AWS Migration Hub နဲ့ ဘယ်လိုဆက်စပ်လဲ?
+                Discovery Service က data ကို စုဆောင်းပေးပါတယ်။
+                ပြီးတော့ resulting data ကို AWS Migration Hub မှာ ကြည့်နိုင်ပါတယ်။
+        AWS Application Migration Service (MGN):
+            On-Premises / Physical / VM / Cloud server တစ်ခုလုံးကို
+            AWS EC2 သို့ Lift-and-Shift (Rehost) လုပ်ပေးတဲ့ service
+            Lift-and-Shift / Rehost ဆိုတာ:
+                Application ကို အများကြီးပြန်ပြင်တာမလုပ်ဘဲ ရှိပြီးသား server environment ကို AWS ပေါ်ကို ရွှေ့တာ
+                application ကို redesign / rewrite မလုပ်ဘဲ AWS infrastructure ပေါ်ကို migrate
+            ဘယ်လို Server တွေကို migrate လုပ်နိုင်လဲ?
+                MGN က source server အမျိုးမျိုးကို support လုပ်ပါတယ်။
+                    Physical Server ──┐
+                    VMware VM ────────┤
+                    Other Virtual VM ─┼──> AWS MGN ──> EC2
+                    Cloud Server ─────┘
+                Destination က AWS မှာ EC2 ဖြစ်ပါတယ်။
+            MGN ရဲ့ အဓိက Flow
+                MGN က source server ရဲ့ data ကို AWS ဘက်ကို continuously/incrementally replicate လုပ်နိုင်ပါတယ်။
+                migration ပြီးတဲ့အချိန်မှာ source server ကို ခဏရပ်ပြီး cutover လုပ်နိုင်လို့ downtime ကို လျှော့ချနိုင်
+            MGN vs DRS:
+                |              | **MGN**                       | **AWS DRS**               |
+                | ------------ | ----------------------------- | ------------------------- |
+                | Full name    | Application Migration Service | Elastic Disaster Recovery |
+                | Purpose      | **Migration**                 | **Disaster Recovery**     |
+                | Main idea    | Move to AWS                   | Recover in AWS            |
+                | Source       | Physical / VM / Cloud         | Physical / VM / Cloud     |
+                | Replication  | Continuous/incremental        | Continuous block-level    |
+                | Typical goal | **Rehost**                    | DR / recovery             |
+        Transferring large amount of data into AWS:
+            Over the Internet / Site-to-Site VPN:
+                အားသာချက်
+                    Setup လုပ်တာ အမြန်
+                    Existing Internet connection ကိုသုံးနိုင်တယ်
+                    Additional physical infrastructure မလို
+                အားနည်းချက်
+                    200 TB လောက်ဆိုရင် 100 Mbps နဲ့ အရမ်းကြာပါတယ်။
+                    သီအိုရီအရ—
+                        200 TB × 8 bits / 100 Mbps
+                        ≈ 16,000,000 seconds
+                        ≈ 185 days
+                    ⚠️ Actual transfer time က protocol overhead, network utilization စတာတွေကြောင့် ဒီထက်ပိုကြာနိုင်
+            Direct Connect 1 Gbps:
+                Setup → အချိန်ကြာ
+                Bandwidth က 100 Mbps → 1 Gbps ဖြစ်သွားလို့ transfer time သိသိသာသာ လျော့
+                    200 TB × 8 / 1 Gbps
+                    ≈ 1,600,000 seconds
+                    ≈ 18.5 days
+                    ≈ 18.5 days
+            AWS Snowball:
+                large amount of data ကို physical device နဲ့ AWS ကိုပို့တဲ့နည်း
+                အားသာချက်
+                    Large-scale data transfer အတွက်သင့်တော်
+                    Internet bandwidth ကနည်းနေရင် အထူးအသုံးဝင်
+                    Physical device နဲ့ data ကို AWS သို့ပို့နိုင်
+            Snowball + DMS:
+                Snowball = Initial large data transfer
+                DMS = Ongoing database replication
+                flow:
+                    Step 1
+                        On-Prem DB
+                        │
+                        │ Large initial data
+                        ▼
+                        Snowball
+                        │
+                        ▼
+                        AWS
 
-
-
-
-
-                
+                    Step 2
+                        On-Prem DB
+                        │
+                        │ Changes / CDC
+                        ▼
+                        DMS
+                        │
+                        ▼
+                        AWS DB
+            Ongoing / Continuous Transfer:
+                Data ကို တစ်ခါတည်း migrate မဟုတ်ဘဲ ဆက်တိုက် transfer/replicate လုပ်နေဖို့လိုရင်
+                    Site-to-Site VPN + DMS
+                    Direct Connect + DMS
+                    DataSync က ဘယ်မှာသုံးလဲ?
+                        file/object data transfer အတွက်
+                        eg:
+                            On-Prem File Server
+                                │
+                                │ DataSync
+                                ▼
+                            Amazon S3 / EFS / FSx
+            Note:
+                | Situation                                   | Recommended        |
+                | ------------------------------------------- | ------------------ |
+                | Small/moderate data, Internet ရှိပြီးသား    | Internet           |
+                | Private network connection                  | Site-to-Site VPN   |
+                | High-bandwidth, long-term connection        | Direct Connect     |
+                | **Huge one-time data transfer**             | **Snowball**       |
+                | Database migration                          | **DMS**            |
+                | Continuous database replication             | **DMS + CDC**      |
+                | File/storage transfer                       | **DataSync**       |
+                | Huge initial DB migration + ongoing changes | **Snowball + DMS** |
+        VMware Cloud on AWS:
+            On-Premises မှာ VMware vSphere သုံးနေပြီးသားဖြစ်လို့ 
+            AWS ကို migrate/extend လုပ်ချင်ပေမယ့် VMware environment ကို မပြောင်းချင်ဘူးဆိုရင် VMware Cloud on AWS
+            Use Case:
+                VMware Workload Migration
+                Extend Data Center Capacity
+                Hybrid Cloud
+                Disaster Recovery
+        VMware Cloud on AWS vs MGN:
+            |                          | VMware Cloud on AWS            | AWS MGN                      |
+            | ------------------------ | ------------------------------ | ---------------------------- |
+            | Main idea                | **Keep VMware environment**    | **Rehost to AWS**            |
+            | Target                   | VMware Cloud on AWS            | EC2                          |
+            | VMware software          | ဆက်သုံးနိုင်                   | မလိုအပ်                      |
+            | Existing VMware workload | VMware environment အတိုင်း run | AWS-native EC2 အဖြစ် migrate |
+            | Hybrid VMware            | ✅                              | Not the main purpose         |
+            | VMware DR                | ✅ Use case                     | MGN is migration-focused     |
+        
+            
 
 
         
