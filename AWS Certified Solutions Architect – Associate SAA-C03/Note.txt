@@ -19011,7 +19011,254 @@ Disaster Recovery & Migrations:
             | Existing VMware workload | VMware environment အတိုင်း run | AWS-native EC2 အဖြစ် migrate |
             | Hybrid VMware            | ✅                              | Not the main purpose         |
             | VMware DR                | ✅ Use case                     | MGN is migration-focused     |
-        
+More Solution Architecure:
+    SQS + Lambda:
+        Producer က message ကို SQS ထဲထည့်ပြီး Lambda က asynchronous အနေနဲ့ process လုပ်တယ်။
+        Producer က Lambda ကို တိုက်ရိုက်စောင့်စရာမလိုတော့ပါဘူး။
+            Producer
+                │
+                │ Send Message
+                ▼
+                ┌───────────────┐
+                │   SQS Queue   │
+                └───────────────┘
+                    │
+                    │ Lambda polls
+                    ▼
+                ┌───────────────┐
+                │    Lambda     │
+                └───────────────┘
+                    │
+                    ▼
+                Process Message
+        Lambda successfully process လုပ်ရင်?
+            ဥပမာ—
+                SQS
+                │
+                │ Message A
+                ▼
+                Lambda
+                │
+                │ Process SUCCESS ✅
+                ▼
+                Message deleted from SQS
+            Lambda က message ကို successfully process လုပ်ပြီး
+            successful response ရရင် SQS က အဲဒီ message ကို queue ကနေ remove/delete လုပ်ပါတယ်။
+            အရေးကြီးတာက—
+                Lambda က message ကို manually delete လုပ်တာမဟုတ်ပါဘူး။
+        Lambda processing FAIL ဖြစ်ရင်?
+            ဒီဟာက အရေးကြီးဆုံးပါ။
+            ဥပမာ—
+                SQS
+                │
+                │ Message A
+                ▼
+                Lambda
+                │
+                │ ❌ Error
+                ▼
+                Message is NOT deleted
+            SQS မှာ message က ချက်ချင်းပျောက်မသွားပါဘူး။
+            Visibility Timeout ပြီးသွားရင် message က queue ထဲကို ပြန်မြင်ရလာပြီး Lambda က ထပ် process လုပ်နိုင်ပါတယ်။
+                Attempt 1
+                SQS → Lambda ❌
+                    │
+                    │ Visibility Timeout
+                    ▼
+                Attempt 2
+                SQS → Lambda ❌
+                    │
+                    ▼
+                Attempt 3
+                SQS → Lambda ❌
+                    │
+                    ▼
+                ...
+            ဒါကို Retry behavior လို့နားလည်နိုင်ပါတယ်။
+            ဘာကြောင့် Retry လုပ်တာလဲ?
+                တချို့ error တွေက temporary ဖြစ်နိုင်ပါတယ်။
+            ဒါပေမယ့် Poison Message ရှိရင်?
+                ဥပမာ message တစ်ခုမှာ malformed data ပါနေတယ်။
+                Lambda က အမြဲတမ်း error ဖြစ်နေမယ်။
+                ဒီလိုဆိုရင် အဲဒီ message တစ်ခုတည်းကြောင့် processing ကို အမြဲ retry လုပ်နေမယ့် problem ဖြစ်နိုင်ပါတယ်။
+                ဒီလို problematic message ကို Dead-Letter Queue (DLQ) ထဲ ပို့နိုင်ပါတယ်။
+                                        ┌──────────────┐
+                                        │   Lambda     │
+                                        └──────┬───────┘
+                                            │
+                                        ❌ Processing
+                                            │
+                                            ▼
+                    ┌───────────────┐    Retry attempts
+                    │   Main SQS    │─────────────────┐
+                    │    Queue      │                 │
+                    └───────────────┘                 │
+                                                    │
+                                        maxReceiveCount
+                                            │
+                                            ▼
+                                        ┌──────────────┐
+                                        │     DLQ      │
+                                        │  Dead-Letter │
+                                        │    Queue     │
+                                        └──────────────┘
+            SQS Dead-Letter Queue:
+                ဒီ message ကို normal processing နဲ့ မအောင်မြင်တော့ဘူး။ နောက်မှ စစ်ဆေးမယ်
+                DLQ ထဲရောက်သွားတဲ့ message ကို developer/operator က နောက်မှ inspect လုပ်ပြီး—
+                    ဘာကြောင့် fail လဲ?
+                    Data format မှားလား?
+                    Application bug လား?
+                    External service problem လား?
+                စစ်ဆေးနိုင်ပါတယ်။
+            main keyword:
+                Visibility Timeout
+                    Message ကို Lambda က process လုပ်နေတဲ့အချိန်မှာ အခြား consumer တွေ မမြင်နိုင်အောင်
+                    temporarily hide လုပ်ထားတဲ့ period ပါ။
+                maxReceiveCount
+                    Message တစ်ခုကို DLQ ထဲမပို့ခင် ဘယ်နှစ်ကြိမ် receive/process attempt ဖြစ်ခွင့်ရှိမလဲ ဆိုတာ သတ်မှတ်ပေးတဲ့ Redrive Policy setting ပါ။
+                DLQ
+                    Repeatedly failing messages တွေကို normal queue ကနေခွဲထုတ်ထားတဲ့ queue ပါ။
+                overall architecture:
+                                 Producer
+                                    │
+                                    ▼
+                            ┌──────────────┐
+                            │  Main Queue  │
+                            └──────┬───────┘
+                                │
+                                Poll
+                                │
+                                ▼
+                            ┌──────────────┐
+                            │    Lambda    │
+                            └──────┬───────┘
+                                │
+                            ┌──────┴───────┐
+                            │              │
+                        SUCCESS        FAILURE
+                            │              │
+                            ▼              ▼
+                        Message       Retry after
+                        removed      visibility timeout
+                                        │
+                                        ▼
+                                    Retry again...
+                                        │
+                                    maxReceiveCount
+                                        │
+                                        ▼
+                                        ┌─────┐
+                                        │ DLQ │
+                                        └─────┘
+    FIFO SQS + Lambda:
+        FIFO = First-In, First-Out
+            Producer
+                │
+                ▼
+                SQS FIFO Queue
+                ┌───────────────────────────┐
+                │ Message A                 │  ← 1st
+                │ Message B                 │  ← 2nd
+                │ Message C                 │  ← 3rd
+                └───────────────────────────┘
+                            │
+                            ▼
+                        Lambda
+                            │
+                            ▼
+                    A → B → C
+        Message တစ်ခု Failure ဖြစ်ရင်?
+            B fail ဖြစ်သွားရင် B ကို retry လုပ်ရပါတယ်။
+            Ordering ကို မဖျက်ချင်တဲ့အတွက် B မအောင်မြင်သေးခင် C ကို အလွတ်သဘော process မလုပ်နိုင်ပါဘူး။
+                SQS FIFO
+                    │
+                    ├── Message A → Lambda → ✅
+                    │
+                    ├── Message B → Lambda → ❌
+                    │
+                    └── Message C → ??? 
+        ဒီအခြေအနေကို Poison Message လို့မြင်လို့ရတယ်
+        B ကို configured receive-attempt threshold ရောက်တဲ့အခါ DLQ ကို move လုပ်နိုင်
+            A → ✅
+            B → ❌ → DLQ
+            C → ✅
+            D → ✅
+        ဒါပေမယ့် FIFO မှာ Message Group ကို နားလည်ရမယ်
+        group ထဲမှာ ordering ကိုထိန်းပါတယ်။
+            A2 fail ဖြစ်ရင်—
+                A1 → ✅
+                A2 → ❌
+                A3 → ⏸️
+                A4 → ⏸️
+            A2 ရဲ့ group ကို block ဖြစ်စေနိုင်ပါတယ်။
+            ဒါပေမယ့် independent message groups ရှိရင်—
+                Group 1:
+                A1 → A2 → A3
+                Group 2:
+                B1 → B2 → B3
+            A2 fail ဖြစ်နေလည်း Group 2 က messages တွေကို parallel process လုပ်နိုင်ပါတယ်။
+        Standard SQS vs FIFO SQS + Lambda:
+            |                    | Standard                    | FIFO                              |
+            | ------------------ | --------------------------- | --------------------------------- |
+            | Ordering           | ❌ Not guaranteed            | ✅ Ordered                         |
+            | Duplicate messages | Possible                    | Exactly-once processing support*  |
+            | Failure impact     | Other messages can continue | Same message group can be blocked |
+            | Message Group ID   | ❌                           | ✅                                 |
+            | DLQ                | ✅                           | ✅                                 |
+            | Lambda             | ✅                           | ✅                                 |
+    SNS + Lambda:
+        SNS က message broker / pub-sub service အနေနဲ့ အလုပ်လုပ်ပါတယ်။
+        Publisher က SNS Topic ထဲကို message publish လုပ်လိုက်ရင် SNS က subscriber တွေဆီ ပို့ပေးပါတယ်။  
+        structure:
+            Publisher
+                │
+                │ Publish message
+                ▼
+            ┌──────────────┐
+            │     SNS      │
+            │    Topic     │
+            └──────┬───────┘
+                │
+                │ Asynchronous
+                ▼
+            ┌──────────────┐
+            │    Lambda    │
+            └──────────────┘
+        SNS → Lambda က Asynchronous ဖြစ်တယ်
+            Application
+                │
+                │ Publish
+                ▼
+            SNS
+                │
+                │ async
+                ▼
+            Lambda
+        Application က Lambda processing ပြီးတဲ့အထိ စောင့်နေစရာမလိုပါဘူး။
+        SNS က message ကို Lambda ဆီ asynchronous delivery လုပ်ပါတယ်။
+                SNS
+                │
+                ▼
+                Lambda invocation
+                │
+                ├── ❌ Fail
+                │
+                ├── Retry
+                │
+                ├── Retry
+                │
+                └── Retry
+                    │
+                    ▼
+                Still failed
+                    │
+                    ▼
+                    DLQ
+        DLQ ဘယ်မှာရှိလဲ?
+            DLQ အဖြစ် SQS queue သို့မဟုတ် SNS topic ကို သုံးနိုင်ပါတယ်။
+        “Discard” ဆိုတာ
+            DLQ မ configure လုပ်ထားဘူးဆိုရင် retry attempts ပြီးတဲ့နောက် event ကို discard လုပ်နိုင်ပါတယ်။       |
+
             
 
 
