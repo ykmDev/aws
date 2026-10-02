@@ -19257,15 +19257,225 @@ More Solution Architecure:
         DLQ ဘယ်မှာရှိလဲ?
             DLQ အဖြစ် SQS queue သို့မဟုတ် SNS topic ကို သုံးနိုင်ပါတယ်။
         “Discard” ဆိုတာ
-            DLQ မ configure လုပ်ထားဘူးဆိုရင် retry attempts ပြီးတဲ့နောက် event ကို discard လုပ်နိုင်ပါတယ်။       |
+            DLQ မ configure လုပ်ထားဘူးဆိုရင် retry attempts ပြီးတဲ့နောက် event ကို discard လုပ်နိုင်ပါတယ်။
+    Fan Out Pattern:deliver to multiple SQS:
+        Problem:
+            Application က SQS အများကြီးကို တိုက်ရိုက်ပို့မယ်
+            ဥပမာ Application က message တစ်ခုကို SQS Queue 3 ခုဆီ ပို့ချင်တယ်။
+                                ┌──→ SQS Queue 1
+                                │
+                Application ─────┼──→ SQS Queue 2
+                                │
+                                └──→ SQS Queue 3
+            Application code က—
+                Send message → Queue 1
+                Send message → Queue 2
+                Send message → Queue 3
+                လုပ်နိုင်ပါတယ်။
+            ဒါပေမယ့် ဒီ architecture မှာ problem ရှိပါတယ်။
+            Application failure ဖြစ်ရင်?
+                ဥပမာ—
+                    Application
+                        │
+                        ├──→ Queue 1 ✅
+                        │
+                        ├──→ Queue 2 ✅
+                        │
+                        └──→ Queue 3 ❌
+                                ↑
+                        Application crashed
+                Application က Queue 2 ကိုပို့ပြီးနောက် crash ဖြစ်သွားရင် Queue 3 ကို message မရောက်တော့ပါဘူး။
+                ဒါကြောင့်—
+                    Queue 1 → Message A
+                    Queue 2 → Message A
+                    Queue 3 → ❌ Message missing
+                Queue တွေရဲ့ data state မတူတော့ပါဘူး။
+                Problem:
+                    Application က delivery logic ကိုကိုယ်တိုင် manage လုပ်ရတယ်
+                    Multiple API calls လုပ်ရတယ်
+                    Failure handling ပိုရှုပ်တယ်
+                    Queue တစ်ခုကိုပို့ပြီး နောက်တစ်ခုမပို့နိုင်တာ ဖြစ်နိုင်တယ်
+        Solution:
+            SNS Fan-Out Pattern:
+                Application
+                    │
+                    │ Publish message
+                    ▼
+                SNS Topic
+                    │
+                    ├────────→ SQS 1
+                    │
+                    ├────────→ SQS 2
+                    │
+                    └────────→ SQS 3
+                Application က SNS Topic တစ်ခုတည်းကိုပဲ message publish လုပ်ပါတယ်။
+                SNS က message ကို subscribers အားလုံးဆီ fan out လုပ်ပေးပါတယ်။
+                SQS Queues တွေက SNS ရဲ့ Subscribers
+                တစ်နေရာကနေ အများကြီးဆီ ဖြန့်ပေးတာ ဖြစ်လို့ Fan-Out
+                Real-world Example:
+                    ဥပမာ e-commerce application မှာ customer တစ်ယောက် order တင်လိုက်တယ်။
+                        Customer
+                        │
+                        ▼
+                        Order Service
+                        │
+                        │ "Order Created"
+                        ▼
+                        SNS Topic
+                        │
+                        ├──→ SQS → Payment Service
+                        │
+                        ├──→ SQS → Inventory Service
+                        │
+                        └──→ SQS → Shipping Service
+                    Message တစ်ခုတည်း— Order #123 created
+                    ကို services သုံးခုလုံးက လိုအပ်သလို process လုပ်နိုင်ပါတယ်။
+                    Payment
+                        SQS Payment Queue
+                            ↓
+                        Payment Lambda
+                    Inventory
+                        SQS Inventory Queue
+                            ↓
+                        Inventory Lambda
+                    Shipping
+                        SQS Shipping Queue
+                            ↓
+                        Shipping Lambda
+                    ဒါကြောင့် services တွေဟာ loosely coupled ဖြစ်သွားပါတယ်။
+                SQS + SNS + Lambda:
+                                    ┌──→ SQS Payment ──→ Lambda
+                                    │
+                    Application ──→ SNS Topic
+                                    │
+                                    ├──→ SQS Inventory → Lambda
+                                    │
+                                    └──→ SQS Shipping ──→ Lambda
+    S3 Event Notifications:
+        S3 မှာ event တစ်ခုဖြစ်တာနဲ့ တခြား AWS service တစ်ခုကို automatically trigger လုပ်ချင်တဲ့အခါ
+        Common events တွေက—
+            S3 Bucket
+            │
+            ├── Object Created
+            ├── Object Deleted
+            ├── Object Restored
+            └── Replication events
+        S3 → Lambda:
+                S3
+                │
+                │ Object Created
+                ▼
+                Lambda
+                │
+                ▼
+                Process object
+        S3 → SQS:
+            S3 event ကို queue ထဲထည့်ပြီး later processing လုပ်ချင်ရင် SQS
+            ဒီ architecture ရဲ့ advantage က buffering ပါ။
+                S3
+                │
+                │ Object Created
+                ▼
+                SQS
+                │
+                │ Poll
+                ▼
+                Consumer / Lambda
+        S3 → SNS:
+            Multiple subscribers တွေဆီ event ပို့ချင်ရင် SNS သုံး
+            Fan-Out Pattern
+                                    ┌──→ SQS
+                                    │
+                S3 → SNS Topic ─────┼──→ Lambda
+                                    │
+                                    └──→ Other subscriber
+        S3 → EventBridge:
+            S3 events တွေကို Amazon EventBridge ဆီ ပို့ပြီး rules နဲ့ route လုပ်နိုင်
+            EventBridge ရဲ့ advantage က event filtering + routing ကို flexible လုပ်နိုင်
+                S3 Object Created
+                    │
+                    ▼
+                EventBridge Rule
+                    │
+                    ├── images/*.jpg → Lambda
+                    │
+                    ├── documents/*.pdf → SQS
+                    │
+                    └── other → Ignore
+        EventBridge + CloudTrail:
+            eg: “A user deletes a DynamoDB table. Automatically send an alert.”
+            Architecure:
+                User
+                    │
+                    │ DeleteTable API
+                    ▼
+                    DynamoDB
+                    │
+                    ▼
+                    CloudTrail
+                    │
+                    │ API activity
+                    ▼
+                    EventBridge
+                    │
+                    │ Rule
+                    ▼
+                    SNS
+                    │
+                    ▼
+                    Notification
+        External Events → AWS:
+            AWS အပြင်ဘက်က client/application က event ပို့ချင်ရင် API Gateway က entry point တစ်ခုဖြစ်နိုင်တယ်။
+                External Client
+                    │
+                    ▼
+                API Gateway
+                    │
+                    ▼
+                Kinesis Data Streams
+                    │
+                    ▼
+                Kinesis Data Firehose
+                    │
+                    ▼
+                    S3
+                Roles:
+                    API Gateway
+                        Receive API requests
+                    Kinesis Data Streams
+                        Real-time streaming ingestion
+                    Kinesis Data Firehose
+                        Deliver streaming data to destination
+                    S3
+                        Store data
+        Note:
+            S3 → Lambda
+                Process immediately
+            S3 → SQS
+                Buffer / process later
+            S3 → SNS
+                Fan-out to multiple subscribers
 
+            S3
+            ↓
+            EventBridge
+            ↓
+            Rules / Filtering
+            ↓
+            Many AWS Services
+
+            Event Delivery Timing:
+                Near real-time ဖြစ်ပေမယ့် strict real-time guarantee မဟုတ်ပါ။
+                တစ်ခါတလေ one minute or longer ကြာနိုင်ပါတယ်။
+                ဒါကြောင့် event-driven architecture ကို—
+                    “Immediately at exactly the same moment”
+                လို့ မယူဆသင့်ပါဘူး။
             
-
-
-        
-
-
-
+            အရေးကြီးဆုံး difference
+                SQS + Lambda
+                    Lambda → polls → SQS
+                SNS + Lambda
+                    SNS → invokes → Lambda
 
         
 
