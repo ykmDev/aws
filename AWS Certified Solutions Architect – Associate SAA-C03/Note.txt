@@ -19477,7 +19477,229 @@ More Solution Architecure:
                 SNS + Lambda
                     SNS → invokes → Lambda
 
-        
+            Need QUEUE?             → SQS
+            Need ORDER?             → SQS FIFO
+            Need ONE → MANY?        → SNS
+            Need FAN-OUT to queues? → SNS + SQS
+            S3 event?               → S3 Event Notification
+            Complex event routing?  → EventBridge
+            AWS API activity?       → CloudTrail + EventBridge
+            External streaming?     → API Gateway + Kinesis
+    Caching Strategies:
+        Caching = keep frequently requested data closer to where it is needed, so we don't repeatedly do expensive work.
+        Architecture:
+                        USERS
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │ CloudFront  │
+                    │ Edge Cache  │
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │ API Gateway │
+                    │ Regional    │
+                    │ Cache       │
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │ App Logic   │
+                    │ EC2/Lambda  │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │ Redis /     │
+                    │ Memcached / │
+                    │ DAX         │
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │  Database   │
+                    └─────────────┘
+                Static Content: User → CloudFront → S3
+        CloudFront Cache — Edge Caching
+            CloudFront caches content at Edge Locations.
+        But CloudFront Cache Can Become Stale
+            Suppose your backend originally returns:
+                Product price = ¥1,000
+                CloudFront caches it.
+                Then your backend changes:
+                Product price = ¥1,200
+                But CloudFront might still have: ¥1,000
+                So:
+                    Backend
+                    ¥1,200
+                    │
+                    │ changed
+                    ▼
+                    CloudFront
+                    ¥1,000  ← old cached data
+                    │
+                    ▼
+                    User sees ¥1,000
+                This is called stale data.
+            TTL
+                This is why caching usually has a TTL (Time To Live).
+                Long TTL
+                    Long cache
+                    ↓
+                    Faster
+                    ↓
+                    Less backend traffic
+                    ↓
+                    But potentially older/stale data
+                Short TTL
+                    Short cache
+                    ↓
+                    More fresh data
+                    ↓
+                    More backend requests
+                    ↓
+                    Higher backend load
+                Caching is a balance between performance and freshness.
+        API Gateway Cache
+            API Gateway can also cache responses.
+                CloudFront
+                    ↓
+                Edge cache
+                    ↓
+                close to users
+
+
+                API Gateway
+                    ↓
+                Regional cache
+                    ↓
+                in AWS Region
+        CloudFront vs API Gateway Cache:
+            |                          | CloudFront              | API Gateway Cache    |
+            | ------------------------ | ----------------------- | -------------------- |
+            | Cache location           | Edge                    | Regional             |
+            | Main purpose             | Global content delivery | API response caching |
+            | Close to users           | ✅ Very close            | ❌ Region             |
+            | Reduces backend requests | ✅                       | ✅                    |
+            | Typical use              | Static/dynamic content  | API responses        |
+        Application-Level Cache:
+            API Gateway
+                │
+                ▼
+            Application
+                │
+                ▼
+            Redis / Memcached
+                │
+                ▼
+            Database
+        Redis vs Memcached vs DAX:
+            Redis / ElastiCache
+                General-purpose in-memory cache.
+            Memcached
+                Simple, high-performance distributed cache.
+            DAX
+                DynamoDB Accelerator
+                DAX is specifically designed for DynamoDB.
+        Static Content: S3 + CloudFront:
+            For static content, you usually don't need API Gateway or application logic.
+                User
+                │
+                ▼
+                CloudFront
+                │
+                ├── Cache HIT → return file ⚡
+                │
+                └── Cache MISS
+                        │
+                        ▼
+                        S3
+            Dynamic vs Static:
+                Static
+                    Image
+                    CSS
+                    JS
+                    PDF
+                    Video
+                Dynamic
+                    "Show me my account balance"
+                    "Give me my order history"
+                    "What's my current cart?"
+        The Caching Layers:
+            AWS caching from closest to the user → closest to the database:
+                    USER
+                    │
+                    ▼
+                    ┌────────────────────────┐
+                    │ CloudFront             │
+                    │ Edge Cache             │
+                    └────────────────────────┘
+                    │
+                    ▼
+                    ┌────────────────────────┐
+                    │ API Gateway            │
+                    │ Regional Cache         │
+                    └────────────────────────┘
+                    │
+                    ▼
+                    ┌────────────────────────┐
+                    │ Application            │
+                    │ EC2 / Lambda            │
+                    └────────────────────────┘
+                    │
+                    ▼
+                    ┌────────────────────────┐
+                    │ Redis / Memcached / DAX│
+                    │ Application Cache      │
+                    └────────────────────────┘
+                    │
+                    ▼
+                    ┌────────────────────────┐
+                    │ Database               │
+                    └────────────────────────┘
+        Very Important Trade-off
+            Caching is not simply "the more cache, the better."
+            You have to decide:
+            ① Where?
+                CloudFront?
+                API Gateway?
+                Redis?
+                DAX?
+            ② What?
+                Images?
+                API responses?
+                Product data?
+                User sessions?
+                Database query results?
+            ③ How long?
+                TTL = 10 sec?
+                TTL = 5 min?
+                TTL = 1 hour?
+                TTL = 1 day?
+            ④ How fresh must it be?
+                For example:
+                News website
+                    5-minute-old article
+                    probably acceptable
+                But:
+                Bank balance
+                    old cached balance
+                    could be unacceptable
+            So caching strategy depends heavily on the application.
+        Note:
+            Important: Database Itself Isn't Your Cache
+            
+            CloudFront
+                Cache close to users → low latency
+            API Gateway
+                Regional API response cache
+            Redis / Memcached
+                Application-level shared cache
+            DAX
+                DynamoDB-specific cache
+            S3 + CloudFront
+                Static content delivery
+
 
 
 
