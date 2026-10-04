@@ -19699,17 +19699,870 @@ More Solution Architecure:
                 DynamoDB-specific cache
             S3 + CloudFront
                 Static content delivery
+    Blocking an IP Address:
+        question for SAA is: “Where does the traffic come from, and which AWS component can actually see it?”
+            flow:
+                Internet Client
+                        │
+                        │ Public IP
+                        ▼
+                    ┌─────────────┐
+                    │ Public      │
+                    │ Subnet      │
+                    │             │
+                    │ NACL        │
+                    │     │       │
+                    │     ▼       │
+                    │ Security    │
+                    │ Group       │
+                    │     │       │
+                    │     ▼       │
+                    │ EC2         │
+                    └─────────────┘
+        There are several defense layers.
+            NACL — First Line of Defense:
+                Subnet-level + Stateless + Allow/Deny
+            Security Group:
+                If NACL allows the traffic, it reaches the Security Group.
+                Instance/ENI-level + Stateful + Allow only
+                There is no explicit DENY rule in Security Groups.
+                eg: Allow:
+                    203.0.113.0/24 → TCP 443
+                    means only that IP range can access HTTPS.
+                Everything else is implicitly denied.
+            NACL vs Security Group:
+                |               | NACL                   | Security Group           |
+                | ------------- | ---------------------- | ------------------------ |
+                | Level         | Subnet                 | ENI / Instance           |
+                | Stateful?     | ❌ Stateless            | ✅ Stateful               |
+                | Allow         | ✅                      | ✅                        |
+                | Deny          | ✅                      | ❌                        |
+                | Explicit deny | ✅                      | ❌                        |
+                | Order         | Rule number order      | All applicable rules     |
+                | Main use      | Subnet traffic control | Instance traffic control |
+            Firewall Software on EC2:
+                can install firewall on ec2.
+                    Internet
+                        │
+                        ▼
+                        NACL
+                        │
+                        ▼
+                        Security Group
+                        │
+                        ▼
+                        EC2
+                        │
+                        ▼
+                        Firewall Software
+                Custom firewall software = more control, but more management + resource cost.
+            Better Architecture: ALB + Private EC2:
+                The EC2 instances don't need public IP addresses.
+                    Internet
+                        │
+                        ▼
+                    ┌──────────────┐
+                    │     NACL     │
+                    └──────┬───────┘
+                        │
+                        ▼
+                    ┌──────────────┐
+                    │     ALB      │
+                    │ Public       │
+                    │ Subnet       │
+                    └──────┬───────┘
+                        │
+                        ▼
+                    ┌──────────────┐
+                    │     EC2      │
+                    │ Private      │
+                    │ Subnet       │
+                    └──────────────┘
+                ALB Security Group → EC2 Security Group
+                    Don't do:
+                        ❌ EC2 SG:
+                        Allow TCP 443
+                        Source: 0.0.0.0/0
+
+                        Instead:
+                            ALB
+                            │
+                            │ ALB Security Group
+                            ▼
+                            EC2
+                            │
+                            │ EC2 Security Group
+                            │
+                            └── Allow port 80/443
+                                Source = ALB Security Group
+                    ALB acts as a connection termination point.
+                    The client doesn't directly establish the application connection with EC2.
+                    NACL Can Still Protect the ALB Subnet
+                ALB + WAF:
+                    Architecture:
+                        Internet
+                        │
+                        ▼
+                        ALB
+                        │
+                        ▼
+                        WAF
+                        │
+                        ▼
+                        EC2
+                    Conceptually, WAF provides application-layer protection.
+                        You can use WAF rules for things such as:
+                            IP address filtering
+                            SQL injection protection
+                            XSS protection
+                            Rate-based rules
+                            HTTP request filtering
+                            Geo-based rules
+                NACL vs WAF for IP Blocking:
+                    NACL = network/subnet protection/ subnet level
+                    WAF = web/application protection/ app level
+                CloudFront + ALB:
+                    The ALB is receiving the request from CloudFront infrastructure,
+                    not a direct TCP connection from the user's network to the ALB.
+                        Users
+                        │
+                        ▼
+                        CloudFront
+                        │
+                        ▼
+                        ALB
+                        │
+                        ▼
+                        EC2
+                    Therefore, you can't simply think: ALB NACL → block user's IP
+                    as though the user were directly connecting to the ALB.
+                CloudFront + WAF:
+                    You can use WAF at the CloudFront level to inspect/filter incoming web requests.
+                        User
+                        │
+                        ▼
+                        CloudFront
+                        │
+                        ▼
+                        WAF
+                        │
+                        ▼
+                        ALB
+                        │
+                        ▼
+                        EC2
+                    For example:
+                        203.0.113.50
+                            │
+                            ▼
+                        CloudFront
+                            │
+                            ▼
+                            WAF
+                            │
+                            X
+                        BLOCKED
+                    The bad request never needs to reach your ALB/backend.
+                Geo Restriction:
+                    CloudFront also has Geo Restriction.
+                Full Defense-in-Depth Architecture:
+                                INTERNET
+                                    │
+                                    ▼
+                                ┌─────────────┐
+                                │ CloudFront  │
+                                └──────┬──────┘
+                                    │
+                                    ▼
+                                ┌─────────────┐
+                                │     WAF     │
+                                │ IP / Geo /  │
+                                │ Web Rules   │
+                                └──────┬──────┘
+                                    │
+                                    ▼
+                            ┌─────────────────┐
+                            │ Public Subnet    │
+                            │      NACL        │
+                            └────────┬────────┘
+                                    │
+                                    ▼
+                                ┌─────────────┐
+                                │     ALB     │
+                                │   ALB SG    │
+                                └──────┬──────┘
+                                    │
+                                    ▼
+                            ┌─────────────────┐
+                            │ Private Subnet  │
+                            │    EC2 SG       │
+                            └────────┬────────┘
+                                    │
+                                    ▼
+                                    EC2
+                Where Should I Block an IP?
+                    "Block a specific IP from accessing a subnet." 
+                    → NACL
+                    "Only allow specific known IPs to access EC2."
+                    → Security Group
+                    "Block malicious HTTP requests / IPs / SQL injection."
+                    → AWS WAF
+                    "Protect a web application behind CloudFront."
+                    → CloudFront + WAF
+                    "Protect private EC2 so only ALB can access it."
+                    → EC2 Security Group allowing ALB Security Group
+    HPC (High Performance Computing):
+        Instead of using one powerful computer:
+        HPC often uses many computers working together:
+            HPC
+            │
+            ├── 1. Data Transfer
+            │      ├── Direct Connect
+            │      ├── Snowball / Snowmobile
+            │      └── DataSync
+            │
+            ├── 2. Compute
+            │      ├── EC2
+            │      ├── CPU / GPU
+            │      ├── Spot
+            │      └── Auto Scaling
+            │
+            ├── 3. High-Speed Networking
+            │      ├── Cluster Placement Group
+            │      ├── ENA
+            │      └── EFA ⭐
+            │
+            ├── 4. Storage
+            │      ├── EBS
+            │      ├── Instance Store
+            │      ├── S3
+            │      ├── EFS
+            │      └── FSx for Lustre ⭐
+            │
+            └── 5. Orchestration
+                ├── AWS Batch ⭐
+                └── AWS ParallelCluster ⭐
+        Why is Cloud good for HPC?
+            Imagine you need: 1,000 EC2 instances
+            for only 2 hours.
+            On-premises, you'd need to purchase and maintain all that hardware.
+            AWS:
+                Launch 1,000 instances
+                        ↓
+                Run computation
+                        ↓
+                Finish
+                        ↓
+                Terminate instances
+                        ↓
+                Stop paying
+            That's one of the major reasons cloud is excellent for HPC.
+        Data Transfer:
+            Direct Connect
+                High-bandwidth, ongoing/private connectivity
+            Snowball / Snowmobile
+                If the dataset is enormous, physically moving it can be more practical.
+                Snowball → very large data
+                Snowmobile → extremely huge data
+            DataSync
+                for transferring data between on-premises storage and AWS storage services.
+                It uses DataSync agents for certain on-premises environments.
+        Compute:
+            mainly services: EC2
+            Spot Instances: HPC workloads are often excellent candidates for Spot Instances.
+            Cluster Placement Group:
+                it places instances close together within an AZ to provide high network performance and low latency.
+            ENA — Elastic Network Adapter:
+                provides Enhanced Networking.
+                Benefits:
+                    Higher bandwidth
+                    Higher packets per second (PPS)
+                    Lower latency
+            ENA vs EFA:
+                ENA
+                    General enhanced networking:
+                        EC2
+                        │
+                        ▼
+                        ENA
+                        │
+                        ├── Higher bandwidth
+                        ├── Higher PPS
+                        └── Lower latency
+                EFA
+                    Elastic Fabric Adapter
+                    This is specifically designed for HPC / tightly coupled workloads.
+                        EC2
+                        │
+                        ▼
+                        EFA
+                        │
+                        ▼
+                        HPC
+                        │
+                        ▼
+                        Inter-node communication
+                        What is "Tightly Coupled"?
+                            Suppose you have 100 EC2 instances.
+                            They constantly need to communicate:
+                                EC2 A ↔ EC2 B
+                                EC2 B ↔ EC2 C
+                                ...
+                            The computation depends heavily on communication between nodes.
+            EFA + MPI:
+                EFA supports HPC communication patterns using MPI (Message Passing Interface).
+                    |                           | ENA                     | EFA                    |
+                    | ------------------------- | ----------------------- | ---------------------- |
+                    | Full name                 | Elastic Network Adapter | Elastic Fabric Adapter |
+                    | Purpose                   | Enhanced networking     | HPC networking         |
+                    | Higher bandwidth          | ✅                       | ✅                      |
+                    | Lower latency             | ✅                       | ✅                      |
+                    | HPC-specific              | ❌                       | ✅                      |
+                    | Tightly coupled workloads | Good                    | ⭐ Excellent            |
+                    | MPI                       | Not the key feature     | ⭐ Yes                  |
+                    | Linux HPC                 | General                 | ⭐                      |
+        Storage:
+            EBS: Block storage attached to EC2.
+        Instance Store:
+            physically attached to the host hardware.
+        S3
+        EFS
+        FSx for Lustre ⭐⭐⭐
+            Because Lustre is a high-performance distributed file system commonly used for HPC.
+                                    S3
+                                    │
+                                    │ data
+                                    ▼
+                            FSx for Lustre
+                                    │
+                    ┌────────────┼────────────┐
+                    ▼            ▼            ▼
+                    EC2 A        EC2 B        EC2 C
+        EFS vs FSx for Lustre:
+            |                       | EFS                      | FSx for Lustre |
+            | --------------------- | ------------------------ | -------------- |
+            | Type                  | File system              | File system    |
+            | Shared                | ✅                        | ✅              |
+            | Linux                 | ✅                        | ✅              |
+            | HPC optimized         | ❌                        | ⭐              |
+            | Very high performance | Good                     | ⭐⭐⭐            |
+            | Lustre                | ❌                        | ✅              |
+            | S3 integration        | Not the main HPC feature | ⭐              |
+        AWS Batch:
+            Now you have:
+                EC2
+                networking
+                storage
+            But how do you actually manage thousands of jobs?
+            Enter: AWS Batch
+        AWS Batch vs Auto Scaling:
+            Auto Scaling
+                Adjust number of EC2 instances based on demand.
+            AWS Batch
+                Schedule and run batch jobs using compute resources.
+        AWS ParallelCluster:
+            open-source cluster management tool for HPC.
+        ParallelCluster + EFA:
+            AWS ParallelCluster
+                    │
+                    ▼
+            HPC Cluster
+                    │
+                    ├── EC2
+                    ├── EFA
+                    ├── FSx for Lustre
+                    └── HPC workload
+        Complete HPC Architecture:
+                                ON-PREMISES
+                                    │
+                        ┌───────────┼────────────┐
+                        │           │            │
+                Direct Connect  Snowball    DataSync
+                        │           │            │
+                        └───────────┼────────────┘
+                                    ▼
+                                    AWS
+                                    │
+                            ┌────────▼────────┐
+                            │      S3         │
+                            │  Large Dataset  │
+                            └────────┬────────┘
+                                    │
+                                    ▼
+                            ┌─────────────────┐
+                            │ FSx for Lustre  │
+                            │  HPC FileSystem │
+                            └────────┬────────┘
+                                    │
+                        ┌───────────┼───────────┐
+                        ▼           ▼           ▼
+                    EC2         EC2         EC2
+                    CPU/GPU     CPU/GPU     CPU/GPU
+                        │           │           │
+                        └────── EFA ────────────┘
+                                Low Latency
+                            Inter-node Network
+                                    │
+                                    ▼
+                                HPC Jobs
+                                    ▲
+                                    │
+                            AWS Batch /
+                            ParallelCluster
+    EC2 Instance High Available:
+        Single EC2 is NOT Highly Available:
+            EC2 instance တစ်ခု = AZ တစ်ခုထဲမှာပဲရှိတယ် → instance/AZ failure ဖြစ်ရင် application down နိုင်တယ်။
+            ဒါကြောင့် Standby EC2 တစ်ခုကို AZ-B မှာထားချင်ပါတယ်။
+            ဒါပေမယ့် problem တစ်ခုရှိတယ်—
+            ဘယ်အချိန် Active က fail ဖြစ်သွားတယ်ဆိုတာ ဘယ်လိုသိမလဲ?
+            ဒီနေရာမှာ monitoring + automation လိုလာပါတယ်။
+        EC2 တစ်လုံးကို HA ဖြစ်အောင် engineering:
+            Solution #1 — CloudWatch + Lambda + Elastic IP:
+                architecture:
+                                            User
+                                            │
+                                            ▼
+                                        Elastic IP
+                                            │
+                                            ▼
+                                        EC2 Active
+                                        AZ-A
+                                            │
+                                        Web Server
 
 
+                                CloudWatch Alarm/Event
+                                        │
+                                        ▼
+                                    Lambda
+                                        │
+                                AWS API Calls
+                                        │
+                                ┌────────┴────────┐
+                                ▼                 ▼
+                        Start Standby EC2    Attach EIP
+                                │                 │
+                                └────────┬────────┘
+                                        ▼
+                                    EC2 Standby
+                                        AZ-B
+                    flow:
+                        Step 1 — Monitor
+                            CloudWatch က EC2 ကို monitor လုပ်မယ်။
+                            ဥပမာ— CPU = 100%
 
+                            ဒါမှမဟုတ် instance termination ဖြစ်တာမျိုးကို event အနေနဲ့ detect လုပ်မယ်။
+                        Step 2 — Trigger Lambda
+                                CloudWatch က trigger ဖြစ်ရင်—
+                                CloudWatch
+                                    ↓
+                                Lambda
+                            Lambda က AWS API calls လုပ်နိုင်ပါတယ်။
+                            ဥပမာ—
+                                Start EC2
+                                Attach Elastic IP
+                                Step 3 — Move Elastic IP
+                            အရင် instance: EIP → EC2-A
+                            fail ဖြစ်သွားရင်— EIP → EC2-B
+                            ဒါကြောင့် user က IP address မပြောင်းဘဲ ဆက်သုံးနိုင်ပါတယ်။
+                        ဒီ architecture ကို ကိုယ်တိုင် automation အများကြီးရေးရပါတယ်။
+                            CloudWatch
+                                ↓
+                            Lambda
+                                ↓
+                            API calls
+                                ↓
+                            Start EC2
+                                ↓
+                            Attach EIP
+                        ဒါကြောင့် custom / operational work ပိုများတယ်။
+            Solution #2 — Auto Scaling Group:
+                ဒီနည်းက ပို AWS-native ဖြစ်ပါတယ်။
+                ဒါပေမယ့် lecture မှာ interesting configuration သုံးထားပါတယ်—
+                    Minimum = 1
+                    Desired = 1
+                    Maximum = 1
+                ဘာကြောင့် 1/1/1 လဲ?
+                    ASG က AZ နှစ်ခုကို cover လုပ်ပေမယ့်—
+                    Total EC2 = 1
+                    ပဲ ဖြစ်ပါတယ်။
+                    ဥပမာ အစမှာ—
+                        ASG
+                        ├── AZ-A → EC2-A  ✅
+                        └── AZ-B → empty
+                    EC2-A ပျက်သွားရင် ASG က—
+                        EC2-A ❌
+                        ↓
+                        ASG detects instance missing
+                        ↓
+                        Launch replacement
+                        ↓
+                        AZ-B → EC2-B ✅
+                    ဖြစ်စေပါတယ်။
+                Why don't we need CloudWatch Alarm here?
+                    ဒါက exam မှာ အရေးကြီးပါတယ်။
+                    Solution #1:
+                        CloudWatch
+                            ↓
+                        Lambda
+                            ↓
+                        Replacement
+                    Solution #2:
+                        ASG
+                        ↓
+                        Detect unhealthy/terminated instance
+                        ↓
+                        Launch replacement
+                    ASG ကိုယ်တိုင်က instance count ကို maintain လုပ်ပေးနိုင်ပါတယ်။
+                    ဥပမာ—
+                        Desired = 1
+                        Current = 0
+                            ↓
+                        ASG launches 1
+                            ↓
+                        Current = 1
+                    ဒါကြောင့် instance replacement အတွက် CloudWatch + Lambda မလိုတော့ပါဘူး။
+                But how does Elastic IP move?
+                    EIP ka EC2 User Data ကိုသုံးပါတယ်။
+                    New EC2 start ဖြစ်တဲ့အချိန်—
+                        EC2 launches
+                            ↓
+                        User Data runs
+                            ↓
+                        AWS API call
+                            ↓
+                        Attach Elastic IP
+                    ဒါဆို—
+                        Old EC2
+                        EIP → EC2-A
+                    ပြီးတော့ fail ဖြစ်ရင်—
+                        ASG
+                        ↓
+                        New EC2-B
+                        ↓
+                        User Data
+                        ↓
+                        Attach EIP
+                        ↓
+                        EIP → EC2-B
+                EC2 Instance Role လိုတယ်:
+                    EC2 User Data က AWS API ကိုခေါ်ပြီး EIP attach လုပ်မယ်ဆိုရင်—
+                    EC2 မှာ IAM Role လိုပါတယ်။
+                        EC2
+                        │
+                        ├── User Data
+                        │
+                        └── IAM Role
+                            │
+                            ▼
+                        AWS API
+                            │
+                            ▼
+                        Attach Elastic IP
+                Why Minimum=1, Desired=1, Maximum=1?
+                    ဒါက အရမ်းအရေးကြီးပါတယ်။
+                    ပုံမှန် ASG HA ဆိုရင်—
+                        Min = 2
+                        Desired = 2
+                        Max = 4
+                    လိုမျိုးထားပြီး instances နှစ်ခုကို တစ်ပြိုင်နက် run လေ့ရှိပါတယ်။
+                    ဒါပေမယ့် ဒီ lecture ရဲ့ goal က— “EC2 တစ်လုံးကို standby replacement နဲ့ highly available ဖြစ်အောင်လုပ်မယ်”
+                    ဆိုတာပါ။
+                    ဒါကြောင့်—
+                        Min     = 1
+                        Desired = 1
+                        Max     = 1
+                    ဆိုရင် တစ်ချိန်တည်းမှာ EC2 တစ်လုံးပဲ running ဖြစ်မယ်။
+                    Normal:
+                        AZ-A → EC2-A ✅
+                        AZ-B → nothing
+                    After failure:
+                        AZ-A → EC2-A ❌
+                        AZ-B → EC2-B ✅
+                    ဒါဟာ active-passive failover pattern ဖြစ်ပါတယ်။
+            Solution #3 — Stateful EC2 + EBS
+                EC2 တစ်ခုမှာ application/data ရှိတယ်ဆိုပါစို့။
+                    EC2
+                    │
+                    └── EBS
+                        │
+                        └── Database Data
+                    EC2 ပျက်သွားရင် EC2 အသစ်တက်တာနဲ့ မပြီးသေးပါဘူး။
+                    ဘာလို့လဲဆိုတော့—
+                    EBS volume က Availability Zone specific ဖြစ်ပါတယ်။
+                    EC2-A ပျက်ပြီး AZ-B မှာ EC2-B တက်လာရင်—
+                        AZ-A                    AZ-B
 
+                        EC2-A ❌                 EC2-B ✅
+                        │
+                        EBS-A                    ?
+                    EBS-A ကို တိုက်ရိုက် attach လုပ်လို့မရပါဘူး။
+                Solution — EBS Snapshot
+                    ဒါကြောင့် EBS Snapshot ကို အသုံးပြုပါတယ်။
+                        EC2-A
+                        │
+                        └── EBS-A
+                            │
+                            ▼
+                        EBS Snapshot
+                            │
+                            ▼
+                            S3-backed
+                    EC2-A terminate ဖြစ်တဲ့အခါ lifecycle hook ကိုသုံးပြီး snapshot လုပ်နိုင်ပါတယ်။
+                    ASG Lifecycle Hook:
+                        EC2 instance ရဲ့ lifecycle event ဖြစ်တဲ့အချိန်မှာ custom action လုပ်ဖို့ အချိန်ပေးတဲ့ mechanism
+                            EC2 terminating
+                                ↓
+                            Lifecycle Hook
+                                ↓
+                            Take EBS Snapshot
+                                ↓
+                            Continue termination
+                    New EC2 in another AZ
+                        ASG က replacement instance launch လုပ်မယ်။
+                        New EC2-B launch event မှာ lifecycle hook ထပ်သုံးပါတယ်။
+                            EC2-B launching
+                                ↓
+                            Launch Lifecycle Hook
+                                ↓
+                            Find latest EBS Snapshot
+                                ↓
+                            Create EBS Volume
+                                ↓
+                            Create it in AZ-B
+                                ↓
+                            Attach to EC2-B
+        Complete Stateful HA Architecture:
+                                     User
+                           │
+                           ▼
+                     Elastic IP
+                           │
+                           ▼
+                    ┌────────────┐
+                    │   EC2-A    │
+                    │   AZ-A     │
+                    └─────┬──────┘
+                          │
+                       EBS-A
+                          │
+                          │
+                    Failure occurs
+                          │
+                          ▼
+                  ASG Lifecycle Hook
+                          │
+                          ▼
+                     EBS Snapshot
+                          │
+                          ▼
+                    EC2-A terminated
+                          │
+                          ▼
+                   ASG launches EC2-B
+                         AZ-B
+                          │
+                  Launch Lifecycle Hook
+                          │
+                          ▼
+                  Create EBS-B from
+                     Snapshot
+                          │
+                          ▼
+                    Attach EBS-B
+                          │
+                          ▼
+                   EC2 User Data
+                          │
+                          ▼
+                    Attach EIP
+                User အတွက်တော့ same Elastic IP ဖြစ်နေတဲ့အတွက် architecture အတွင်းမှာ failover ဖြစ်သွားတာကို မသိနိုင်ပါဘူး။
+        Lifecycle Hook vs User Data:
+            | Feature            | ဘာလုပ်တာလဲ?                                             |
+            | ------------------ | ------------------------------------------------------- |
+            | **Lifecycle Hook** | ASG instance lifecycle event မှာ custom action လုပ်ဖို့ |
+            | **User Data**      | EC2 boot ဖြစ်တဲ့အချိန် initialization script run ဖို့   |
+            | **IAM Role**       | EC2 က AWS API calls လုပ်ခွင့်ရဖို့                      |
+            | **Elastic IP**     | Stable public IP                                        |
+            | **EBS Snapshot**   | EBS data ကို point-in-time backup အနေနဲ့သိမ်း           |
+            | **ASG**            | Instance count / replacement ကို manage                 |
+        three solutions compared:
+            | Solution                                 | Failure Detection | Replacement | Data Handling  | Complexity |
+            | ---------------------------------------- | ----------------- | ----------- | -------------- | ---------- |
+            | **CloudWatch + Lambda**                  | CloudWatch        | Lambda      | Custom         | High       |
+            | **ASG 1/1/1**                            | ASG               | ASG         | User Data      | Medium     |
+            | **ASG + EBS Snapshot + Lifecycle Hooks** | ASG               | ASG         | Snapshot → EBS | High       |
+Other AWS Services:
+    AWS CloudFormation:
+        AWS infrastructure ကို code/template နဲ့ရေးထားပြီး AWS ကို create လုပ်ခိုင်းတဲ့ service ပါ။
+            CloudFormation Template
+            I want:
+            - 1 Security Group
+            - 2 EC2 instances
+            - 1 S3 bucket
+            - 1 Load Balancer
+        CloudFormation is Declarative!
+            Imperative ဆိုတာ
+                “ဘယ်လိုလုပ်ရမလဲ” ကို step-by-step ပြောတာ။
+                    1. Create Security Group
+                    2. Then create EC2
+                    3. Then create Load Balancer
+                    4. Then attach EC2 to Load Balancer
+                    5. Then configure listener
+            Declarative ဆိုတာ—
+                “ဘာလိုချင်တယ်” ကိုပြောတာ။
+                    I want:
+                        2 EC2 instances
+                        1 Security Group
+                        1 Load Balancer
+                        EC2 instances attached to Load Balancer
+                    ပြီးရင် CloudFormation က dependency ကိုကြည့်ပြီး ဘယ်ဟာကို အရင် create လုပ်ရမလဲ ဆိုတာကို manage လုပ်ပေးပါတယ်။
+            CloudFormation = “What I want” ကိုရေး → AWS က “How to create it” ကို handle.
+        Infrastructure as Code (IaC):
+            Infrastructure configuration က code/template
+            Better than manually create,
+                CloudFormation ဆိုရင်—
+                    Git Repository
+                        │
+                        ▼
+                    CloudFormation Template
+                        │
+                        ├── Dev
+                        ├── Staging
+                        └── Production
+                    တူညီတဲ့ template ကိုသုံးနိုင်ပါတယ်။
+        CloudFormation Stack:
+            Stack တစ်ခုအနေနဲ့ resources တွေကို manage လုပ်နိုင်ပါတယ်။
+            Stack = resources collection
+                ဥပမာ template ထဲမှာ—
+                    Template
+                    ├── VPC
+                    ├── Security Group
+                    ├── EC2
+                    ├── ALB
+                    └── S3
+                ရှိတယ်ဆိုပါစို့။
+                CloudFormation က ဒီ template ကို deploy လုပ်လိုက်ရင်—
+                    CloudFormation Stack
+                    ├── VPC
+                    ├── Security Group
+                    ├── EC2
+                    ├── ALB
+                    └── S3
+                ဖြစ်ပါတယ်။
+        Very useful feature — Delete the Stack (cost saving)
+            ဥပမာ Development environment:
+                CloudFormation Stack
+                ├── EC2
+                ├── RDS
+                ├── ALB
+                └── other resources
+            နေ့တိုင်း—
+                8:00 AM
+                ↓
+                Create Stack
 
-            
-
-
-
-
-
-                
-
+                5:00 PM
+                ↓
+                Delete Stack
+            ဆိုရင် stack ကို delete လုပ်တဲ့အခါ stack က manage လုပ်ထားတဲ့ resources တွေပါ delete ဖြစ်နိုင်ပါတယ်။
+            ဒါကြောင့် overnight resources မသုံးဘဲ cost save လုပ်နိုင်တယ်။
+        Reusability:
+            repeatability run nie.
+            ဥပမာ ဒီ architecture ကို—
+                Development
+                Staging
+                Production
+            အားလုံးမှာသုံးချင်တယ်။
+            Template တစ်ခုကို reuse လုပ်နိုင်ပါတယ်။
+            ဒီလိုပဲ—
+                Different Regions
+                    Template
+                    │
+                    ├── us-east-1
+                    ├── ap-northeast-1
+                    └── eu-west-1
+                Different AWS Accounts
+                    Template
+                    │
+                    ├── Account A
+                    ├── Account B
+                    └── Account C
+                ဖြစ်နိုင်ပါတယ်။
+                ဒါကြောင့် exam မှာ—
+                    “Repeat the same infrastructure across multiple environments/Regions/accounts”
+        CloudFormation and Cost:
+            အခမဲ့ service ဖြစ်ပြီး template ကနေ create လုပ်ထားတဲ့ AWS resources တွေအတွက်ပဲ ပုံမှန် AWS charges ရှိပါတယ်။
+            Dev EC2 ကို weekend တစ်လျှောက် running ထားမယ့်အစား stack ကို schedule နဲ့ delete/recreate လုပ်နိုင်တယ်။
+            CloudFormation Stack ထဲက resources တွေကို common tags သတ်မှတ်နိုင်ပါတယ်။
+        Tags
+            CloudFormation Stack ထဲက resources တွေကို common tags သတ်မှတ်နိုင်ပါတယ်။
+            ဥပမာ—
+                Environment = Production
+                Project     = MyApp
+                Owner       = TeamA
+            ပြီးရင် resources တွေမှာ—
+                EC2       → Project=MyApp
+                RDS       → Project=MyApp
+                S3        → Project=MyApp
+                ALB       → Project=MyApp
+            လိုမျိုး tagging strategy သုံးနိုင်ပါတယ်။
+            ဒါက cost allocation / resource management အတွက် အသုံးဝင်ပါတယ်။
+        CloudFormation Template:
+            Template ကို အများအားဖြင့်—
+                YAML
+                JSON
+            နဲ့ရေးနိုင်ပါတယ်။
+        CloudFormation Diagram:
+            template ရဲ့ infrastructure architecture ကို visual diagram အနေနဲ့ကြည့်နိုင်တယ်လို့ နားလည်ပါ။
+            Infrastructure Composer:
+                Template ထဲမှာ resources တွေများလာရင်— architecture relationship တွေကို visualize လုပ်နိုင်ပါတယ်။
+                    VPC
+                    │
+                    ├── Public Subnet
+                    │      └── ALB
+                    │
+                    └── Private Subnet
+                            ├── EC2
+                            └── RDS
+                CloudFormation + Infrastructure Composer
+        CloudFormation doesn't just create resources
+            ပိုမှန်တာက—
+                Infrastructure lifecycle management service
+                    Template
+                    │
+                    ▼
+                    Create
+                    │
+                    ▼
+                    Update
+                    │
+                    ▼
+                    Manage
+                    │
+                    ▼
+                    Delete
+        What if AWS doesn't support a resource?
+            CloudFormation က AWS resources အများစုကို support လုပ်ပါတယ်။
+            ဒါပေမယ့် တစ်ခုခုကို native resource type နဲ့ မsupport သေးရင်—
+            Custom Resource
+        CloudFormation vs Manual AWS Console:
+            | Manual                       | CloudFormation  |
+            | ---------------------------- | --------------- |
+            | Click manually               | Template        |
+            | Easy to make mistakes        | Consistent      |
+            | Hard to reproduce            | Reproducible    |
+            | Hard to track changes        | Version control |
+            | Hard to duplicate            | Reuse template  |
+            | Manual deletion              | Stack deletion  |
+            | Configuration drift possible | IaC approach    |
+        CloudFormation vs AWS CLI:
+            AWS CLI နဲ့—
+                aws ec2 run-instances ...
+                aws s3 mb ...
+                aws elbv2 create-load-balancer ...
+            လို command တစ်ခုချင်းစီနဲ့ create လုပ်နိုင်ပါတယ်။
+            ဒါက imperative approach ပိုဆန်ပါတယ်။
+            CloudFormation က— "I want this final infrastructure."
+            ဆိုပြီး desired state ကို template နဲ့ declare လုပ်တာပါ။
 

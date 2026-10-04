@@ -798,6 +798,16 @@ Which of the following is the best configuration for bastion host Security Group
 1. Allow traffic only on port 22 from the company's private CIDR
 1. Allow traffic only on port 80 from the company's private CIDR
 ----------------------------------------------
+You are working on a Serverless application where you want to process objects uploaded to an S3 bucket. 
+You have configured S3 Events on your S3 bucket to invoke a Lambda function every time an object has been uploaded. 
+You want to ensure that events that can't be processed are sent to a Dead Letter Queue (DLQ) for further processing. 
+Which AWS service should you use to set up the DLQ?
+
+1. S3 Events
+2. SNS Topic
+3. Lambda Functions
+
+ans: 3.
 ----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
