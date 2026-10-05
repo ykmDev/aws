@@ -20565,4 +20565,671 @@ Other AWS Services:
             ဒါက imperative approach ပိုဆန်ပါတယ်။
             CloudFormation က— "I want this final infrastructure."
             ဆိုပြီး desired state ကို template နဲ့ declare လုပ်တာပါ။
+        CloudFormation Service Role:
+            CloudFormation ကိုယ်စား AWS resources တွေကို create/update/delete လုပ်ဖို့ သတ်မှတ်ပေးထားတဲ့ IAM Role
+            without Service Role:
+                ပုံမှန် CloudFormation ကို user တစ်ယောက် run လုပ်တယ်ဆိုပါစို့။
+                    User
+                    │
+                    │ Create Stack
+                    ▼
+                    CloudFormation
+                    │
+                    ├── Create EC2
+                    ├── Create S3
+                    ├── Create IAM Role
+                    └── Create Security Group
+                ဒီနေရာမှာ CloudFormation က resources တွေကို create လုပ်တဲ့အခါ user ရဲ့ permissions ကို အခြေခံပြီး လုပ်ဆောင်နိုင်ပါတယ်။
+                    ဥပမာ User မှာ—
+                        ec2:RunInstances
+                        s3:CreateBucket
+                        ec2:CreateSecurityGroup
+                    permissions ရှိရင် CloudFormation က အဲဒီ resources တွေ create လုပ်နိုင်ပါတယ်။
+            Problem
+                "Users ကို EC2, S3, RDS စတဲ့ resource permissions အားလုံး မပေးချင်ဘူး။ Least Privilege လိုက်နာချင်တယ်။"
+                User ကို—
+                        User
+                        │
+                        └── CloudFormation
+                            │
+                            ├── EC2
+                            ├── S3
+                            └── RDS
+                    resources တစ်ခုချင်းစီအတွက် permissions မပေးချင်ဘူး။
+                    ဒါဆို ဘယ်လိုလုပ်မလဲ?
+            Service Role ကိုသုံးမယ်:
+                User
+                    │
+                    │ Create/Update/Delete Stack
+                    ▼
+                    CloudFormation
+                    │
+                    │ Assume Service Role
+                    ▼
+                    IAM Service Role
+                    │
+                    ├── EC2 permissions
+                    ├── S3 permissions
+                    ├── RDS permissions
+                    └── other required permissions
+                User က resource တွေကို တိုက်ရိုက် create မလုပ်ဘူး။
+                CloudFormation က Service Role ကိုအသုံးပြုပြီး resources တွေကို create/update/delete လုပ်တယ်။
+            Real-world example
+                Company မှာ Developer တစ်ယောက်ရှိတယ်။
+                Developer က CloudFormation stack deploy လုပ်ခွင့်ရှိတယ်။
+                ဒါပေမယ့် Developer ကို—
+                    ❌ ec2:RunInstances
+                    ❌ rds:CreateDBInstance
+                    ❌ s3:CreateBucket
+                တိုက်ရိုက် မပေးချင်ဘူး။
+                Solution:
+                        Developer
+                        │
+                        │ CloudFormation
+                        ▼
+                        CloudFormation
+                        │
+                        │ Assume
+                        ▼
+                        CF-ServiceRole
+                        │
+                        ├── EC2 permission
+                        ├── RDS permission
+                        └── S3 permission
+                    ဒါကြောင့် Developer က—
+                        "Create this CloudFormation stack"
+                    လုပ်နိုင်တယ်။
+                    CloudFormation ကတော့ Service Role ရဲ့ permissions ကိုသုံးပြီး—
+                        Create EC2
+                        Create RDS
+                        Create S3
+                    လုပ်နိုင်တယ်။
+            Why is this useful?
+                အဓိက goal က— Least Privilege
+                User ကို resource permissions အများကြီး မပေးဘဲ—
+                    User permissions
+                        ↓
+                    Only CloudFormation stack operations
+                ပြီးတော့ CloudFormation Service Role မှာ—
+                    Service Role permissions
+                        ↓
+                    Only resources that CloudFormation is allowed to manage
+            iam:PassRole:
+                User must have iam:PassRole permission.
+                User က CloudFormation ကို—
+                    "ဒီ IAM Role ကို အသုံးပြုပြီး resources တွေ create လုပ်ပါ"
+                လို့ ပြောနေတာပါ။
+                AWS မှာ user တစ်ယောက်က IAM Role တစ်ခုကို service တစ်ခုဆီ pass လုပ်ပေးချင်ရင် iam:PassRole လိုပါတယ်။
+                    User
+                    │
+                    │ PassRole
+                    ▼
+                    CloudFormation
+                    │
+                    │ Assume/use role
+                    ▼
+                    Service Role
+                PassRole vs Assume Role:
+                    iam:PassRole
+                        User
+                        │
+                        │ Pass this role to CloudFormation
+                        ▼
+                        CloudFormation
+                    ဆိုတာ—
+                        "CloudFormation က ဒီ role ကို သုံးလို့ရတယ်"
+                    sts:AssumeRole
+                        Principal
+                        │
+                        │ AssumeRole
+                        ▼
+                        IAM Role
+                    ဆိုတာ—
+                        "ဒီ role ရဲ့ permissions ကို ကိုယ်စားသုံးမယ်"
+            Note:
+                User
+                    │
+                    │ Create/Update/Delete Stack
+                    │
+                    │ + iam:PassRole
+                    ▼
+                    CloudFormation
+                    │
+                    │ uses
+                    ▼
+                    Service Role
+                    │
+                    ├── EC2 permissions
+                    ├── S3 permissions
+                    ├── RDS permissions
+                    └── ...
+                    │
+                    ▼
+                    Stack Resources
+
+                Question: 
+                    "What permission must the user have to allow CloudFormation to use the role?"
+                Answer:
+                    iam:PassRole
+    Amazon SES:
+        fully managed email service from AWS.
+            Your Application
+                │
+                │ Send Email
+                ▼
+            Amazon SES
+                │
+                ▼
+            Recipient's Mail Server
+                │
+                ▼
+                User 📧
+        SES supports Outbound AND Inbound Email:
+            Outbound email
+                Your application sends email to users.
+            Inbound email
+                SES can also receive email from users.
+        How does an application send email through SES?
+            AWS Console
+            AWS API / SDK
+            SMTP
+        Transactional Email:
+            most common SES use cases.
+            Transactional emails are emails triggered by an application event.
+                User registers
+                    ↓
+                Application
+                    ↓
+                SES
+                    ↓
+                "Welcome! Your account has been created."
+        Marketing Email:
+            Company
+                ↓
+                SES
+                ↓
+            100,000 customers
+            Examples:
+                Newsletter
+                Promotional campaigns
+                Product announcements
+                Special offers
+        Email Reputation:
+            AWS cares about whether your emails are considered legitimate or spam.
+                သင့်အီးမေးလ်များကို တရားဝင်အီးမေးလ်များအဖြစ် သတ်မှတ်ခံရသလား or spam အဖြစ် သတ်မှတ်ခံရသလားဆိုသည့်အချက်ကို AWS က အလေးထားပါသည်။
+            SES provides a reputation dashboard and performance information.
+            SES can provide statistics such as:
+                Email deliveries
+                Bounces
+                Complaints / feedback
+                Opens
+                Other sending performance metrics
+            Why are bounces important?
+                Suppose you send:
+                    100,000 emails
+                but many addresses don't exist:
+                    100,000 sent
+                    ↓
+                    90,000 delivered
+                    10,000 bounced
+        DKIM:
+            DomainKeys Identified Mail
+            DKIM → Email authentication / domain verification
+            DKIM is an email authentication mechanism.
+                "This email really came from an authorized sender/domain and wasn't modified improperly."
+                "ဤအီးမေးလ်သည် ခွင့်ပြုချက်ရရှိထားသော ပေးပို့သူ သို့မဟုတ် ဒိုမိန်းမှ အမှန်တကယ် ပေးပို့လာခြင်းဖြစ်ပြီး မလျော်ကန်စွာ ပြုပြင်ပြောင်းလဲထားခြင်း မရှိပါ။"
+                    Your Domain
+                        │
+                        │ DKIM signing
+                        ▼
+                        SES
+                        │
+                        ▼
+                    Recipient Mail Server
+                        │
+                        │ Verify DKIM
+                        ▼
+                    Email
+        SPF:
+            Sender Policy Framework
+            SPF is another email authentication mechanism.
+            uses a DNS record to specify which mail servers are authorized to send email for a domain.
+            The receiving mail server checks:
+                "Is this server authorized to send email for this domain?"
+        DKIM vs SPF:
+            |            | DKIM                       | SPF                                 |
+            | ---------- | -------------------------- | ----------------------------------- |
+            | Full name  | DomainKeys Identified Mail | Sender Policy Framework             |
+            | Purpose    | Authenticate/sign email    | Identify authorized sending servers |
+            | Uses       | Cryptographic signature    | DNS record                          |
+            | Related to | Email authenticity         | Sending-server authorization        |
+        SES IP Types:
+            SES provides different ways to use sending IP addresses.
+            Shared IP:
+                Multiple SES customers share AWS-managed IP infrastructure.
+                    Customer A ─┐
+                    Customer B ─┼──→ Shared SES IPs
+                    Customer C ─┘
+                Generally simpler and suitable for many workloads.
+            Dedicated IP
+                You get dedicated sending IPs for your email sending.
+                    Your Application
+                        ↓
+                        SES
+                        ↓
+                    Dedicated IP
+                        ↓
+                    Recipients
+                Useful when you need more control over your sending reputation and traffic patterns.
+            Customer-owned IP:
+                SES can also support customer-owned IP infrastructure in applicable configurations.
+        SES is NOT just an SMTP server:
+            SES handles the email infrastructure.
+                Imagine an e-commerce application:
+
+                                User
+                                │
+                                ▼
+                            Web Application
+                                │
+                        "Order completed!"
+                                │
+                                ▼
+                            Amazon SES
+                                │
+                        ┌───────┴────────┐
+                        ▼                ▼
+                    Customer Email    Email Metrics
+                                        │
+                                    Deliveries
+                                    Bounces
+                                    Complaints
+                                    Opens
+                SES handles the email infrastructure.
+                You don't need to build:
+                    SMTP server
+                    Mail queue
+                    Mail delivery infrastructure
+                    IP reputation management
+        SES vs SNS:
+            SNS
+                a messaging/pub-sub service.
+                Subscribers can include:
+                    SQS
+                    Lambda
+                    HTTP/S
+                    Email
+                    etc.
+            SES
+                SES is specifically designed for email communication.
+            |                           | SNS                  | SES   |
+            | ------------------------- | -------------------- | ----- |
+            | Main purpose              | Messaging / Pub-Sub  | Email |
+            | Email-focused             | ❌                    | ✅     |
+            | Marketing email           | Not its main purpose | ✅     |
+            | Transactional email       | Not its main purpose | ✅     |
+            | SMTP interface            | ❌                    | ✅     |
+            | Email reputation features | ❌                    | ✅     |
+            | DKIM/SPF                  | ❌                    | ✅     |
+        SES vs SQS:
+            SQS is for storing messages temporarily and processing them asynchronously.
+                SQS
+                    Application → Queue → Worker
+                SQS = queue messages
+    Amazon Pinpoint:
+        a scalable 2-way customer engagement / marketing communications service.
+        key idea:
+            Pinpoint = Know your customers → segment them → personalize messages → run campaigns → measure results
+                supports multiple communication channels:
+                                Amazon Pinpoint
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │       │       │       │       │
+                    Email    SMS    Push    Voice   In-App
+                So unlike SES, which is mainly email, Pinpoint is multi-channel.
+        2-way communication means you can both:
+            Company ───────→ Customer
+                    message
+
+            Company ←─────── Customer
+                    reply
+            For example, a company sends an SMS:
+                "Your appointment is tomorrow. Reply YES to confirm."
+                Customer replies:
+                "YES"
+        What is a Segment?
+            A segment is a group of customers who meet certain criteria.
+            For example:
+
+                        All Customers
+                            │
+                    ┌─────────┼─────────┐
+                    │         │         │
+                Japan     Myanmar    Thailand
+                users      users      users
+            You could create:
+            "Customers in Japan who purchased a product in the last 30 days."
+            Then send a targeted campaign only to them.
+                All Customers
+                    │
+                    ▼
+                Target Segment
+                    │
+                    ▼
+                Personalized Message
+                    │
+                    ▼
+                Campaign
+            This is one of the biggest differences from simply sending email through SES.
+        Personalization
+            Pinpoint can personalize messages based on customer information.
+            For example, instead of:
+                Hello Customer
+            you can create something like:
+                Hello John, your application is ready.
+            This is very useful for marketing/customer engagement.
+        Campaigns
+            A campaign is a planned communication to a target audience.
+            example:
+                        Segment
+                    "Customers who haven't purchased
+                    in the last 60 days"
+                            │
+                            ▼
+                        Campaign
+                            │
+                            ├── Message Template
+                            ├── Target Audience
+                            ├── Schedule
+                            └── Delivery Channel
+                                    │
+                                    ▼
+                                Customers
+                    So instead of manually sending thousands of individual messages, you define the campaign.
+        Pinpoint vs SES:
+            SES => focuses on email delivery.
+            Pinpoint => focuses on customer engagement and campaigns.
+        Pinpoint vs SNS vs SES:
+            | Feature             | SNS                 | SES             | Pinpoint            |
+            | ------------------- | ------------------- | --------------- | ------------------- |
+            | Main purpose        | Messaging / Pub-Sub | Email service   | Customer engagement |
+            | Email               | ✅                   | ✅               | ✅                   |
+            | SMS                 | ✅                   | ❌               | ✅                   |
+            | Push                | ✅                   | ❌               | ✅                   |
+            | Voice               | ❌/limited use cases | ❌               | ✅                   |
+            | Marketing campaigns | ❌                   | Limited         | ✅                   |
+            | Customer segments   | ❌                   | ❌               | ✅                   |
+            | Personalization     | Limited             | Limited         | ✅                   |
+            | Templates           | Limited             | Email templates | ✅                   |
+            | Campaign scheduling | ❌                   | ❌               | ✅                   |
+            | 2-way engagement    | Limited             | Email receiving | ✅                   |
+            | Bulk marketing      | Not main purpose    | ✅               | ✅                   |
+
+            SNS = Notify
+            SES = Email
+            Pinpoint = Target + Personalize + Campaign
+    SSM Session Manager:
+        AWS Systems Manager Session Manager allows you to open a secure interactive shell/session 
+        to an EC2 instance without needing traditional SSH access.
+        Normally:
+            Your PC
+            │
+            │ SSH :22
+            ▼
+            Bastion Host
+            │
+            │ SSH :22
+            ▼
+            Private EC2
+        With Session Manager:
+            Your PC
+            │
+            │ HTTPS / AWS API
+            ▼
+            SSM Session Manager
+            │
+            ▼
+            Private EC2
+            So you don't need to expose SSH to the Internet.
+        No SSH/ No Port 22 / No Bastion / No SSH Keys/ No Public IP required for the EC2
+        Session Manager = SSH-like shell without SSH.
+        How does it actually work?
+            The EC2 instance runs the SSM Agent.
+                  AWS
+                   │
+            SSM Session Manager
+                   │
+                   │
+             AWS Systems Manager
+                   │
+                   ▼
+              SSM Agent
+                   │
+                   ▼
+                 EC2
+            The instance initiates communication with the Systems Manager service.
+        Private EC2 can use Session Manager
+            one of the best use cases.
+            Private EC2 has:
+                ❌ No Public IP
+                ❌ No Port 22
+                ❌ No Bastion
+            but, you can still access it using: Session Manager
+                Your PC
+                │
+                ▼
+                Session Manager
+                │
+                ▼
+                Private EC2
+            For a private subnet, the instance needs connectivity to the required Systems Manager endpoints, 
+            commonly through VPC endpoints when you don't want Internet/NAT dependency.
+        IAM is important
+            Session Manager is controlled using IAM permissions.
+                Administrator
+                    │
+                    │ IAM permission
+                    ▼
+                Session Manager
+                    │
+                    ▼
+                Allowed EC2
+        Session Logs
+            Session Manager can record session activity.
+                Administrator
+                        │
+                        ▼
+                    Session Manager
+                        │
+                        ├──────────→ S3
+                        │
+                        └──────────→ CloudWatch Logs
+
+                    This is useful for:
+
+                    Auditing
+                    Security investigations
+                    Compliance
+                    Troubleshooting
+        Session Manager vs Bastion Host:
+            |                           | Bastion Host         | SSM Session Manager |
+            | ------------------------- | -------------------- | ------------------- |
+            | SSH                       | ✅                    | ❌                   |
+            | Port 22                   | Usually required     | ❌                   |
+            | SSH keys                  | Usually required     | ❌                   |
+            | Bastion EC2               | ✅                    | ❌                   |
+            | Private EC2 access        | ✅                    | ✅                   |
+            | IAM control               | Limited              | ✅                   |
+            | Session logging           | Requires extra setup | ✅                   |
+            | Public access to target   | Not required         | Not required        |
+            | Operational overhead      | Higher               | Lower               |
+            | Preferred modern approach | Sometimes            | ✅                   |
+        Session Manager isn't only for Linux:
+            supports:
+                Linux
+                macOS
+                Windows
+        SSM Run Command:
+            "I want AWS to execute this command/script on the server for me."
+            AWS Systems Manager Run Command lets you remotely execute commands or 
+            SSM Documents on one or many managed instances.
+                example:
+                            Systems Manager
+                                │
+                            Run Command
+                                │
+                    ┌───────────┼───────────┐
+                    ▼           ▼           ▼
+                    EC2-A       EC2-B       EC2-C
+                    │           │           │
+                command      command     command
+            You don't need to SSH into each server.
+            command example
+                Suppose you have 50 EC2 instances.
+                You want to run: sudo systemctl restart nginx
+                Traditional SSH approach
+                    You might have to:
+                        SSH → EC2-1 → command
+                        SSH → EC2-2 → command
+                        SSH → EC2-3 → command
+                        ...
+                        SSH → EC2-50 → command
+                    That's inconvenient.
+                With Run Command:
+                    AWS Console / CLI
+                        │
+                        ▼
+                    Run Command
+                        │
+                        ▼
+                    50 EC2 instances
+                        │
+                        └──→ restart nginx
+                    One command can be executed across multiple instances.
+            "Document" in Run Command:
+                An SSM Document is basically a predefined set of instructions that Systems Manager can execute.
+                For example, conceptually:
+                    SSM Document
+                    │
+                    ├── Stop service
+                    ├── Install package
+                    ├── Modify configuration
+                    └── Start service
+            SNS Notifications:
+                can send notifications through Amazon SNS when command execution changes status.
+                    Run Command
+                        │
+                        ▼
+                    Execute command
+                        │
+                        ├── In Progress
+                        ├── Success
+                        └── Failed
+                                │
+                                ▼
+                                SNS
+                                │
+                                ▼
+                            Notification
+                For example:
+                    🔔 "Run Command on production servers failed."
+                    So the architecture can be:
+                        Systems Manager
+                        Run Command
+                            │
+                            ├──→ EC2
+                            │
+                            └──→ SNS
+                                    │
+                                    ▼
+                                Email/SMS/etc.
+            IAM Integration
+                Run Command uses IAM permissions.
+            CloudTrail Integration:
+                CloudTrail records API activity.
+            EventBridge Integration:
+                For example:
+                    When an EC2 instance enters a certain state/event → automatically run a command.
+            Run Command doesn't mean "run anything on any EC2"
+                The target instances need to be managed instances by Systems Manager.
+                Typically this means:
+                    EC2
+                    │
+                    ├── SSM Agent
+                    │
+                    └── IAM permissions / instance role
+                            │
+                            ▼
+                        Systems Manager
+                The SSM Agent receives the command and executes it.
+                So the basic architecture is:
+                            AWS Systems Manager
+                                    │
+                                Run Command
+                                    │
+                                    ▼
+                                SSM Agent
+                                    │
+                                    ▼
+                                    EC2
+            Run Command vs Automation:
+                Run Command = command execution
+                Automation = multi-step operational workflow
+            Note:
+                Run a command on multiple EC2 instances simultaneously without SSH.
+                => Systems Manager Run Command
+:
+                Run Command vs Session Manager:
+                    Session Manager:
+                        You want an interactive session:
+                            Admin
+                            │
+                            ▼
+                            Session Manager
+                            │
+                            ▼
+                            EC2
+
+                            $ cd /var/log
+                            $ ls
+                        You're essentially inside the server.
+                    Run Command:
+                        You want AWS to execute something:
+                            Admin
+                            │
+                            ▼
+                            Run Command
+                            │
+                            ▼
+                            EC2
+                            │
+                            └── execute:
+                                systemctl restart nginx
+                        You don't need an interactive shell.
+                    
+                    |                         | Session Manager                    | Run Command |
+                    | ----------------------- | ---------------------------------- | ----------- |
+                    | Interactive shell       | ✅                                  | ❌           |
+                    | Execute command         | ✅                                  | ✅           |
+                    | Execute script/document | Possible                           | ✅           |
+                    | Multiple instances      | Possible, but not its main purpose | ⭐ Yes       |
+                    | SSH required            | ❌                                  | ❌           |
+                    | Port 22                 | ❌                                  | ❌           |
+                    | Bastion                 | ❌                                  | ❌           |
+                    | IAM                     | ✅                                  | ✅           |
+                    | Output logging          | ✅                                  | ✅           |
+
+                    | Question wording                        | Think                         |
+                    | --------------------------------------- | ----------------------------- |
+                    | Execute command remotely on EC2         | **Run Command**               |
+                    | Execute script on EC2                   | **Run Command**               |
+                    | Execute command on many EC2 instances   | **Run Command**               |
+                    | No SSH required                         | **Run Command**               |
+                    | No port 22                              | **Run Command**               |
+                    | No bastion host                         | **Run Command**               |
+                    | Store command output in S3              | **Run Command**               |
+                    | Store command output in CloudWatch Logs | **Run Command**               |
+                    | Notify when command succeeds/fails      | **Run Command + SNS**         |
+                    | Audit Systems Manager API activity      | **CloudTrail**                |
+                    | Trigger command execution from an event | **EventBridge + Run Command** |
 
