@@ -21924,3 +21924,662 @@ Other AWS Services:
                                     │
                                     │
                                 Filter / Transform
+    AWS Amplify:
+        Web/Mobile application တည်ဆောက်တဲ့ developer တွေအတွက် AWS services အများကြီးကို
+        တစ်နေရာတည်းကနေ configure, connect, build, deploy လုပ်နိုင်အောင် ပေါင်းစည်းပေးတဲ့ development platform/toolset.
+        like "One Stop Shop"
+        Amplify Backend:
+            Use the Amplify CLI to create an Amplify Backend.
+        Amplify က AWS services တွေကို replace လုပ်တာမဟုတ်ဘူး
+            ဥပမာ—
+                Amplify Authentication
+                        ↓
+                Amazon Cognito
+
+                Amplify Storage
+                        ↓
+                    Amazon S3
+
+                Amplify Data/API
+                        ↓
+                AppSync / API Gateway
+
+                Amplify Functions
+                        ↓
+                    Lambda
+
+                Amplify Database
+                        ↓
+                    DynamoDB
+            ဒါကြောင့် AWS service အစစ်တွေက နောက်ကွယ်မှာ ဆက်ရှိနေပါတယ်။
+            APIs
+                Frontend က backend data ကို access လုပ်ဖို့ API လိုပါတယ်။
+                Amplify က API integration ကို support လုပ်ပြီး—
+                    Frontend
+                        ↓
+                    Amplify
+                        ↓
+                    ┌───────────────┐
+                    │               │
+                    AppSync       API Gateway
+                    │               │
+                    GraphQL        REST
+                လိုမျိုး GraphQL နဲ့ REST API နှစ်မျိုးစလုံးနဲ့ integrate လုပ်နိုင်ပါတယ်။
+                Note:
+                    GraphQL → AppSync
+                    REST → API Gateway
+            Database
+                Application data ကို database ထဲသိမ်းချင်ရင် DynamoDB
+            Lambda Functions
+                Backend logic လိုတဲ့အခါ Lambda ကို integrate လုပ်နိုင်ပါတယ်။
+            AI / ML:
+                SageMaker for machine learning
+                Lex for text detection
+                other supported services
+            CI/CD
+                Application code က GitHub, GitLab, Bitbucket စတာတွေနဲ့ ချိတ်နိုင်ပါတယ်။
+            Frontend Libraries
+                Backend create လုပ်ပြီးရင် frontend application က backend ကို access လုပ်ဖို့ လို
+                Amplify က frontend libraries/tools တွေ ပေးပါတယ်။
+            Deployment / Hosting
+                Application ready ဖြစ်ပြီဆိုရင် Amplify hosting capabilities ကို အသုံးပြုပြီး deploy လုပ်နိုင်ပါတယ်။
+            Elastic Beanstalk for Web & Mobile:
+                Amplify = Elastic Beanstalk for web and mobile applications
+                Elastic Beanstalk
+                    Deploy and manage web applications without managing all the underlying infrastructure yourself.
+                Amplify
+                    Build, connect, and deploy web/mobile applications using AWS backend services.
+                compare:
+                    Elastic Beanstalk
+                        ↓
+                    Deploy/manage application
+                        ↓
+                    Focus less on infrastructure
+
+                    Amplify
+                        ↓
+                    Build + Connect + Host
+                        ↓
+                    Web/Mobile applications
+                        ↓
+                    Focus less on AWS integration plumbing
+                Amplify vs Elastic Beanstalk
+                    | Amplify                         | Elastic Beanstalk                 |
+                    | ------------------------------- | --------------------------------- |
+                    | Web/mobile development focus    | Application deployment focus      |
+                    | Frontend + backend integration  | Application platform              |
+                    | Cognito/S3/API/etc. integration | EC2-based application environment |
+                    | Developer-friendly app tooling  | Managed application deployment    |
+                    | Web/mobile app ecosystem        | General web applications          |
+                Note:
+                    "Build web and mobile applications using AWS services"
+                        → AWS Amplify
+                    Web/Mobile App Development → Amplify
+                    Infrastructure as Code      → CloudFormation
+                    Application Deployment     → Elastic Beanstalk
+                    Serverless Function        → Lambda
+                    Object Storage             → S3
+                    Authentication             → Cognito
+                    GraphQL API                → AppSync
+                    REST API                   → API Gateway
+                    NoSQL Database             → DynamoDB
+    Instance Scheduler on AWS:
+        It's not a service, it's an AWS solution.
+        a pre-built AWS Solution that you deploy into your AWS account, typically using AWS CloudFormation.
+        purpose:
+            Automatically start and stop resources according to a schedule to reduce AWS costs.
+        Why can it save a lot of money?
+            Suppose an EC2 instance runs:
+                24 hours/day × 30 days
+                = 720 hours
+            But your company only needs it:
+                10 hours/day × 20 working days
+                = 200 hours
+            So you could avoid paying for roughly:
+                720 - 200 = 520 hours
+            of unnecessary runtime.
+        support:
+            Instance Scheduler on AWS
+                    |
+                    +---- EC2 instances
+                    |
+                    +---- EC2 Auto Scaling Groups
+                    |
+                    +---- RDS instances
+        Important: It is NOT a single service:
+            architecture:
+                CloudFormation
+                        |
+                        v
+                    Deploy Instance Scheduler Solution
+                        |
+                        +-------------------------+
+                        |                         |
+                        v                         v
+                    Lambda                  DynamoDB
+                        |                    schedules
+                        |
+                        v
+                    Start / Stop resources
+            example:
+                DynamoDB contains something like:
+                    Schedule: BusinessHours
+                    Start: 08:00
+                    Stop: 18:00
+                    Days: Monday-Friday
+                The scheduler checks this schedule and determines:
+                    "It's 18:00 on Monday. These resources should stop."
+                Then the Lambda functions perform the required AWS API operations.
+        Cross-account and cross-Region:
+            if the question says:
+                "The company has resources across multiple AWS accounts and Regions and 
+                wants to automatically start/stop them according to schedules."
+            choose:
+                Instance Scheduler on AWS
+        Note:
+            AWS Service = one managed AWS product
+            AWS Solution = architecture/package that combines multiple AWS services to solve a problem.
+            Instance Scheduler vs Auto Scaling:
+                | Requirement                                              | Think                  |
+                | -------------------------------------------------------- | ---------------------- |
+                | Start/stop at specific times                             | **Instance Scheduler** |
+                | Save money by shutting down dev resources overnight      | **Instance Scheduler** |
+                | Automatically increase/decrease capacity based on demand | **Auto Scaling**       |
+                | Maintain desired number of EC2 instances                 | **ASG**                |
+            Instance Scheduler vs CloudWatch Events/EventBridge:
+                You might wonder:
+                    "Couldn't I just use EventBridge + Lambda?"
+                Yes. You can build your own custom scheduling architecture.
+                For example:
+                    EventBridge Scheduler
+                        |
+                        v
+                    Lambda
+                        |
+                        v
+                    Stop EC2
+                But Instance Scheduler is a pre-built AWS Solution that gives you a more complete scheduling solution,
+                    including schedules, tagging/configuration, 
+                    supported resource types, and multi-account/multi-Region capabilities.
+                So the exam distinction can be:
+                    Simple custom scheduled action
+                            ↓
+                    EventBridge Scheduler + Lambda
+
+                    Complete AWS-provided start/stop scheduling solution
+                            ↓
+                    Instance Scheduler on AWS
+                What does "production ready" mean here?
+                    AWS provides a well-designed, deployable solution architecture that you can use in production.
+                    CloudFormation makes the deployment easier:
+                        CloudFormation Template
+                                |
+                                v
+                        Deploy Solution
+                                |
+                            +-----+-----+
+                            |           |
+                        Lambda      DynamoDB
+                            |
+                            +------ AWS resources
+White Paper & Architectures:
+    AWS Well-Architected Framework:
+        think: How can I make my AWS architecture better?
+        What does "Well-Architected" mean?
+            Imagine you build this:
+                Users
+                |
+                v
+                EC2
+                |
+                v
+                Database
+            It might work.
+            But AWS asks: "Is this architecture actually well designed?"
+            For example:
+                What happens if EC2 crashes?
+                What happens if an AZ fails?
+                Can it handle 10× traffic?
+                Are you spending too much money?
+                Is sensitive data protected?
+                Can you monitor problems?
+                Can you recover from failure?
+                Are you wasting compute resources?
+            The Well-Architected Framework gives you a structured way to ask these questions.
+        six pillars:
+                        AWS Well-Architected Framework
+                                            |
+                        +---------+-------+-------+-----------+
+                        |         |               |           |
+                        v         v               v           v
+                    Operational   Security      Reliability  Performance
+                    Excellence                               Efficiency
+                        |
+                        +-------------------+----------------+
+                                            |
+                                            v
+                                    Cost Optimization
+                                            |
+                                            v
+                                        Sustainability
+                | # | Pillar                     |
+                | - | -------------------------- |
+                | 1 | **Operational Excellence** |
+                | 2 | **Security**               |
+                | 3 | **Reliability**            |
+                | 4 | **Performance Efficiency** |
+                | 5 | **Cost Optimization**      |
+                | 6 | **Sustainability**         |
+            Memorize
+                Operations → Security → Reliability → Performance → Cost → Sustainability
+            Operational Excellence
+                Running and improving your workload effectively.
+                    Examples:
+                        Monitoring
+                        Automation
+                        Deployment processes
+                        Operations
+                        Learning from failures
+                        Improving procedures
+                Don't guess capacity:
+                    Instead of saying: "Maybe we need 10 EC2 instances."
+                        Use:
+                            Auto Scaling
+                                ↓
+                            Traffic increases
+                                ↓
+                            More instances
+                                ↓
+                            Traffic decreases
+                                ↓
+                            Fewer instances
+                        This is better than manually guessing capacity.
+                Test at production scale:
+                    Traditionally, companies might say:
+                        "We can't afford to build a production-sized environment just for testing."
+                    AWS changes the economics.
+                    You can:
+                        Create large infrastructure
+                                ↓
+                        Run realistic test
+                                ↓
+                        Measure performance
+                                ↓
+                        Destroy infrastructure
+                    For example:
+                        10:00 → Launch 100 EC2 instances
+                        11:00 → Run load test
+                        12:00 → Delete them
+                    You only pay for the resources while they're running.
+                    So the principle is:
+                        Don't make assumptions about how your architecture will behave. Test it.
+                        သင့်ရဲ့ architecture ဘယ်လိုအလုပ်လုပ်မလဲဆိုတာနဲ့ပတ်သက်ပြီး ကြိုတင်ခန့်မှန်းချက်တွေ မလုပ်ပါနဲ့။ စမ်းသပ်စစ်ဆေးကြည့်ပါ။
+                Automate everything possible:
+                    Suppose you manually create:
+                        VPC
+                        Subnets
+                        EC2
+                        ALB
+                        Security Groups
+                        RDS
+                    Then you want to test a different architecture.
+                    That's painful.
+                    With CloudFormation:
+                    CloudFormation Template
+                            |
+                        +----+----+
+                        |         |
+                        v         v
+                    Test A    Test B
+                    You can reproduce the infrastructure quickly.
+                Evolutionary architectures:
+                    Your architecture doesn't have to be perfect forever.
+                    For example:
+                        Version 1
+                        Users
+                        |
+                        v
+                        ALB
+                        |
+                        v
+                        EC2
+                        |
+                        v
+                        RDS
+                    Later, you discover that some parts don't need servers.
+                        You can evolve:
+                            Version 2
+                            Users
+                            |
+                            v
+                            API Gateway
+                            |
+                            v
+                            Lambda
+                            |
+                            v
+                            DynamoDB
+                        The important idea is:
+                        Architecture should evolve as requirements change.
+                        Don't assume you need to design the "final architecture" on day one.
+                Drive architecture using data:
+                    Make architectural decisions based on measurements and evidence rather than assumptions.
+                    Don't guess → measure → analyze → improve.
+                Game Days: Disaster Drill
+                    intentionally test failure scenarios
+                    essentially a planned exercise where you intentionally test
+                    how your architecture handles failures or stressful situations.
+                        example:
+                            Production-like environment
+                                    ↓
+                            Simulate:
+                                EC2 failure
+                                Database failure
+                                High traffic
+                                Network failure
+                                AZ failure
+                                    ↓
+                                Observe
+                                    ↓
+                            Find weaknesses
+                                    ↓
+                            Improve architecture
+                    Flash Sale example:
+                        Imagine an e-commerce website normally receives:
+                            1,000 requests/min
+                            Then you have a huge promotion: FLASH SALE 🚨
+                            100,000 requests/min
+                            What happens?
+                                        Flash Sale
+                                            |
+                                            v
+                                        Huge Traffic
+                                            |
+                                    +---------+---------+
+                                    |                   |
+                                    v                   v
+                                ALB              Auto Scaling
+                                                        |
+                                                EC2 × 2 → 20 → 50
+                            You should test this before the real event.
+                            That's part of building a well-architected system.
+                    The six pillars work together:
+                        example:
+                            Better Auto Scaling
+                                |
+                                +----> Performance
+                                |
+                                +----> Reliability
+                                |
+                                +----> Cost
+                                |
+                                +----> Sustainability
+                            Why?
+                            Because if you automatically scale resources based on demand:
+                                You can handle traffic → Reliability
+                                You can maintain performance → Performance Efficiency
+                                You don't run unnecessary instances → Cost Optimization
+                                You avoid wasting compute resources → Sustainability
+                            So they're synergistic ပေါင်းစပ်ဆောင်ရွက်မှု, not simply six independent boxes.
+        AWS Well-Architected Tool:
+            AWS tool that helps you review your workload against the Well-Architected Framework.
+            It helps you review your workload and identify areas for improvement.
+            Important:
+                Well-Architected Framework = the principles/framework
+                Well-Architected Tool = the tool you use to review your architecture against those principles
+        six pillars — exam-level meaning:
+            | Pillar                     | Simple meaning                                     |
+            | -------------------------- | -------------------------------------------------- |
+            | **Operational Excellence** | Run and improve the system effectively             |
+            | **Security**               | Protect systems and data                           |
+            | **Reliability**            | Recover from failures and keep working             |
+            | **Performance Efficiency** | Use resources efficiently for required performance |
+            | **Cost Optimization**      | Avoid unnecessary AWS spending                     |
+            | **Sustainability**         | Minimize environmental impact                      |
+        memory:
+            AWS WELL-ARCHITECTED FRAMEWORK
+                │
+                ├── 1. Operational Excellence
+                │      → Run + improve
+                │      → Automate
+                │      → Test
+                │      → Game Days
+                │
+                ├── 2. Security
+                │      → Protect
+                │
+                ├── 3. Reliability
+                │      → Recover + keep working
+                │
+                ├── 4. Performance Efficiency
+                │      → Efficient performance
+                │
+                ├── 5. Cost Optimization
+                │      → Don't waste money
+                │
+                └── 6. Sustainability
+                    → Reduce environmental impact
+            AWS က Architecture ကို ဘယ်လိုမေးလဲ?
+                ဥပမာ ဒီ architecture ကိုကြည့်မယ်။
+                    User
+                    |
+                    v
+                    EC2
+                    |
+                    v
+                    RDS
+                Website အလုပ်လုပ်တယ်။
+            ဒါပေမယ့် မေးခွန်းတွေ အများကြီးရှိတယ်။
+                Question 1 — EC2 ပျက်သွားရင်?
+                        User
+                        |
+                        X
+                        EC2 💥
+                    Website down ဖြစ်သွားမယ်။
+                    → Reliability ကောင်းလား?
+                Question 2 — Hacker က database ကို access လုပ်ရင်?
+                        Internet
+                        |
+                        v
+                        EC2
+                        |
+                        v
+                        RDS
+                    Security Group / IAM / encryption စတာတွေ သေချာလုပ်ထားလား?
+                    → Security ကောင်းလား?
+                Question 3 — User 100 ယောက်ကနေ 100,000 ယောက်ဖြစ်ရင်?
+                    100 users
+                    ↓
+                    100,000 users
+                    ↓
+                    EC2 ????
+                    EC2 တစ်လုံးက handle လုပ်နိုင်မလား?
+                    → Performance Efficiency ကောင်းလား?
+                Question 4 — ညဘက် user မရှိဘဲ EC2 10 လုံး run နေရင်?
+                    Day
+                    EC2 × 10  → needed
+
+                    Night
+                    EC2 × 10  → nobody uses them
+                                $$$$$$$
+                    → Cost Optimization ကောင်းလား?
+                Question 5 — Server တွေကို manually manage လုပ်နေရင်?
+                    Developer
+                    |
+                    +-- manually deploy
+                    +-- manually monitor
+                    +-- manually fix
+                    +-- manually scale
+                    → Operational Excellence ကောင်းလား?
+                Question 6 — မလိုအပ်ဘဲ compute resource အများကြီးသုံးနေရင်?
+                → Sustainability ကောင်းလား?
+            
+            Operational Excellence = Run + Monitor + Automate + Improve
+            Security = Protect the system + Protect the data
+            Reliability = Failure ဖြစ်ရင် survive / recover လုပ်နိုင်ခြင်း
+            Performance Efficiency = Right resources + Right technology + Right scale
+            Cost Optimization = Don't pay for what you don't need.
+            Sustainability = Reduce unnecessary resource usage / environmental impact
+
+            AWS Well-Architected Framework နဲ့ review လုပ်မယ်။
+                ① Operational Excellence
+                    Deployment နဲ့ monitoring ကို automate လုပ်ထားလား?
+                        CI/CD
+                        CloudWatch
+                        Automation
+                ② Security
+                    Hacker တွေကို ကာကွယ်ထားလား?
+                        IAM
+                        WAF
+                        SG
+                        Encryption
+                ③ Reliability
+                    EC2 တစ်လုံးပျက်ရင် ဘာဖြစ်မလဲ?
+                        Multi-AZ
+                        Auto Scaling
+                        RDS Multi-AZ
+                        Backup
+                ④ Performance Efficiency
+                    Traffic တက်ရင် slow ဖြစ်မလား?
+                        CloudFront
+                        Caching
+                        Auto Scaling
+                        Right instance type
+                ⑤ Cost Optimization
+                    မလိုအပ်ဘဲ ပိုက်ဆံကုန်နေလား?
+                        Right-sizing
+                        Auto Scaling
+                        Spot
+                        Savings Plans
+                ⑥ Sustainability
+                    မလိုအပ်တဲ့ resource တွေ run နေလား?
+                        Remove waste
+                        Right-size
+                        Scale according to demand
+    Trusted Advisor:
+        ကိုယ့် AWS account ကို စစ်ဆေးပြီး recommendation ပေးတဲ့ AWS service
+                            Your AWS Account
+                                |
+                                v
+                        AWS Trusted Advisor
+                                |
+                +-------------+-------------+
+                |             |             |
+                v             v             v
+            Security       Cost         Performance
+                |             |             |
+                +-------------+-------------+
+                                |
+                                v
+                        Recommendations
+            Trusted Advisor ဘာတွေစစ်လဲ?
+                Example 1 — EBS Public Snapshot
+                    Public ဖြစ်နေတယ်ဆိုရင် security risk ဖြစ်နိုင်တယ်။
+                    Trusted Advisor က ဒီလို configuration ကို detect လုပ်ပြီး သတိပေးနိုင်တယ်။
+                Example 2 — RDS Public Snapshot
+                    Database snapshot ကို public ထားထားရင် sensitive data exposure ဖြစ်နိုင်တယ်။
+                    Trusted Advisor က ဒီလို issue တွေကိုလည်း check လုပ်နိုင်တယ်။
+                Example 3 — Root Account
+                    AWS account ကို root user နဲ့ login ဝင်ပြီး resource တွေ manage လုပ်နေတယ်ဆိုရင်—
+                    ဒါက security best practice မဟုတ်ဘူး။
+                    Trusted Advisor က root account usage စတဲ့ security-related checks တွေကို identify လုပ်ပေးနိုင်တယ်။
+            6 Categories:
+                | # | Category                   | မြန်မာလို                         |
+                | - | -------------------------- | --------------------------------- |
+                | 1 | **Cost Optimization**      | Cost လျှော့နိုင်မလား              |
+                | 2 | **Performance**            | Performance ကောင်းလား             |
+                | 3 | **Security**               | Security issue ရှိလား             |
+                | 4 | **Fault Tolerance**        | Failure ခံနိုင်လား                |
+                | 5 | **Service Limits**         | AWS limits နီးလာပြီလား            |
+                | 6 | **Operational Excellence** | Operations ကောင်းကောင်းလုပ်ထားလား |
+                Cost → Performance → Security → Fault Tolerance → Limits → Operations
+            Core Checks vs Full Checks:
+                Core checks
+                    Basic checks တွေကို ရနိုင်တယ်။
+                Full set of checks
+                    Business or Enterprise Support Plan → Full set of Trusted Advisor checks
+                    ပိုပြီး comprehensive ဖြစ်တဲ့ Trusted Advisor checks တွေကို ရနိုင်တယ်။
+                    Support Plan နဲ့ ဘာကြောင့်ဆိုင်တာလဲ?
+                        AWS Support Plan
+                            |
+                            +---- Basic
+                            |
+                            +---- Business
+                            |
+                            +---- Enterprise
+                        Support plan level မြင့်လာတာနဲ့ Trusted Advisor capabilities/checks တွေလည်း ပိုပြီးရလာတယ်။
+            Programmatic Access
+                Business/Enterprise Support Plan ရှိရင် AWS Support API ကနေ Trusted Advisor information ကို programmatically access လုပ်နိုင်တယ်။
+                "Programmatically" ဆိုတာ—
+                    Console ထဲဝင်ပြီး manually ကြည့်တာမဟုတ်ဘဲ application/script ကနေ API သုံးပြီးယူတာ။
+                Without API:
+                    Developer
+                    ↓
+                    AWS Console
+                    ↓
+                    Trusted Advisor
+                    ↓
+                    Read recommendations
+                Programmatic access:
+                    Application / Script
+                            |
+                            v
+                    AWS Support API
+                            |
+                            v
+                    Trusted Advisor
+                            |
+                            v
+                    Recommendations
+                ဒါဆို automation လုပ်နိုင်တယ်။
+                    ဥပမာ—
+                        Trusted Advisor
+                            |
+                            v
+                        Security issue found
+                            |
+                            v
+                        Automation / Alert
+                            |
+                            v
+                        Team notified
+        Well-Architected Framework နဲ့ Trusted Advisor, CloudWatch:
+            Well-Architected Framework
+                "Good architecture ဆိုတာ ဘာကို စဉ်းစားသင့်လဲ?"
+            Trusted Advisor
+                "မင်းရဲ့ AWS account/resource တွေမှာ ပြင်သင့်တာ ဘာတွေရှိလဲ?"
+                AWS account/resource configuration ကို best-practice perspective နဲ့ check လုပ်တယ်။
+            CloudWatch
+                "What's happening NOW?"
+                System ရဲ့ runtime behavior ကို monitor လုပ်တယ်။
+    More Architecture Examples:
+        the most important architectural patterns:
+            Classic: EC2, ELB, RDS, ElastiCache, etc...
+            Serverless: S3, Lambda, DynamoDB, CloudFront, API Gateway, etc...
+        If you want to see more AWS architectures:
+            AWS Architecture Center: https://aws.amazon.com/architecture/
+                reference architecture, diagrams, patterns စတာတွေနဲ့ လေ့လာနိုင်တဲ့နေရာ
+            AWS Solutions: https://aws.amazon.com/solutions/
+                ဒီလို business/technical problem ရှိရင် AWS က ဘယ်လို pre-built solution architecture ပေးထားလဲ?
+Preparing for exam:
+    Links to Whitepapers
+        1. Architecting for the Cloud: https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html
+
+        2. Whitepapers related to Well-Architected Framework are mentioned here: https://aws.amazon.com/architecture/well-architected/
+
+        3. Disaster Recovery Whitepaper: https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-workloads-on-aws.html
+
+        AWS now recommends a Well-Architected Framework Whitepaper: https://docs.aws.amazon.com/pdfs/wellarchitected/latest/framework/wellarchitected-framework.pdf
+
+
+
+
+
+
+
+
+
+
+
+
+
