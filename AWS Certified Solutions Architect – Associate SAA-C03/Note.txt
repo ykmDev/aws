@@ -20968,108 +20968,109 @@ Other AWS Services:
             SNS = Notify
             SES = Email
             Pinpoint = Target + Personalize + Campaign
-    SSM Session Manager:
-        AWS Systems Manager Session Manager allows you to open a secure interactive shell/session 
-        to an EC2 instance without needing traditional SSH access.
-        Normally:
-            Your PC
-            │
-            │ SSH :22
-            ▼
-            Bastion Host
-            │
-            │ SSH :22
-            ▼
-            Private EC2
-        With Session Manager:
-            Your PC
-            │
-            │ HTTPS / AWS API
-            ▼
-            SSM Session Manager
-            │
-            ▼
-            Private EC2
-            So you don't need to expose SSH to the Internet.
-        No SSH/ No Port 22 / No Bastion / No SSH Keys/ No Public IP required for the EC2
-        Session Manager = SSH-like shell without SSH.
-        How does it actually work?
-            The EC2 instance runs the SSM Agent.
-                  AWS
-                   │
-            SSM Session Manager
-                   │
-                   │
-             AWS Systems Manager
-                   │
-                   ▼
-              SSM Agent
-                   │
-                   ▼
-                 EC2
-            The instance initiates communication with the Systems Manager service.
-        Private EC2 can use Session Manager
-            one of the best use cases.
-            Private EC2 has:
-                ❌ No Public IP
-                ❌ No Port 22
-                ❌ No Bastion
-            but, you can still access it using: Session Manager
+    Systems Manager:
+        Session Manager:
+            AWS Systems Manager Session Manager allows you to open a secure interactive shell/session 
+            to an EC2 instance without needing traditional SSH access.
+            Normally:
                 Your PC
                 │
+                │ SSH :22
                 ▼
-                Session Manager
+                Bastion Host
+                │
+                │ SSH :22
+                ▼
+                Private EC2
+            With Session Manager:
+                Your PC
+                │
+                │ HTTPS / AWS API
+                ▼
+                SSM Session Manager
                 │
                 ▼
                 Private EC2
-            For a private subnet, the instance needs connectivity to the required Systems Manager endpoints, 
-            commonly through VPC endpoints when you don't want Internet/NAT dependency.
-        IAM is important
-            Session Manager is controlled using IAM permissions.
-                Administrator
+                So you don't need to expose SSH to the Internet.
+            No SSH/ No Port 22 / No Bastion / No SSH Keys/ No Public IP required for the EC2
+            Session Manager = SSH-like shell without SSH.
+            How does it actually work?
+                The EC2 instance runs the SSM Agent.
+                    AWS
                     │
-                    │ IAM permission
-                    ▼
-                Session Manager
+                SSM Session Manager
+                    │
+                    │
+                AWS Systems Manager
                     │
                     ▼
-                Allowed EC2
-        Session Logs
-            Session Manager can record session activity.
-                Administrator
+                SSM Agent
+                    │
+                    ▼
+                    EC2
+                The instance initiates communication with the Systems Manager service.
+            Private EC2 can use Session Manager
+                one of the best use cases.
+                Private EC2 has:
+                    ❌ No Public IP
+                    ❌ No Port 22
+                    ❌ No Bastion
+                but, you can still access it using: Session Manager
+                    Your PC
+                    │
+                    ▼
+                    Session Manager
+                    │
+                    ▼
+                    Private EC2
+                For a private subnet, the instance needs connectivity to the required Systems Manager endpoints, 
+                commonly through VPC endpoints when you don't want Internet/NAT dependency.
+            IAM is important
+                Session Manager is controlled using IAM permissions.
+                    Administrator
                         │
+                        │ IAM permission
                         ▼
                     Session Manager
                         │
-                        ├──────────→ S3
-                        │
-                        └──────────→ CloudWatch Logs
+                        ▼
+                    Allowed EC2
+            Session Logs
+                Session Manager can record session activity.
+                    Administrator
+                            │
+                            ▼
+                        Session Manager
+                            │
+                            ├──────────→ S3
+                            │
+                            └──────────→ CloudWatch Logs
 
-                    This is useful for:
+                        This is useful for:
 
-                    Auditing
-                    Security investigations
-                    Compliance
-                    Troubleshooting
-        Session Manager vs Bastion Host:
-            |                           | Bastion Host         | SSM Session Manager |
-            | ------------------------- | -------------------- | ------------------- |
-            | SSH                       | ✅                    | ❌                   |
-            | Port 22                   | Usually required     | ❌                   |
-            | SSH keys                  | Usually required     | ❌                   |
-            | Bastion EC2               | ✅                    | ❌                   |
-            | Private EC2 access        | ✅                    | ✅                   |
-            | IAM control               | Limited              | ✅                   |
-            | Session logging           | Requires extra setup | ✅                   |
-            | Public access to target   | Not required         | Not required        |
-            | Operational overhead      | Higher               | Lower               |
-            | Preferred modern approach | Sometimes            | ✅                   |
-        Session Manager isn't only for Linux:
-            supports:
-                Linux
-                macOS
-                Windows
-        SSM Run Command:
+                        Auditing
+                        Security investigations
+                        Compliance
+                        Troubleshooting
+            Session Manager vs Bastion Host:
+                |                           | Bastion Host         | SSM Session Manager |
+                | ------------------------- | -------------------- | ------------------- |
+                | SSH                       | ✅                    | ❌                   |
+                | Port 22                   | Usually required     | ❌                   |
+                | SSH keys                  | Usually required     | ❌                   |
+                | Bastion EC2               | ✅                    | ❌                   |
+                | Private EC2 access        | ✅                    | ✅                   |
+                | IAM control               | Limited              | ✅                   |
+                | Session logging           | Requires extra setup | ✅                   |
+                | Public access to target   | Not required         | Not required        |
+                | Operational overhead      | Higher               | Lower               |
+                | Preferred modern approach | Sometimes            | ✅                   |
+            Session Manager isn't only for Linux:
+                supports:
+                    Linux
+                    macOS
+                    Windows
+        Run Command:
             "I want AWS to execute this command/script on the server for me."
             AWS Systems Manager Run Command lets you remotely execute commands or 
             SSM Documents on one or many managed instances.
@@ -21178,7 +21179,6 @@ Other AWS Services:
             Note:
                 Run a command on multiple EC2 instances simultaneously without SSH.
                 => Systems Manager Run Command
-:
                 Run Command vs Session Manager:
                     Session Manager:
                         You want an interactive session:
@@ -21206,7 +21206,6 @@ Other AWS Services:
                             └── execute:
                                 systemctl restart nginx
                         You don't need an interactive shell.
-                    
                     |                         | Session Manager                    | Run Command |
                     | ----------------------- | ---------------------------------- | ----------- |
                     | Interactive shell       | ✅                                  | ❌           |
@@ -21218,7 +21217,7 @@ Other AWS Services:
                     | Bastion                 | ❌                                  | ❌           |
                     | IAM                     | ✅                                  | ✅           |
                     | Output logging          | ✅                                  | ✅           |
-
+                Question Summary:
                     | Question wording                        | Think                         |
                     | --------------------------------------- | ----------------------------- |
                     | Execute command remotely on EC2         | **Run Command**               |
@@ -21232,4 +21231,696 @@ Other AWS Services:
                     | Notify when command succeeds/fails      | **Run Command + SNS**         |
                     | Audit Systems Manager API activity      | **CloudTrail**                |
                     | Trigger command execution from an event | **EventBridge + Run Command** |
+        Patch Manager:
+            Manage OS patches
+            Server တွေကို up-to-date ဖြစ်အောင် patching လုပ်ပေးတဲ့ Systems Manager tool
+            Manual လုပ်ရင်—
+                EC2-1  → login → update
+                EC2-2  → login → update
+                ...
+                EC2-100 → login → update
+                အရမ်းခက်ပါတယ်။
+            Patch Manager သုံးရင်—
+                        AWS Systems Manager
+                                │
+                        Patch Manager
+                                │
+                    ┌───────────┼───────────┐
+                    ↓           ↓           ↓
+                EC2-1       EC2-2       EC2-100
+                    │           │           │
+                Patch       Patch       Patch
+            Centralized management ဖြစ်သွားပါတယ်။
+        ဘာတွေကို Patch လုပ်နိုင်လဲ?
+            OS updates, applications updates, security updates
+        ဘယ် server တွေကို support လုပ်လဲ?
+            Patch Manager က AWS EC2 တင်မဟုတ်ပါဘူး။
+                Patch Manager
+                    │
+                    ├── EC2 instances
+                    │
+                    └── On-premises servers
+            အဓိက concept က—
+            Server က AWS ထဲမှာရှိမရှိထက် Systems Manager managed node ဖြစ်ဖို့က ပိုအရေးကြီးတယ်။
+        Patch ကို ဘယ်လို run လုပ်လဲ?
+            Patch on-demand or on a schedule using Maintenance Windows
+            On-demand
+                လိုအပ်တဲ့အချိန်မှာ manually patch လုပ်နိုင်ပါတယ်။
+            Schedule with Maintenance Windows
+                Production server တွေကို မည်သည့်အချိန်မဆို patch လုပ်လို့မရပါဘူး။
+                Customer တွေသုံးနေတဲ့အချိန်မှာ server restart ဖြစ်သွားနိုင်ပါတယ်။
+                ဒါကြောင့် Maintenance Window သတ်မှတ်နိုင်ပါတယ်။
+                ဥပမာ—
+                    Maintenance Window
+                    Every Sunday
+                    02:00 AM
+                        ↓
+                    Patch Manager
+                        ↓
+                    Production EC2
+                အဓိက idea က—
+                Maintenance Window = Server maintenance လုပ်ဖို့ ခွင့်ပြုထားတဲ့ အချိန်ကာလ
+            Patch Compliance ဆိုတာ
+                Patch Manager က server တွေကို patch လုပ်ရုံပဲ မဟုတ်ဘဲ—
+                ဘယ် server က compliant ဖြစ်တယ်၊ ဘယ် server က missing patches ရှိတယ် ဆိုတာလည်း စစ်ပေးနိုင်ပါတယ်။
+                Scan instances and generate patch compliance report (missing patches)
+            Patch Baseline:
+                "ဘယ် patch တွေကို install လုပ်သင့်လဲ?"
+                    ဆိုတာ ဆုံးဖြတ်ဖို့ Patch Baseline ကိုအသုံးပြုပါတယ်။
+                which patches should be approved/installed
+            Patch Manager vs Run Command vs Session Manager:
+                | Feature             | အဓိကလုပ်ဆောင်ချက်                  |
+                | ------------------- | ---------------------------------- |
+                | **Session Manager** | Server ထဲကို interactive login     |
+                | **Run Command**     | Command/script execute             |
+                | **Patch Manager**   | OS/application patches manage      |
+                | **Automation**      | Multi-step operational workflow    |
+                | **State Manager**   | Desired configuration ကို maintain |
+                | **Inventory**       | Server information စုဆောင်း        |
+        Maintenance Windows:
+            Maintenance Window = "WHEN should maintenance happen?"
+            Maintenance Window မှာ ဘာတွေပါလဲ?
+                Maintenance Window
+                │
+                ├── 1. Schedule
+                │
+                ├── 2. Duration: Maintenance Window ဘယ်လောက်ကြာမလဲ?
+                │
+                ├── 3. Registered Instances: ဘယ် servers တွေကို maintenance လုပ်မလဲ?
+                │
+                └── 4. Registered Tasks: ဘယ် action ကို လုပ်မလဲ? eg: Install patches, Run command, Run Automation.
+            Maintenance Window vs Automation:
+                Maintenance Window
+                        │
+                        │ WHEN?
+                        ↓
+                    Sunday 02:00 AM
+                        │
+                        ↓
+                    Automation
+                        │
+                        │ WHAT WORKFLOW?
+                        ↓
+                    Step 1 → Stop EC2
+                    Step 2 → Create snapshot
+                    Step 3 → Create AMI
+                    Step 4 → Start EC2
+            Note:
+                အလုပ်ကိုယ်တိုင်မဟုတ်ဘဲ အလုပ်လုပ်ခွင့်ရှိတဲ့ အချိန်/target/task ကို စီမံပေးတဲ့ schedule mechanism
+        Automation:
+            automate multi-setp operations
+            EC2 instances နဲ့ အခြား AWS resources တွေအပေါ်မှာ လုပ်နေကျ maintenance / deployment / remediation tasks တွေကို အလိုအလျောက်လုပ်ပေး
+            Automation = လူက အဆင့်ဆင့်လုပ်ရတဲ့ AWS operational work ကို runbook တစ်ခုနဲ့ အလိုအလျောက်လုပ်ပေးခြင်း
+            Automation သုံးရင်—
+                Admin
+                ↓
+                SSM Automation
+                ↓
+                Runbook
+                ↓
+                Step 1 → Stop EC2
+                ↓
+                Step 2 → Create Snapshot
+                ↓
+                Step 3 → Create AMI
+                ↓
+                Step 4 → Start EC2
+            အဆင့်တွေကို AWS က execute လုပ်ပေးပါတယ်။
+            Runbook:
+                Automation လုပ်ဖို့ instructions / workflow
+                SSM Documents ကိုအသုံးပြုပြီး ဘာတွေကို ဘယ်လိုအဆင့်လိုက်လုပ်မလဲဆိုတာ သတ်မှတ်ပါတယ်။
+                    AWS ရဲ့ pre-defined runbook ဖြစ်နိုင်တယ်
+                    ကိုယ်တိုင်ရေးတဲ့ custom runbook ဖြစ်နိုင်တယ်
+            ဘာတွေကို Automation လုပ်နိုင်လဲ?
+                Automation က AWS resources အမျိုးမျိုးနဲ့ operational tasks တွေကို automate လုပ်နိုင်ပါတယ်။
+            Run Command နဲ့ Automation ဘာကွာလဲ?
+                Run Command
+                    "ဒီ command/script ကို server ပေါ်မှာ run လုပ်ပါ"
+                Automation
+                    "ဒီ operational workflow တစ်ခုလုံးကို အဆင့်လိုက် automate လုပ်ပါ"
+                | Feature             | Run Command            | Automation                     |
+                | ------------------- | ---------------------- | ------------------------------ |
+                | Main purpose        | Execute command/script | Automate workflow              |
+                | Typical scope       | Managed instances      | EC2 + AWS resources            |
+                | Multi-step workflow | Limited                | ✅ Yes                          |
+                | Runbook             | SSM Document           | Automation Runbook             |
+                | Example             | Restart nginx          | Create AMI → snapshot → notify |
+            Automation ကို ဘယ်လို Trigger လုပ်နိုင်လဲ?
+                Manually
+                EventBridge နဲ့ Trigger
+                Maintenance Window နဲ့ Schedule
+                    Patch Manager မှာလည်း Maintenance Windows တွေကို တွေ့ခဲ့ပါတယ်။
+                    Automation မှာလည်း Maintenance Window ကို အသုံးပြုနိုင်ပါတယ်။
+                        Maintenance Window
+                            │
+                            │ Every Sunday 02:00
+                            ↓
+                        SSM Automation
+                            ↓
+                        Runbook
+                            ↓
+                        Maintenance Task
+                AWS Config နဲ့ Remediation
+                    AWS Config က resource configuration ကို စစ်ပါတယ်။
+                    ဥပမာ rule တစ်ခုထားတယ်—
+                    Security Group မှာ SSH port 22 ကို 0.0.0.0/0 နဲ့ open မဖြစ်ရ။
+                    တစ်နေ့မှာ—
+                        AWS Config
+                            ↓
+                        Check Rule
+                            ↓
+                        NON-COMPLIANT
+                            ↓
+                        Automation
+                            ↓
+                        Remediation Runbook
+                            ↓
+                        Fix resource
+                    ဒီလို automatic remediation လုပ်နိုင်ပါတယ်။
+                    အဓိက concept
+                        AWS Config = Detect
+                        SSM Automation = Fix
+                Patch Manager vs Automation:
+                    |                     | Patch Manager        | Automation                      |
+                    | ------------------- | -------------------- | ------------------------------- |
+                    | Main purpose        | Patching             | Operational workflow automation |
+                    | OS patches          | ✅                    | Possible but not main purpose   |
+                    | Security updates    | ✅                    | Possible                        |
+                    | Multi-step workflow | Limited              | ✅                               |
+                    | Create AMI          | ❌ Main purpose မဟုတ် | ✅                               |
+                    | Create EBS snapshot | ❌ Main purpose မဟုတ် | ✅                               |
+                    | Restart EC2         | ❌ Main purpose မဟုတ် | ✅                               |
+                    | Compliance          | Patch compliance     | Remediation workflows           |
+                    | Schedule            | Maintenance Window   | Maintenance Window              |
+                Systems Manager Toolbox ထဲမှာ ဘယ်နေရာလဲ?
+                    AWS Systems Manager
+                        │
+                        ├── Session Manager
+                        │      └── LOGIN to server
+                        │
+                        ├── Run Command
+                        │      └── EXECUTE command
+                        │
+                        ├── Patch Manager
+                        │      └── PATCH servers
+                        │
+                        ├── Automation
+                        │      └── AUTOMATE workflows
+                        │
+                        ├── Maintenance Windows
+                        │      └── WHEN maintenance tasks run
+                        │
+                        ├── Inventory
+                        │      └── COLLECT server information
+                        │
+                        └── State Manager
+                            └── MAINTAIN desired configuration
+    Cost Explorer:
+        AWS ရဲ့ cost နဲ့ usage ကို visualize, analyze, understand လုပ်ဖို့ အသုံးပြုတဲ့ tool
+        Custom Reports:
+            Cost Explorer မှာ custom reports create လုပ်နိုင်ပါတယ်။
+            eg:
+                Report 1 — By Service
+                Report 2 — By Region
+                Report 3 — By Account
+        High-level → Detailed Analysis
+            Analyze your data at a high level: total costs and usage across all accounts
+            ဥပမာ—
+                All Accounts
+                    ↓
+                Total AWS Cost
+                    ↓
+                $10,000 / month
+            ပြီးတော့ detail ထဲကို drill down လုပ်နိုင်ပါတယ်။
+                $10,000
+                │
+                ├── EC2      $4,000
+                ├── RDS      $2,500
+                ├── S3       $1,500
+                └── Others   $2,000
+            ပြီးတော့ EC2 ကိုထပ်ခွဲ—
+                EC2 $4,000
+                │
+                ├── Tokyo     $2,500
+                ├── Singapore $1,000
+                └── Virginia    $500
+                ဒီလို granularity ကို ပြောင်းပြီး analyze လုပ်နိုင်ပါတယ်။
+        Monthly / Hourly / Resource-level.
+        Savings Plans Recommendation
+            သင့်ရဲ့ historical usage ကို analyze ပြီး—
+            "သင့် usage pattern အရ Savings Plan ဝယ်ရင် cost လျှော့နိုင်တယ်"
+            Savings Plan ကို ဘာကြောင့်သုံးလဲ?
+                On-Demand နဲ့ အမြဲသုံးနေတဲ့ compute usage ရှိရင် commitment လုပ်ပြီး discount ရနိုင်ပါတယ်။
+        Forecast:
+            historical usage ကို အသုံးပြုပြီး future usage/cost ကို forecast လုပ်နိုင်
+            up to 18 months အထိ forecast လုပ်နိုင်
+        Cost Explorer vs AWS Budgets:
+            |                                       | Cost Explorer            | AWS Budgets               |
+            | ------------------------------------- | ------------------------ | ------------------------- |
+            | Main purpose                          | Analyze/visualize costs  | Set spending/usage limits |
+            | Historical analysis                   | ✅                        | Some                      |
+            | Custom reports                        | ✅                        | ❌ Main purpose မဟုတ်      |
+            | Cost forecast                         | ✅                        | Different focus           |
+            | Alert when spending exceeds threshold | Not main purpose         | ✅                         |
+            | Example                               | "Why did cost increase?" | "Alert me if cost > $500" |
+            Cost Explorer = LOOK / ANALYZE
+            AWS Budgets = LIMIT / ALERT
+        Cost Explorer vs Cost & Usage Report:
+            Cost and Usage Report (CUR)
+                ပိုပြီး detailed billing data ကို S3 ထဲ export လုပ်ပြီး ကိုယ်တိုင် analyze လုပ်ချင်တဲ့ use case ဖြစ်ပါတယ်။
+                အလွယ်မှတ်ရင်—
+                    Cost Explorer = built-in cost analysis
+                    CUR = detailed billing/usage data export
+        Memory:
+            AWS Cost Management
+                │
+                ├── Cost Explorer
+                │      → LOOK
+                │      → ANALYZE
+                │      → REPORT
+                │      → FORECAST
+                │      → Savings Plan recommendations
+                │
+                ├── AWS Budgets
+                │      → SET LIMIT
+                │      → ALERT
+                │
+                └── Cost & Usage Report
+                    → DETAILED BILLING DATA
+                    → EXPORT
+    AWS Cost Anomaly Detection:
+        AWS cost/usage ကို Machine Learning (ML) နဲ့ continuous monitor လုပ်ပြီး၊ ပုံမှန်မဟုတ်တဲ့ spending ဖြစ်လာရင် detect လုပ်ပေးတဲ့ AWS Cost Management service
+        ML က ဘာလုပ်ပေးတာလဲ?
+            You don't need to define thresholds.
+            eg: AWS Budgets မှာ—
+                “Cost $100 ကျော်ရင် alert ပေး”
+            ဆိုပြီး threshold သတ်မှတ်နိုင်တယ်။
+            Cost Anomaly Detection ကတော့ အဲဒီလို fixed threshold မလိုပါဘူး။
+            သူက ကိုယ့်ရဲ့ historical spending pattern ကို လေ့လာပါတယ်။
+                Historical AWS Spending
+                        ↓
+                    ML
+                        ↓
+                Learn "normal pattern"
+                        ↓
+                Monitor continuously
+                        ↓
+                Detect unusual spending
+                        ↓
+                Anomaly Alert
+        One-time spike နဲ့ Continuous increase
+            One-time cost spike
+                တစ်ခါတည်း cost အရမ်းတက်သွားတာ။
+                $51
+                $300  ← 🚨
+                $48
+            Continuous cost increase
+                $100
+                $130
+                $160   ← 🚨
+            တဖြည်းဖြည်းနဲ့ cost တက်လာတာ။
+            Cost Anomaly Detection က နှစ်မျိုးလုံးကို detect လုပ်နိုင်ပါတယ်။
+        ဘာတွေကို Monitor လုပ်နိုင်လဲ?
+            Monitor AWS services, member accounts, cost allocation tags, or cost categories
+        Root-Cause Analysis:
+            Anomaly တွေ့ရုံတင်မဟုတ်ဘဲ—
+                ဘာကြောင့် cost တက်သွားတာလဲ?
+                ဆိုတာကို root-cause analysis ပေးနိုင်ပါတယ်။
+                ဥပမာ— 🚨 Cost Anomaly
+                    AWS Cost increased significantly.
+                    Possible root cause:
+                        EC2
+                        └── Region: us-east-1
+                            └── Account: Development
+                                └── Cost increased due to additional usage
+                    ဒါကြောင့် engineer က— "Cost တက်နေတယ်"
+                    လောက်ပဲ သိတာမဟုတ်ဘဲ—
+                        Which service?
+                        Which account?
+                        Which category?
+                        What caused the increase?
+                    ကို investigate လုပ်ဖို့ အထောက်အကူရပါတယ်။
+        Notification(SNS):
+            individual alerts or daily/weekly summary (using SNS)
+        Note:
+            ပုံမှန်မဟုတ်တဲ့ AWS spending ကို automatically ရှာပေးတာ
+            unusual spending pattern ကို detect လုပ်
+            without defining thresholds
+            Cost Anomaly Detection vs Cost Explorer vs AWS Budgets:
+                | Service                    | Main Purpose                       |
+                | -------------------------- | ---------------------------------- |
+                | **Cost Explorer**          | Cost ကို analyze/visualize         |
+                | **AWS Budgets**            | Budget/threshold သတ်မှတ်ပြီး alert |
+                | **Cost Anomaly Detection** | Unusual spending ကို ML နဲ့ detect |
+            exam key note:
+                | Question clue                       | Answer                           |
+                | ----------------------------------- | -------------------------------- |
+                | Visualize AWS costs                 | **Cost Explorer**                |
+                | Analyze cost over time              | **Cost Explorer**                |
+                | Forecast future costs               | **Cost Explorer**                |
+                | Find Savings Plan recommendation    | **Cost Explorer**                |
+                | Set spending threshold              | **AWS Budgets**                  |
+                | Alert when budget exceeds           | **AWS Budgets**                  |
+                | Detect unusual spending             | **Cost Anomaly Detection**       |
+                | ML-based cost monitoring            | **Cost Anomaly Detection**       |
+                | No manual threshold                 | **Cost Anomaly Detection**       |
+                | Learn historical spending patterns  | **Cost Anomaly Detection**       |
+                | Detect sudden cost spike            | **Cost Anomaly Detection**       |
+                | Detect continuous cost increase     | **Cost Anomaly Detection**       |
+                | Root-cause analysis of unusual cost | **Cost Anomaly Detection**       |
+                | SNS notification for anomaly        | **Cost Anomaly Detection + SNS** |
+    AWS Outposts:
+        AWS infrastructure ကို ကိုယ့်ရဲ့ on-premises data center ထဲမှာ 
+        physically တပ်ဆင်ပြီး AWS services ကို local အနေနဲ့အသုံးပြုနိုင်အောင်လုပ်ပေးတဲ့ fully managed service
+                            AWS Cloud
+                                │
+                                │ AWS management
+                                │
+                    ┌───────────┴───────────┐
+                    │                       │
+                    ↓                       ↓
+            AWS Region              Your Data Center
+                                        │
+                                        │
+                                ┌──────┴──────┐
+                                │ AWS Outposts│
+                                │    Rack     │
+                                └──────┬──────┘
+                                        │
+                                Your Applications
+            Outposts Rack က AWS ကပေးတဲ့ physical rack ဖြစ်ပြီး၊ အဲဒါကို သင့် on-premises location ထဲမှာထားပါတယ်။
+        Hybrid Cloud:
+            on-premises + AWS Cloud:
+                ┌──────────────────────┐
+                │    On-Premises       │
+                │                      │
+                │ Existing Servers     │
+                │ Existing Database    │
+                │ Internal Systems     │
+                └──────────┬───────────┘
+                        │
+                        │ Network
+                        │
+                ┌──────────▼───────────┐
+                │      AWS Cloud       │
+                │                      │
+                │ EC2 / S3 / RDS etc.  │
+                └──────────────────────┘
+        Traditional Hybrid Cloud ရဲ့ Problem
+            Company မှာ IT infrastructure နှစ်ခုရှိတယ်ဆိုပါစို့။
+                AWS Cloud
+                On-Premises
+            Management experience က မတူပါဘူး။
+        Outposts က ဘာပြောင်းပေးလဲ?
+            You don't move the application to AWS.
+            You bring AWS infrastructure to your data center.
+        Outposts Rack ဆိုတာဘာလဲ?
+            Outposts ကို software တစ်ခု လို့ မမှတ်ပါနဲ့။
+            Outposts = physical AWS infrastructure deployed at your location
+        ဘယ်သူက ဘာကို Manage လုပ်လဲ?
+            AWS က manage လုပ်တာ
+                AWS က Outposts infrastructure ကို—
+                    install
+                    configure
+                    maintain
+                    update
+                    manage
+                Fully managed service
+            Customer က တာဝန်ယူရတာ
+                သင့်ရဲ့ data center ထဲမှာ rack ရှိနေတဲ့အတွက်—
+                Physical security = Customer responsibility
+            Note:
+                AWS
+                ├── Outposts hardware management
+                ├── Maintenance
+                ├── Updates
+                └── Infrastructure management
 
+                Customer
+                ├── Data center
+                ├── Physical security
+                ├── Power
+                ├── Networking/environment
+                └── Applications/data
+        Outposts ကို ဘာကြောင့်သုံးမလဲ?
+            Low-latency access to on-premises systems
+                နှစ်ခုလုံး company data center ထဲမှာရှိပါတယ်။
+                ဒါကြောင့် network traffic က AWS Region ကိုသွားပြီး ပြန်လာစရာမလိုပါဘူး။
+            Local Data Processing:
+                တချို့ company တွေမှာ data ကို local မှာပဲ process လုပ်ဖို့လိုပါတယ်။
+            Data Residency
+                တချို့ industry တွေမှာ data ကို သတ်မှတ်ထားတဲ့ country/location အတွင်းမှာပဲထားရမယ်။
+            Easier Migration:
+                Outposts can provide a smoother path from on-premises to AWS Cloud.
+        Outposts vs Local Zones:
+            AWS Outposts
+                AWS infrastructure
+                        ↓
+                Your own data center
+                Customer premises ထဲမှာ။
+            AWS Local Zones
+                AWS Region
+                    ↓
+                AWS Local Zone
+                    ↓
+                AWS metropolitan area
+            AWS က manage လုပ်တဲ့ location ဖြစ်ပြီး customer data center ထဲကို rack သွားတပ်တာ မဟုတ်ပါဘူး။
+        Services on Outposts:
+            Service availability က Outposts configuration/service type ပေါ်မူတည်
+        Note:
+            Question: A company requires very low latency between its application and existing on-premises systems.
+            Answer: AWS Outposts
+            Question: A company must process data locally due to data residency requirements.
+            Answer: AWS Outposts
+    AWS Batch:
+        batch computing workloads တွေကို AWS ပေါ်မှာ fully managed အနေနဲ့ run ပေးတဲ့ service ဖြစ်ပါတယ်။
+        idea:
+            “I have many jobs to run, but I don't want to manage the compute infrastructure.”
+        HPC / batch processing / cost optimization နဲ့တွဲပြီး နားလည်ထားသင့်တဲ့ service
+        Batch job:
+            Start ရှိပြီး End ရှိတဲ့ computing task.
+                Batch = Start → Work → End
+            Continuous application နဲ့ မတူဘူး
+                Web application:
+                    Start
+                    ↓
+                    Running continuously
+                    ↓
+                    Running...
+                    ↓
+                    Running...
+            Real-world Examples:
+                Image processing
+                Video processing
+                Scientific computing
+                Financial calculations
+                Genomics / HPC
+            Why AWS Batch?
+                Without AWS Batch, you might need to manage: Infrastructure.
+                With AWS Batch, you manage only job.
+                You focus on the job, not the infrastructure.
+            Dynamic Compute Provisioning:
+                Batch will dynamically launch EC2 instances or Spot Instances
+                Suppose ဒီနေ့ job 100 ခုရှိတယ်—
+                    100 jobs
+                    ↓
+                    AWS Batch
+                    ↓
+                    Need more compute
+                    ↓
+                    Launch EC2 instances
+                    ↓
+                    Run jobs
+                ပြီးသွားတဲ့အခါ—
+                    Jobs completed
+                        ↓
+                    Compute no longer needed
+                        ↓
+                    Scale down
+                ဒါကြောင့် ကိုယ်တိုင် EC2 တွေကို အမြဲတမ်း running ထားစရာ မလိုပါဘူး။
+            AWS Batch က ဘယ်လို Compute ရွေးမလဲ?
+                AWS Batch provisions the right amount of compute / memory
+                ဥပမာ jobs တွေက မတူနိုင်ပါဘူး။
+                AWS Batch က job requirements အပေါ်မူတည်ပြီး သင့်တော်တဲ့ compute resources ကို provision လုပ်နိုင်ပါတယ်။
+                Don't manually provision a fixed fleet for every job.
+            Docker Images:
+                AWS Batch မှာ job ကို Docker image အနေနဲ့ define လုပ်နိုင်ပါတယ်။
+            AWS Batch + ECS / EKS / Fargate:
+                Batch jobs are defined as Docker images and run on ECS, EKS, Fargate
+            AWS Batch vs Lambda:
+                | AWS Batch                               | AWS Lambda               |
+                | --------------------------------------- | ------------------------ |
+                | Batch workloads                         | Event/function workloads |
+                | Large-scale jobs                        | Short-lived functions    |
+                | Can use EC2/Spot/Fargate                | Serverless               |
+                | CPU/memory intensive workloads possible | Function-oriented        |
+                | 100,000s of jobs                        | Event-driven executions  |
+                | HPC/scientific workloads                | APIs/events/automation   |
+                ဥပမာ—
+                    Lambda
+                        S3 Upload
+                        ↓
+                        Lambda
+                        ↓
+                        Process one event
+                    Batch
+                        100,000 jobs
+                            ↓
+                        AWS Batch
+                            ↓
+                        Large-scale processing
+            AWS Batch vs EC2 Auto Scaling:
+                EC2 Auto Scaling
+                    Keep application capacity available
+                AWS Batch
+                    Run finite jobs efficiently
+            AWS Batch vs AWS ParallelCluster:
+                AWS Batch:
+                    Job scheduling and execution
+                AWS ParallelCluster:
+                    Build and manage HPC clusters
+            Cost Optimization:
+                If you manually keep 100 EC2 instances running 24/7:
+                    100 EC2
+                    ↓
+                    Running 24/7
+                    ↓
+                    💰💰💰
+                AWS Batch:
+                    Jobs arrive
+                    ↓
+                    Provision compute
+                    ↓
+                    Run jobs
+                    ↓
+                    Jobs finish
+                    ↓
+                    Scale down
+                ဒါကြောင့် unused compute အတွက် ပိုက်ဆံပေးနေရတာကို လျှော့နိုင်ပါတယ်။
+                Spot Instances ထပ်သုံးရင်—
+                    Batch
+                    ↓
+                    Spot Instances
+                    ↓
+                    Lower compute cost
+            Key Words:
+                Batch processing
+                Large number of jobs
+                Hundreds / thousands / 100,000s of jobs
+                Finite jobs
+                Start and end
+                Job queue
+                Dynamically provision compute
+                EC2 / Spot Instances
+                Docker containers
+                Cost optimization
+                Don't want to manage infrastructure
+                HPC batch workloads
+    Amazon AppFlow:
+        SaaS applications နဲ့ AWS services ကြား
+        data ကို code မရေးဘဲ securely transfer/integrate လုပ်ပေးတဲ့ fully managed service
+        Company တစ်ခုမှာ data က AWS ထဲမှာပဲ ရှိတာမဟုတ်ပါဘူး။
+            ဥပမာ—
+                SaaS Applications
+                │
+                ├── Salesforce
+                ├── SAP
+                ├── Zendesk
+                ├── Slack
+                └── ServiceNow
+            Company ရဲ့ AWS environment မှာတော့—
+                AWS
+                │
+                ├── Amazon S3
+                ├── Amazon Redshift
+                └── Other AWS Services
+            Data ကို တစ်ဖက်ကနေ တစ်ဖက်ကို ရွှေ့ချင်တဲ့အခါ ကိုယ်တိုင် API integration ရေးမယ်ဆိုရင်—
+                SaaS API
+                ↓
+                Custom Code
+                ↓
+                Authentication
+                ↓
+                API Calls
+                ↓
+                Data Transformation
+                ↓
+                Error Handling
+                ↓
+                AWS Service
+            အလုပ်များပါတယ်။
+            AppFlow က ဒီ integration work ကို managed service အနေနဲ့ လုပ်ပေးပါတယ်။
+                Salesforce
+                    │
+                    │
+                    ↓
+                Amazon AppFlow
+                    │
+                    ↓
+                Amazon S3
+        Main Purpose:
+            SaaS ↔ AWS data integration
+        Sources:
+            eg:
+                Salesforce
+                SAP
+                Zendesk
+                Slack
+                ServiceNow
+        Destinations:
+            AWS:
+                Amazon S3
+                Amazon Redshift
+            Non-AWS destinations:
+                Snowflake
+                Salesforce
+            Note:
+                ဒါကြောင့်—
+                    SaaS
+                    ↓
+                    AppFlow
+                    ↓
+                    AWS
+                တင်မဟုတ်ဘဲ—
+                    SaaS
+                    ↓
+                    AppFlow
+                    ↓
+                    External SaaS / Data Platform
+        Frequency — ဘယ်အချိန် Data Transfer လုပ်မလဲ?
+            On a schedule
+            In response to events: Event တစ်ခုဖြစ်တဲ့အခါ flow run နိုင်ပါတယ်။
+            On demand: User/application က manually trigger လုပ်နိုင်ပါတယ်။
+        Data Transformation:
+            data ကို source ကနေ destination ကို blindly copy လုပ်ပေးတာပဲ မဟုတ်ပါဘူး။
+            Data transformation capabilities လည်း ရှိပါတယ်။
+            filtering and validation
+        Security:
+            AppFlow က data transfer ကို secure လုပ်နိုင်ပါတယ်။
+            Encrypted over the public internet or privately over AWS PrivateLink
+            Public Internet
+                Data transfer က public network ကိုဖြတ်သွားရင် encryption သုံးနိုင်ပါတယ်။
+            AWS PrivateLink
+                Private connectivity လိုအပ်တဲ့ environment မှာ AWS PrivateLink ကို အသုံးပြုနိုင်ပါတယ်။
+        AppFlow vs AWS DataSync vs DMS vs EventBridge:
+            AppFlow
+                SaaS applications ↔ AWS
+            DataSync
+                Storage/file data transfer
+            AWS DMS
+                Database migration/replication
+            EventBridge
+                Route events between systems
+        AppFlow Real-world Example
+            Company က Salesforce သုံးတယ်။
+            Sales team က customer data ကို Salesforce ထဲမှာ manage လုပ်တယ်။
+            Data analyst က AWS S3 ထဲမှာ data lake ဆောက်ထားတယ်။
+            လိုချင်တာ—
+                Every night Salesforce customer data ကို S3 ထဲပို့ချင်တယ်။
+                    Solution:
+                                    Every night
+                                        ↓
+                    Salesforce ──→ Amazon AppFlow ──→ S3
+                                    │
+                                    │
+                                Filter / Transform
