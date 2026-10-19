@@ -2000,6 +2000,11 @@ EC2:
                                 If condition is Impossible to predict.
                                 Elastic automatically changes throughput.
                                 Good for Unpredictable workloads.
+            Performance Mode နဲ့ Throughput Mode ဘာကွာသလဲ?
+            ဒီမေးခွန်းမှာ အလွယ်တကူ မှားနိုင်တဲ့အချက်က Bursting Throughput နဲ့ Provisioned Throughput ကို ရွေးမိတာပါ။
+            Setting အမျိုးအစား	ဘာကို သတ်မှတ်ပေးသလဲ?	ရွေးချယ်စရာများ
+            Performance Mode	File operations နဲ့ Latency/Scaling ဆိုင်ရာ အပြုအမူ	General Purpose, Max I/O
+            Throughput Mode	File system ရဲ့ Throughput ရရှိနိုင်မှုကို ဘယ်လို သတ်မှတ်မလဲ	Bursting, Provisioned
             Note:
                 | Requirement                            | Choose              |
                 | -------------------------------------- | ------------------- |
@@ -9833,7 +9838,7 @@ Serverless:
                         IAM permissions
                         AWS credentials
                         SigV4 authentication
-                Cognito:
+                Cognito:    
                     external application users
                     Amazon Cognito is designed for managing identities for application users.
                     for mobile/WEB application:
@@ -9899,6 +9904,66 @@ Serverless:
             ├── ...
             └── User 10,000
             Cognito manages the user identities for you.
+            Amazon Cognito ဆိုတာ Web application နဲ့ Mobile application တွေမှာ အသုံးပြုသူတွေကို 
+                Sign up, Sign in, Authentication နဲ့ Access Control လုပ်ပေးနိုင်တဲ့ AWS service
+                ဥပမာ — ကိုယ်တိုင် Social Media App တစ်ခုတည်ဆောက်နေတယ်ဆိုပါစို့။ 
+                User တွေရဲ့ username, password, login session, token စတာတွေကို
+                ကိုယ်တိုင်စီမံခန့်ခွဲရမယ့်အစား Amazon Cognito ကို အသုံးပြုနိုင်ပါတယ်။
+                Cognito User Pools:
+                    User က ဘယ်သူလဲဆိုတာ အတည်ပြုဖို့ သုံးပါတယ်။
+                    - Sign up / Sign in
+                    - Username နဲ့ password စီမံခန့်ခွဲခြင်း
+                    - MFA (Multi-Factor Authentication)
+                    - Google, Apple စတဲ့ identity provider တွေနဲ့ federated sign-in
+                    - ID token, Access token, Refresh token ထုတ်ပေးခြင်း
+                Cognito Identity Pools:
+                    User သို့မဟုတ် guest တစ်ဦးကို AWS resources တွေ access လုပ်နိုင်ဖို့ temporary AWS credentials ပေးရာမှာ သုံးပါတယ်။
+                    - IAM role နဲ့ ချိတ်ဆက်ပေးခြင်း
+                    - Temporary access key, secret key နဲ့ session token ရရှိစေခြင်း
+                    - S3, DynamoDB စတဲ့ AWS resources တွေကို သတ်မှတ်ထားတဲ့ permissions အတိုင်း တိုက်ရိုက် access လုပ်စေခြင်း
+                    - Authenticated နဲ့ unauthenticated guest access ကို support လုပ်ခြင်း
+                Cognito ဘယ်လိုအလုပ်လုပ်သလဲ?
+                    Social Media App ဥပမာနဲ့ ကြည့်ရအောင်။
+                                    1. User
+                        Username / Password နဲ့ Login ဝင်တယ်
+
+                                    2. Cognito User Pool
+                        Identity ကိုစစ်ဆေးပြီး authentication အောင်မြင်လျှင် tokens ထုတ်ပေးတယ်။
+
+                                    3. Application / API
+                        Token ကိုစစ်ဆေးပြီး user က ခွင့်ပြုထားတဲ့ operation ကိုသာ လုပ်ခွင့်ပေးတယ်။
+                    ဒီ flow မှာ User Pool တစ်ခုတည်းနဲ့ authentication လုပ်နိုင်ပါတယ်။ Identity Pool မဖြစ်မနေ မလိုပါ။
+                    Cognito User Pool က authentication ပြီးတဲ့အခါ JWT tokens တွေ ထုတ်ပေးနိုင်ပါတယ်။ အဓိက token သုံးမျိုးကတော့ 
+                        - ID token — User ရဲ့ identity နဲ့ profile information ကို ဖော်ပြတယ်။
+                        - Access token — Protected API နဲ့ resource တွေကို access လုပ်ဖို့ authorization မှာ အသုံးပြုတယ်။
+                        - Refresh token — သက်တမ်းကုန်သွားတဲ့ tokens တွေကို သတ်မှတ်ထားတဲ့ authentication rules အတိုင်း အသစ်ရယူနိုင်ဖို့ အသုံးပြုတယ်။
+                Token ရှိရုံနဲ့ resource အားလုံးကို access လုပ်ခွင့်ရတာ မဟုတ်ပါဘူး။ Application, API သို့မဟုတ် AWS IAM permissions တွေက သက်ဆိုင်ရာ access ကို စစ်ဆေး
+                User Pool နဲ့ Identity Pool ကို အတူသုံးတဲ့အခါ
+                    ဥပမာ User က Social Media App မှာ login ဝင်ပြီး ကိုယ်ပိုင်ဓာတ်ပုံတွေကို Amazon S3 သို့ တိုက်ရိုက် upload လုပ်ချင်တယ်။
+                            User Login
+
+                            Cognito User Pool
+
+                            JWT token ထုတ်ပေးတယ်
+
+                            Cognito Identity Pool
+
+                            IAM role ကိုအခြေခံပြီး temporary AWS credentials ပေးတယ်
+
+                            Amazon S3
+                    ခွင့်ပြုထားတဲ့ bucket သို့မဟုတ် object တွေကိုသာ access လုပ်နိုင်တယ်
+                    ဒီနည်းနဲ့ application ထဲမှာ AWS access keys တွေကို အမြဲတမ်းထည့်သိမ်းထားစရာမလိုဘဲ temporary credentials နဲ့ access ပေးနိုင်ပါတယ်။ 
+                ALB နဲ့ Cognito
+                    EC2 servers တွေက business logic ကိုပဲ အာရုံစိုက်နိုင်ဖို့ authentication ကို offload လုပ်ချင်တာပါ။
+                        User's Browser
+                        Application Load Balancer (ALB)
+                        authenticate-cognito listener action ဖြင့် login လုပ်ရန် redirect လုပ်ပေးတယ်။
+                        Cognito User Pool
+                        User ကို authenticate လုပ်ပေးတယ်။
+                        ALB → EC2 Targets
+                Authentication အောင်မြင်ပြီးမှ request ကို application server ဆီ forward လုပ်တယ်။
+                ဒီ solution မှာ Cognito User Pools ကို ရွေးရတဲ့အကြောင်းက ALB မှာ Cognito authentication ကို
+                    native listener action အဖြစ် configure လုပ်နိုင်လို့
         TWO major concepts:
             User Pools:
                 think: "Who is my user?" / Sign-in
@@ -22571,15 +22636,174 @@ Preparing for exam:
 
         AWS now recommends a Well-Architected Framework Whitepaper: https://docs.aws.amazon.com/pdfs/wellarchitected/latest/framework/wellarchitected-framework.pdf
 
+OIDC = User identity ကို စစ်ဆေးအတည်ပြုဖို့ သတ်မှတ်ထားတဲ့ authentication protocol။
+JWT = Identity နဲ့ claims တွေ ပါဝင်နိုင်တဲ့ token format။
+Native JWT authorizer = API Gateway က JWT ကို ကိုယ်တိုင် validate လုပ်ပေးတဲ့ built-in feature။
+Lambda authorizer = Authorization logic ကို ကိုယ်တိုင်ရေးထားတဲ့ Lambda function နဲ့ ဆုံးဖြတ်စေတဲ့ feature။
 
+Database rollover ဆိုတာ database ထဲက data အဟောင်းတွေကို archive လုပ်ခြင်း၊ table အသစ်သို့ ပြောင်းခြင်း၊ သို့မဟုတ် database data ကို
+အချိန်ကာလအလိုက် ခွဲခြားစီမံခြင်းကို ဆိုလိုနိုင်ပါတယ်။
+ဘယ်လိုလုပ်ဆောင်မလဲဆိုတာ application ရဲ့ design ပေါ် မူတည်ပါတယ်။
+ဒီ AWS SAA-C03 မေးခွန်းမှာတော့ ပြီးခဲ့တဲ့အပတ်က data တွေကို archive လုပ်ပြီး Production Database ကို သေးငယ်အောင် ထိန်းသိမ်းခြင်း ကို ဆိုလိုပါတယ်။
 
+Origin Access Identity (OAI):
+    OAI က CloudFront နဲ့ S3 ကြားမှာ access control လုပ်ပေးတဲ့ mechanism ဖြစ်ပါတယ်။
+    - S3 bucket ကို public access ပိတ်ထားပါ။
+    - CloudFront ကို OAI နဲ့ configure လုပ်ပါ။
+    - S3 bucket policy မှာ သတ်မှတ်ထားတဲ့ OAI ကိုသာ object တွေဖတ်ခွင့်ပေးပါ
+    ဒီလိုဆိုရင် user က S3 object URL ကို တိုက်ရိုက်ဝင်ဖို့ ကြိုးစားတဲ့အခါ access မရဘဲ CloudFront ကတစ်ဆင့်ပဲ content ရယူနိုင်ပါတယ်။
+အဓိကမှတ်ရန်: Restrict viewer IPs ဆိုရင် AWS WAF၊ Prevent direct S3 access ဆိုရင် OAI/OAC + S3 bucket policy ကို ရွေးပါ။
 
+Same physical AZ across multiple AWS accounts
+- AZ ID ကို အသုံးပြုပါ။
+- ဥပမာ usw2-az2
 
+AZ Name တူတာနဲ့ physical AZ တူတယ်လို့ မယူဆပါနဲ့။
+- us-west-2a က Account တစ်ခုနဲ့တစ်ခု မတူနိုင်ပါ။
+Note:
+    AZ Name = Account-specific mapping၊ AZ ID = Consistent physical AZ identifier
+    is trying to launch = ရှိနေစေချင်ပါတယ်
+    such that = … ဖြစ်စေရန်၊ … ဖြစ်အောင်
 
+CloudFormation StackSet:
+    Template တစ်ခုတည်းကို StackSet ကနေ Account နဲ့ Region အများအပြားမှာ Stack တွေအဖြစ် deploy လုပ်ပေးနိုင်တာ ပါ။
+    နောက်ပိုင်း configuration ကို ပြောင်းချင်ရင်လည်း StackSet ကနေ target တွေကို update လုပ်နိုင်ပါတယ်။
+    Template, Stack, StackSet ကွာခြားချက်
+        အမျိုးအစား	အဓိပ္ပာယ်	ဥပမာ
+        Template	Resource တွေကို ဘယ်လိုဖန်တီးမယ်ဆိုတဲ့ blueprint	YAML/JSON ဖိုင်
+        Stack	Template တစ်ခုကနေ Account တစ်ခု၊ Region တစ်ခုမှာ ဖန်တီးထားတဲ့ Resource အစု	EC2, IAM Role
+        StackSet	Stack တွေကို Account/Region အများအပြားမှာ စီမံဖန်တီးပေးနိုင်တဲ့ mechanism	Multi-account deployment
 
+        AWS RAM — AWS Resource တွေကို Account များအကြား share လုပ်ဖို့ အသုံးပြုပါတယ်။
+            Resource configuration တူညီအောင် Template တွေကို deploy လုပ်ပေးတဲ့ Service မဟုတ်ပါဘူး။
 
+            Multiple Accounts + Multiple Regions + Same Template
+            → CloudFormation StackSets
 
+            Share AWS resources across accounts
+            → AWS RAM
 
+            Define infrastructure as code
+            → CloudFormation Template
+service-linked roles:
+    Service-linked role ဆိုတာ AWS Service တစ်ခုက သူ့လုပ်ငန်းတာဝန်တွေကို ဆောင်ရွက်ဖို့ အသုံးပြုတဲ့ သီးသန့် IAM Role ဖြစ်ပါတယ်။
+    ဥပမာ — AWS Service တစ်ခုက သူ့ရဲ့ resource management လုပ်ငန်းတွေ ဆောင်ရွက်ဖို့ service-linked role ကို အသုံးပြုနိုင်ပါတယ်။
 
+AWS Organizations ရဲ့ SCP (Service Control Policy) က AWS Account တစ်ခုအတွင်း ဘယ်သူတွေ ဘယ်အထိ လုပ်ပိုင်ခွင့်ရှိနိုင်သလဲဆိုတာကို ကန့်သတ်ပေးတာ ဖြစ်ပါတယ်။
+    SCP does not affect service-linked roles.
+    SCP affects all users and roles in member accounts, including the root user.
+    IAM policy က ခွင့်ပြုထားပေမယ့် SCP က ခွင့်မပြုရင် အဲဒီ action ကို လုပ်လို့မရပါဘူး။\
 
+Amazon EC2: Reboot vs Recover vs Other Instance Actions:
+    Reboot နဲ့ Recover ကို နှိုင်းယှဉ်ကြည့်မယ်
 
+Reboot
+Restart the same instance
+- Operating system ကို restart လုပ်တယ်။
+- Instance ID နဲ့ IP addresses တွေ မပြောင်းဘူး။
+- RAM ထဲက data တွေ ဆုံးရှုံးတယ်။
+- ပုံမှန်အားဖြင့် underlying host ကို မပြောင်းဘူး။
+- EBS-backed instance မှာ attached EBS volumes တွေကို ဆက်လက်အသုံးပြုနိုင်တယ်။
+
+Recover
+Recover from supported system impairment
+- AWS က instance ကို ပြုပြင်နိုင်တဲ့ underlying hardware သို့ migrate လုပ်ပေးနိုင်တယ်။
+- Instance ID, private IP, Elastic IP နဲ့ public IPv4 address တွေကို ထိန်းသိမ်းထားတယ်။
+- RAM ထဲက data တွေ ဆုံးရှုံးတယ်။
+- Instance ကို ပြန်လည် run နိုင်အောင် ကြိုးစားပေးတယ်။
+- Supported impairment တွေအတွက် CloudWatch alarm နဲ့ automate လုပ်နိုင်တယ်။
+
+    EC2 actions အားလုံးကို နှိုင်းယှဉ်ခြင်း
+    AWS ရဲ့ official documentation အရ Reboot, Stop/Start, Hibernate နဲ့ Terminate တို့မှာ အရေးကြီးတဲ့ ကွာခြားချက်တွေ ရှိပါတယ်။ 
+
+Instance status တွေကိုလည်း သိထားပါ
+EC2 console မှာ တွေ့ရတဲ့ state တွေက—
+    pending
+    စတင်နေဆဲ
+    Instance ကို launch လုပ်ပြီး running မဖြစ်သေးတဲ့ အချိန်ပါ။
+
+    running
+    အသုံးပြုနိုင်တဲ့ အခြေအနေ
+    Instance က run နေတယ်။ ဒါပေမဲ့ application က အလုပ်လုပ်နေတယ်လို့ အာမမခံပါဘူး။
+
+    stopping
+    ရပ်တန့်နေဆဲ
+    Stop လုပ်ထားတဲ့ instance က stopped မဖြစ်သေးတဲ့ အချိန်ပါ။
+
+    stopped
+    ရပ်ထားပြီး
+    Instance ကို Start ပြန်လုပ်နိုင်တယ်။ Instance usage charge မကျတော့ပေမဲ့ EBS storage အတွက်တော့ ပေးရတယ်။
+
+    shutting-down
+    ဖျက်သိမ်းနေဆဲ
+    Terminate လုပ်ထားပြီး အပြီးမသတ်သေးတဲ့ အခြေအနေပါ။
+
+    terminated
+    အပြီးဖျက်ပြီး
+    Instance ကို Start သို့မဟုတ် Recover ပြန်လုပ်လို့ မရတော့ပါဘူး။ လိုအပ်ရင် AMI သို့မဟုတ် backup ကနေ instance အသစ်ဖန်တီးရမယ်။
+
+    | Feature | Reboot | Recover | Stop → Start | Hibernate | Terminate |
+    |---|---|---|---|---|---|
+    | ဘာလုပ်သလဲ | OS restart | Hardware/system impairment မှ recover | Shutdown ပြီး ပြန်စ | RAM state ကို disk ပေါ်သိမ်းပြီး ရပ် | Instance ကို ဖျက် |
+    | Instance ID | မူလအတိုင်း | မူလအတိုင်း | မူလအတိုင်း | မူလအတိုင်း | အသုံးမပြုနိုင်တော့ |
+    | Private IP | ထိန်းသိမ်း | ထိန်းသိမ်း | ထိန်းသိမ်း | ထိန်းသိမ်း | မရှိတော့ |
+    | Public IPv4 | ထိန်းသိမ်း | ထိန်းသိမ်း | ပုံမှန်အားဖြင့် အသစ်ရ | ပုံမှန်အားဖြင့် အသစ်ရ | မရှိတော့ |
+    | Elastic IP | ထိန်းသိမ်း | ထိန်းသိမ်း | ဆက်လက်တွဲထား | ဆက်လက်တွဲထား | Disassociate ဖြစ် |
+    | RAM data | ဆုံးရှုံး | ဆုံးရှုံး | ဆုံးရှုံး | EBS ပေါ်သိမ်းထားပြီး ပြန်တင်နိုင် | ဆုံးရှုံး |
+    | Instance-store data | ပုံမှန်အားဖြင့် ထိန်းသိမ်း | မူတည်နိုင် | ဆုံးရှုံး | ဆုံးရှုံး | ဆုံးရှုံး |
+    | Instance usage charge | ဆက်လက်ကျသင့် | Running အတိုင်း | Stopped အချိန် မကျသင့် | Stopped အချိန် မကျသင့် | မကျသင့် |
+
+Route 53 DNS Records
+    A = Domain → IPv4 address
+    CNAME = Domain → another domain name
+    PTR = IP address → Domain name (Reverse DNS)
+    Alias = Route 53 feature for supported AWS resources and eligible records
+
+    Third-party hostname such as yourapp.provider.com → www.your-domain.com: Create CNAME for www.your-domain.com.
+    Important: A CNAME cannot be created at the zone apex (e.g. your-domain.com). Route 53 Alias records can be used at the zone apex for supported AWS targets.
+
+    CNAME နဲ့ Alias ကွာခြားချက်
+        Feature	CNAME	Route 53 Alias
+        Third-party hostname ကို ညွှန်နိုင်သလား	ရတယ်	ပုံမှန်အားဖြင့် arbitrary third-party hostname ကို တိုက်ရိုက် target မလုပ်နိုင်
+        Zone apex (your-domain.com) မှာ သုံးနိုင်သလား	မရ	Supported targets အတွက် ရ
+        AWS resource ကို ညွှန်နိုင်သလား	DNS name အနေနဲ့ ရနိုင်	AWS-supported targets အတွက် အထူးပြုထား
+        DNS query အတွက် Route 53 charge	ပုံမှန် DNS query charges	Alias query to certain AWS resources အတွက် Route 53 DNS query charge မရှိနိုင်၊ target ပေါ်မူတည်
+
+Default Host Management Configuration:
+    လက်ရှိ application IAM role ကို မဖြုတ်ဘဲ SSM management ကို ရိုးရှင်းစွာ enable လုပ်နိုင်တယ်။
+    ဒီမေးခွန်းမှာ အဓိကလိုအပ်ချက် ၃ ခုရှိပါတယ်။
+        1. EC2 instances တွေကို OS patching အလိုအလျောက် လုပ်ချင်တယ်။
+        2. လက်ရှိ IAM role နဲ့ RDS, Secrets Manager ချိတ်ဆက်မှုတွေကို မထိခိုက်စေချင်ဘူး။
+        3. Administration overhead ကို အနည်းဆုံးထားချင်တယ်။
+    ဒီအခြေအနေမှာ AWS Systems Manager (SSM) Default Host Management Configuration ကို အသုံးပြုတာက သင့်တော်ပါတယ်။
+        Default Host Management Configuration = SSM management ကို ရိုးရှင်းစွာ enable လုပ်ခြင်း။
+        Patch Manager / patch policy = Patching schedule နဲ့ rules သတ်မှတ်ခြင်း။
+        Existing IAM role = Application permissions တွေ မထိခိုက်အောင် ထိန်းသိမ်းခြင်း။
+        
+EC2 Spot Instances:
+    If a Spot request is persistent, then it is opened again after your Spot Instance is interrupted.
+    When you cancel an active Spot request, it does not terminate the associated instance.
+    Spot Fleets can maintain target capacity by launching replacement instances after Spot Instances in the fleet are terminated.
+
+Unique key per object + minimal management = SSE-S3
+AMI:
+    ✅ Copying an AMI backed by an encrypted snapshot cannot result in an unencrypted target snapshot.
+    ✅ You can share an AMI with another AWS account.
+    ✅ You can copy an AMI across AWS Regions.
+
+AMI Share vs AMI Copy:
+    Scenario A — Region တူ၊ Account မတူ => AMI Share
+    Account တူ၊ Region မတူ  => AMI Copy
+
+| EBS Volume | Storage | Maximum IOPS per volume | သင့်တော်သော workload |
+|---|---|---:|---|
+| gp2 | General Purpose SSD | 16,000 | General-purpose applications, boot volumes |
+| st1 | Throughput Optimized HDD | 500 | Big data, log processing, sequential I/O |
+| io1 | Provisioned IOPS SSD | 64,000 | I/O-intensive databases, latency-sensitive workloads |
+| sc1 | Cold HDD | 250 | Rarely accessed, cold data |
+
+Note: These are the limits stated in this practice question's context. Current EBS limits can vary by volume generation and configuration.
+
+Cross-zone load balancing ON/OFF လုပ်တဲ့အခါ traffic ကို ဘယ်အဆင့်မှာ ခွဲဝေပေးသလဲ:
+    Enabled (ON): EC2 instance ၅ လုံးစလုံးက traffic 20% စီ ရရှိမယ်။
+    Disabled (OFF): AZ A က instance ၁ လုံးက 50% ရမယ်။ AZ B က instance ၄ လုံးက 12.5% စီ ရမယ်။
