@@ -56,3 +56,233 @@ Cognito Identity Pools
     - Authenticated သို့မဟုတ် guest users တွေအတွက် temporary AWS credentials ပေးတယ်။
     - AWS resources တွေကို သတ်မှတ်ထားတဲ့ IAM permissions နဲ့ access လုပ်နိုင်စေတယ်။
     - ALB ရဲ့ authenticate-cognito action အတွက် အသုံးပြုတဲ့ pool အမျိုးအစား မဟုတ်ဘူး။
+
+Kinesis Data Streams + AWS Lambda + Amazon DynamoDB
+    ဥပမာ transaction တစ်ခုမှာ—
+            {
+            "transactionId": "TX1001",
+            "accountNumber": "1234567890",
+            "amount": 5000,
+            "customerName": "Example Customer"
+            }
+
+
+            Lambda က account number နဲ့ customer name ကို ဖယ်ရှားခြင်း သို့မဟုတ် mask လုပ်ခြင်းပြုလုပ်ပြီး DynamoDB မှာ cleansed data အဖြစ် သိမ်းနိုင်ပါတယ်။
+            {
+            "transactionId": "TX1001",
+            "accountNumber": "****7890",
+            "amount": 5000
+            }
+
+
+            တစ်ချိန်တည်းမှာ internal applications တွေက Kinesis Data Streams ကို consumer အဖြစ်ဖတ်ယူပြီး raw transaction events တွေကို ရရှိနိုင်ပါတယ်။ သတိပြုရန် — ဒီ architecture မှာ raw stream ကို consume လုပ်ခွင့်ရှိတဲ့ application တွေကို sensitive data access အတွက် သင့်လျော်တဲ့ IAM permissions နဲ့ controls တွေ သတ်မှတ်ထားရပါမယ်။
+            2. Why are the other options incorrect?
+            Option	ဘာကြောင့် မှားသလဲ
+            Kinesis Data Firehose + Lambda + DynamoDB	Firehose က streaming data ကို transform လုပ်ပြီး destination ဆီ deliver လုပ်ဖို့ အဓိကရည်ရွယ်ပါတယ်။ Kinesis Data Streams လို multiple independent consumers တွေက stream ကို တိုက်ရိုက် consume လုပ်ဖို့ မသင့်တော်ပါဘူး။
+            Raw data → DynamoDB → DynamoDB Streams	DynamoDB မှာ item အသစ်ရေးတိုင်း sensitive fields တွေကို auto-remove လုပ်ပေးမယ့် built-in rule မရှိပါဘူး။ Lambda trigger နဲ့ cleansing လုပ်နိုင်ပေမဲ့ raw data ကို အရင်သိမ်းပြီးမှ update လုပ်ရတာကြောင့် ဒီ use case အတွက် မသင့်တော်ပါဘူး။
+            S3 batch files → Lambda → DynamoDB	Batch processing က data စုဆောင်းပြီးမှ လုပ်ဆောင်တာဖြစ်လို့ near-real-time requirement နဲ့ မကိုက်ညီပါဘူး။
+            Kinesis Data Streams + Lambda + DynamoDB	Correct. Streaming events တွေကို near-real-time process လုပ်နိုင်ပြီး multiple consumers တွေကလည်း data stream ကို အသုံးပြုနိုင်ပါတယ်။
+            3. Kinesis Data Streams vs Kinesis Data Firehose
+            Feature	Kinesis Data Streams	Kinesis Data Firehose
+            Main purpose	Real-time stream ingestion and consumption	Streaming data delivery
+            Multiple consumers	Yes	Not a general-purpose multi-consumer stream
+            Consumer reads records	Yes	Consumer apps generally don't read from Firehose as a retained stream
+            Lambda processing	Lambda can consume the stream	Lambda can transform records during delivery
+            Data destination	Consumers decide what to do with records	Configured delivery destination(s)
+            Best use case	Multiple apps process the same events	Deliver transformed streaming data to a destination
+            အရေးကြီးတဲ့ nuance: Firehose မှာ Lambda transformation ကို အသုံးပြုနိုင်ပေမဲ့ ဒီမေးခွန်းမှာ internal applications အများအပြားက raw transactions ကို stream တစ်ခုတည်းကနေ consume လုပ်ရမှာဖြစ်လို့ Data Streams က ပိုသင့်တော်ပါတယ်။
+            4. Exam memory trick
+                Kinesis Data Streams
+                Multiple consumers · Near-real-time processing · Replay within retention
+
+                Kinesis Data Firehose
+                Transform and deliver streaming data to destinations
+
+                DynamoDB
+                Low-latency NoSQL document/key-value access
+
+                စာမေးပွဲမှာ မှတ်ထားရမယ့် rule:
+                - Near-real-time + multiple consumers → Kinesis Data Streams
+                - Transform + deliver to a destination → Kinesis Data Firehose
+                - Remove sensitive data from each event → AWS Lambda
+                - Low-latency NoSQL retrieval → Amazon DynamoDB
+photo upload ကို CloudFront ကနေ S3 ဆီ ပို့မယ်:
+    Answer 1 — Enable Origin Access Control (OAC)
+    OAC က CloudFront ကို private S3 bucket နဲ့ secure ချိတ်ဆက်ခွင့်ပေးပါတယ်။ S3 bucket ကို public access ဖွင့်စရာမလိုဘဲ CloudFront ကနေတစ်ဆင့် access လုပ်နိုင်ပါတယ်။
+    Upload အတွက် PUT သို့မဟုတ် POST request ကို CloudFront ကတစ်ဆင့်ပို့မယ်ဆိုရင်လည်း သက်ဆိုင်ရာ permission နဲ့ configuration တွေ လိုအပ်ပါတယ်။
+
+    Answer 2 — Request an ACM public certificate in us-east-1
+    CloudFront distribution မှာ custom domain အတွက် HTTPS certificate သုံးမယ်ဆိုရင် ACM certificate ကို US East (N. Virginia), us-east-1 Region မှာ request လုပ်ရပါတယ်။
+    S3 bucket က eu-west-2 မှာရှိနေတာနဲ့ certificate Region ကို မသတ်မှတ်ပါဘူး။
+
+1. us-east-1 ကို မဖြစ်မနေ မှတ်ထားပါ
+    AWS Service / Feature	Region rule	Exam မှတ်ချက်
+    CloudFront + ACM certificate	us-east-1	CloudFront custom domain HTTPS certificate
+    Lambda@Edge	us-east-1	Lambda@Edge function ကို N. Virginia မှာ create လုပ်ရ
+    CloudFront KeyValueStore	us-east-1	CloudFront Functions နဲ့သုံးတဲ့ KeyValueStore ကို ဒီ Region မှာ create လုပ်ရ
+    Global Accelerator	Global service	Regional service တစ်ခုလိုမဟုတ်ဘဲ global entry point နဲ့ static IPs ပေးတယ်
+    IAM	Global service	IAM users, roles, policies တွေကို Region တစ်ခုချင်းစီမှာ သီးခြား create မလုပ်ရ
+    အရေးကြီးတဲ့ ခွဲခြားချက်: CloudFront distribution က global service ဖြစ်ပေမဲ့ CloudFront custom domain အတွက် ACM certificate ကို us-east-1 မှာ request လုပ်ရပါတယ်။ S3 origin ကို eu-west-2 လို အခြား Region မှာထားလို့ရပါတယ်။
+    2. us-east-1 မှာ create လုပ်ရတဲ့ အခြား resources
+    Service / Feature	မှတ်ထားရမယ့် rule
+    AWS WAF for CloudFront	CloudFront distribution အတွက် WAF web ACL ကို us-east-1 မှာ create လုပ်ပါ။
+    Lambda@Edge	Function ကို us-east-1 မှာ create လုပ်ပြီး CloudFront နဲ့ associate လုပ်ရပါတယ်။ 
+
+    Exam trick: Resource တစ်ခုရဲ့ Region ကို application ရှိတဲ့ Region နဲ့ အမြဲတမ်းတူရမယ်လို့ မယူဆပါနဲ့။
+3. Global services နဲ့ Regional services
+    ဒီအပိုင်းက Region-specific question တွေဖြေဖို့ အရမ်းအရေးကြီးပါတယ်။
+    Service	Scope	မှတ်ရန်
+    Amazon CloudFront	Global	Edge locations ကနေ content ပို့ပေးတယ်
+    Amazon Route 53	Global	DNS / hosted zones
+    AWS IAM	Global	Users, roles, policies
+    AWS Organizations	Global	Multi-account management
+    AWS Global Accelerator	Global	Static anycast IPs, global traffic routing
+    Amazon VPC	Regional	VPC တစ်ခုဟာ Region တစ်ခုအတွင်းမှာရှိတယ်
+    Amazon EC2	Regional	Instance တစ်ခုဟာ သတ်မှတ်ထားတဲ့ Region နဲ့ AZ မှာရှိတယ်
+    Amazon EBS	AZ-scoped	Volume ကို သက်ဆိုင်ရာ AZ မှာ attach လုပ်ရတယ်
+    Amazon RDS	Regional service	DB instance က Region တစ်ခုမှာရှိပြီး Multi-AZ deployment လုပ်နိုင်တယ်
+    AWS KMS key	Regional	Key ကို Region အလိုက် စီမံခန့်ခွဲရတယ်
+    Amazon S3	Regional bucket	Bucket တစ်ခုစီမှာ သတ်မှတ်ထားတဲ့ Region ရှိတယ်
+    AWS ရဲ့ global services နဲ့ regional services အကြောင်းကို official reference မှာလည်း ရှင်းပြထားပါတယ်။ 
+
+4. Cross-Region နဲ့ပတ်သက်ပြီး မမေ့သင့်တဲ့ Rules
+    Service / Feature	Exam rule
+    EBS Snapshot	Snapshot ကို Region အခြားတစ်ခုဆီ copy လုပ်နိုင်တယ်။
+    AMI	AMI က Regional ဖြစ်တယ်။ Region အခြားတစ်ခုမှာသုံးဖို့ copy လုပ်နိုင်တယ်။
+    KMS-encrypted snapshot	Destination Region မှာ သင့်လျော်တဲ့ KMS key နဲ့ re-encrypt လုပ်ဖို့ လိုအပ်နိုင်တယ်။
+    S3 Cross-Region Replication (CRR)	Source နဲ့ destination bucket တွေက မတူညီတဲ့ Regions မှာရှိတယ်။ Versioning ကို bucket နှစ်ခုလုံးမှာ enable လုပ်ရတယ်။
+    RDS Cross-Region Read Replica	Supported database engines နဲ့ configurations အတွက် Region အခြားတစ်ခုမှာ read replica တည်ဆောက်နိုင်တယ်။
+    AWS Backup Cross-Region Copy	Recovery point ကို destination Region ရဲ့ backup vault ဆီ copy လုပ်နိုင်တယ်။
+
+AWS WAF ကို ဘယ် Services တွေနဲ့ သုံးနိုင်သလဲ?
+    CloudFront, ALB နဲ့ API Gateway
+
+Enable detailed monitoring on all EC2 instances and use Amazon CloudWatch metrics to track performance
+    1. Basic Monitoring — 5 minutes
+        EC2 ရဲ့ default CloudWatch metrics တွေကို 5-minute interval နဲ့ ပို့ပေးပါတယ်။ ဒီမေးခွန်းရဲ့ 2-minute limit ကို မပြည့်မီပါဘူး။
+    2. Detailed Monitoring — 1 minute
+        EC2 metrics တွေကို 1-minute interval နဲ့ရရှိစေပါတယ်။ လိုအပ်တဲ့ 2 minutes ထက် ပိုမိုတိကျပြီး
+        native CloudWatch integration ဖြစ်လို့ setup နဲ့ maintenance ပိုလွယ်ပါတယ်။
+    EC2 ရဲ့ CPU utilization နဲ့ network metrics တွေကို CloudWatch က default အနေနဲ့ ပေးနိုင်ပေမဲ့ memory utilization ကတော့ 
+        ပုံမှန် EC2 metrics ထဲမှာ မပါပါဘူး။ 
+        Memory နဲ့ filesystem utilization လို OS-level metrics တွေကို စောင့်ကြည့်ချင်ရင် CloudWatch Agent ကို install/configure 
+        လုပ်ရပါတယ်။
+
+EC2 Instance Connect ဘယ်လိုအလုပ်လုပ်သလဲ?
+    1. Developer က AWS Management Console မှာ EC2 instance ကိုရွေးတယ်။
+    2. Connect → EC2 Instance Connect ကိုနှိပ်တယ်။
+    3. EC2 Instance Connect က temporary public key ကို instance ဆီ ပို့ပေးတယ်။
+    4. SSH client က corresponding private key နဲ့ authentication လုပ်ပြီး connection တည်ဆောက်တယ်။
+    5. Temporary public key က instance ရဲ့ authorized_keys ထဲမှာ အချိန်တိုအတွင်းသာ အသုံးပြုနိုင်တယ်။
+    ပုံမှန်အားဖြင့် public key ကို instance ပေါ်မှာ 60 seconds ခန့်သာ authorize လုပ်ထားပါတယ်။ 
+    ဒီအချိန်က SSH connection ကိုယ်တိုင် 60 seconds ပြီးရင် ပိတ်သွားတယ်လို့ မဆိုလိုပါဘူး။
+
+EC2 Instance Connect vs EC2 Instance Connect Endpoint vs Session Manager
+    Feature	EC2 Instance Connect	EC2 Instance Connect Endpoint	Systems Manager Session Manager
+    အဓိကရည်ရွယ်ချက်	Temporary SSH access	Private IP ကို SSH ချိတ်ဆက်ရန် managed network path	Managed shell/session access
+    Public IP လိုသလား?	Direct connection အတွက် ပုံမှန်အားဖြင့် လိုတယ်	မလိုဘူး	မလိုဘူး
+    Private subnet မှ ဝင်နိုင်သလား?	Endpoint မရှိဘဲ ပုံမှန်အားဖြင့် မရ	ရ	ရ
+    Long-term SSH key လိုသလား?	Temporary key သုံးနိုင်တယ်	SSH key authentication ကို အသုံးပြုနိုင်တယ်	ပုံမှန် SSH key မလို
+    SSM Agent လိုသလား?	Direct EIC connection အတွက် မလို	SSH အတွက် SSM Agent မလို	လိုတယ်
+    Auditing	CloudTrail မှာ API/key-push activity တွေကို audit လုပ်နိုင်တယ်	Endpoint connection activity နဲ့ သက်ဆိုင်ရာ logs	Session logging ကို configure လုပ်နိုင်တယ်
+
+    Production environment မှာ ဘယ်ဟာကို ရွေးသင့်သလဲ?
+        မေးခွန်းထဲမှာ public IP ရှိတဲ့ instance ကို AWS Console ကနေ temporary SSH ချိတ်ဆက်ချင်တယ်လို့ ဆိုထားတာကြောင့် 
+            EC2 Instance Connect က မှန်ကန်တဲ့ exam answer ဖြစ်ပါတယ်။
+        ဒါပေမဲ့ private subnet ထဲမှာထားတဲ့ production EC2 instances တွေကို public IP မပေးဘဲ access လုပ်ချင်ရင် -
+        - EC2 Instance Connect Endpoint — SSH workflow ကို ဆက်သုံးချင်တဲ့အခါ။
+        - Systems Manager Session Manager — SSH inbound port ကို မဖွင့်ဘဲ managed shell access နဲ့ session logging လိုချင်တဲ့အခါ။
+
+RDS Multi-AZ မှာ Primary DB ပျက်သွားရင် AWS က အလိုအလျောက် Failover လုပ်ပေးပြီး Database Endpoint (URL) က မပြောင်းပါဘူး
+    Primary failure → Automatic Failover
+    Standby DB ကို Primary အဖြစ် promote လုပ်ပြီး RDS Endpoint ရဲ့ DNS CNAME ကို instance အသစ်ဆီ ညွှန်ပေးပါတယ်။
+    Failover ဖြစ်တဲ့အခါ အဆင့်ဆင့်
+        1. Primary DB instance ပျက်သွားတယ်။
+        2. Amazon RDS က failure ကို detect လုပ်တယ်။
+        3. Standby DB ကို Primary အဖြစ် promote လုပ်တယ်။
+        4. RDS ရဲ့ DNS CNAME record ကို update လုပ်ပြီး Endpoint က DB အသစ်ဆီ ညွှန်ပေးတယ်။
+        5. Application က အရင် Endpoint အမည်အတိုင်း ပြန် connect လုပ်နိုင်တယ်။
+    သတိပြုရန် — Failover က အလိုအလျောက်ဖြစ်ပေမဲ့ ချက်ချင်းပြီးတာမဟုတ်ပါဘူး။ ပုံမှန်အားဖြင့် မိနစ်အနည်းငယ်ကြာနိုင်ပြီး Application က connection ပြန်တည်ဆောက်ဖို့ လိုနိုင်ပါတယ်။
+
+EC2 instances တွေကို patch လုပ်နေချိန်မှာ ALB က user traffic မပို့အောင် အလိုအလျောက်ထိန်းချုပ်ပေးဖို့
+    Option 1 — AWSEC2-PatchLoadBalancerInstance
+            ဒီ Automation document က Load Balancer နဲ့ချိတ်ထားတဲ့ EC2 instance ကို patch လုပ်တဲ့အခါ 
+            အန္တရာယ်ကင်းအောင် အဆင့်ဆင့်လုပ်ဆောင်ပေးဖို့ ရည်ရွယ်ထားတာပါ။ 
+            ALB, NLB နဲ့ Classic Load Balancer တွေကို support လုပ်ပါတယ်။ 
+            AWS Systems Manager Automation Runbook Reference
+                1. Check health — Instance က healthy ဖြစ်နေတာကို စစ်ဆေးတယ်။
+                2. Deregister — Instance ကို Load Balancer target group ကနေ ယာယီဖယ်ရှားတယ်။
+                3. Connection draining — လက်ရှိဆောင်ရွက်နေတဲ့ request တွေ ပြီးဆုံးဖို့ သတ်မှတ်ထားတဲ့အချိန်ကို စောင့်တယ်။
+                4. Patch — AWS-RunPatchBaseline ကို အသုံးပြုပြီး patch လုပ်တယ်။
+                5. Re-register — Instance ကို Load Balancer ထဲ ပြန်ထည့်တယ်။
+            ဒီလိုလုပ်ခြင်းက patching ကြောင့် instance တစ်လုံး ယာယီ unavailable ဖြစ်နေချိန်မှာ request အသစ်တွေ 
+            အဲဒီ instance ဆီ မရောက်အောင် ကာကွယ်ပေးပါတယ်။
+    Option 2 — Systems Manager Maintenance Windows
+        Maintenance Windows က ဘယ်အချိန်မှာ patch လုပ်မလဲ ဆိုတာကို schedule သတ်မှတ်ပေးတဲ့ feature ဖြစ်ပါတယ်။ 
+        Automation runbook ကို Maintenance Window task အဖြစ် register လုပ်ပြီး သတ်မှတ်ထားတဲ့အချိန်မှာ အလိုအလျောက် run စေနိုင်ပါတယ်
+    Note:
+        AWS feature	အဓိကတာဝန်:
+        AWSEC2-PatchLoadBalancerInstance	Instance ကို deregister လုပ်ခြင်း၊ drain လုပ်ခြင်း၊ patch လုပ်ခြင်း၊ ပြန် register လုပ်ခြင်း
+        Systems Manager Maintenance Windows	Patching ကို ဘယ်အချိန်မှာ run မလဲ၊ ဘယ် target တွေကို လုပ်မလဲဆိုတာ schedule/orchestrate လုပ်ခြင်း
+    
+Kinesis Data Streams — PutRecords Batch Processing:
+    အဓိကက Kinesis Data Streams ထဲကို record တွေကို တစ်ခုချင်းစီ ပို့နေတဲ့အတွက် API request overhead များနေခြင်းကို ကုန်ကျစရိတ်အနည်းဆုံးနဲ့ ဘယ်လိုဖြေရှင်းမလဲ ဆိုတာပါ။
+        1. ဘာကြောင့် ProvisionedThroughputExceededException ဖြစ်တာလဲ?
+        Amazon Kinesis Data Streams မှာ data တွေကို shards တွေကနေတစ်ဆင့် လက်ခံပါတယ်။ Shard တစ်ခုစီမှာ write throughput limit ရှိပါတယ်။
+        ပုံမှန်အားဖြင့် provisioned shard တစ်ခုမှာ—
+        - Write throughput: 1 MB/second
+        - Write rate: 1,000 records/second
+        ဒီ limit ကို ကျော်လွန်သွားရင် ProvisionedThroughputExceededException ဖြစ်နိုင်ပါတယ်။
+    PutRecord နဲ့ PutRecords က ဘာကွာလဲ?
+            PutRecord — တစ်ခုချင်းစီပို့ခြင်း
+                Record 100 ခုအတွက် API request 100 ခု လိုအပ်နိုင်ပါတယ်။ Request overhead ပိုများပြီး 
+                API call rate limit ကို မြန်မြန်ထိနိုင်ပါတယ်။
+            PutRecords — Batch လုပ်ပြီးပို့ခြင်း
+                API request တစ်ခုမှာ records အများအပြား ထည့်ပို့နိုင်ပါတယ်။ Request overhead ကို လျှော့ချနိုင်ပြီး 
+                API request throughput ကို ပိုမိုထိရောက်စွာ အသုံးပြုနိုင်ပါတယ်။
+“relational database performance” + “caching” + “supports geospatial data”:
+    Use Amazon ElastiCache for Redis
+        Weather tracking company က မြို့တွေရဲ့ ရာသီဥတုအချက်အလက်၊ GPS coordinates နဲ့ နေရာအလိုက် 
+        weather data တွေကို ရှာဖွေတဲ့ application တစ်ခု တည်ဆောက်နေတယ်လို့ စဉ်းစားကြည့်ပါ။
+        ဥပမာ user တစ်ယောက်က လက်ရှိတည်နေရာအနီးက ရာသီဥတုကို ရှာဖွေတဲ့အခါ database ကို query အကြိမ်ကြိမ် မလုပ်ဘဲ
+        cache ထဲကနေ မြန်မြန်ပြန်ပေးနိုင်ပါတယ်။
+    
+        Redis က geospatial commands တွေကို ပံ့ပိုးပေးတဲ့အတွက်—
+            - သတ်မှတ်ထားတဲ့ GPS location အနီးက နေရာတွေကို ရှာနိုင်တယ်။
+            - နေရာနှစ်ခုကြား အကွာအဝေးကို တွက်ချက်နိုင်တယ်။
+            - မကြာခဏ အသုံးပြုတဲ့ data တွေကို memory ထဲမှာ cache လုပ်နိုင်တယ်။
+            ဒါကြောင့် ဒီ requirement အတွက် Redis က အကိုက်ညီဆုံးဖြစ်ပါတယ်။
+        Redis နဲ့ Memcached ဘာကွာလဲ?
+            Redis
+            - Geospatial commands (GEOADD, GEOSEARCH)
+            - Lists, sets, sorted sets, hashes စတဲ့ data structures များ
+            - Caching အပြင် session management နဲ့ real-time location use cases တွေအတွက်ပါ သင့်တော်တယ်။
+            Memcached
+            - ရိုးရှင်းပြီး မြန်ဆန်တဲ့ key-value cache
+            - String နဲ့ serialized values တွေကို cache လုပ်ဖို့ အသုံးများတယ်။
+            - Redis ရဲ့ native geospatial query features မရှိဘူး။
+AWS Transfer Family + Amazon EFS:
+    အဓိက စဉ်းစားရမယ့် requirement ၅ ခုရှိပါတယ်။
+        - Serverless / Fully managed — EC2 instances တွေကို ကိုယ်တိုင် manage မလုပ်ချင်ဘူး။
+        - SFTP — External partners တွေက SFTP နဲ့ file upload/download လုပ်ရမယ်။
+        - Shared file system — EC2 instances နှစ်ခုက လက်ရှိ shared storage ကို အသုံးပြုနေတယ်။
+        - Fine-grained permissions — Linux လို user တစ်ယောက်ချင်းစီအလိုက် file access ခွဲခြားချင်တယ်။
+        - IP-based restrictions — Trusted IP addresses တွေကနေပဲ ချိတ်ဆက်ခွင့်ပြုချင်တယ်။
+    ဒီ requirement တွေကို ပေါင်းစပ်ဖြည့်ဆည်းပေးနိုင်တဲ့ solution က AWS Transfer Family + Amazon EFS ဖြစ်ပါတယ်။
+    Service တစ်ခုချင်းစီရဲ့ တာဝန်
+        AWS service / feature	ဘာလုပ်ပေးသလဲ?
+        AWS Transfer Family	SFTP server infrastructure ကို AWS က manage လုပ်ပေးတယ်။
+        Amazon EFS	Shared file system ကို ပေးတယ်။ EC2 နှစ်လုံးအစား EFS ကို Transfer Family က တိုက်ရိုက်အသုံးပြုနိုင်တယ်။
+        Elastic IP	External partners တွေအတွက် တည်ငြိမ်တဲ့ public IP addresses ပေးတယ်။
+        Security Group	Trusted partners တွေရဲ့ source IP addresses တွေကိုသာ SFTP port 22 မှာ ခွင့်ပြုတယ်။
+        POSIX identity mapping	User တစ်ယောက်ချင်းစီအတွက် UID, GID နဲ့ directory permissions သတ်မှတ်ပေးတယ်။
+        IAM policies	Transfer Family က EFS ကို အသုံးပြုခွင့်နဲ့ သက်ဆိုင်ရာ AWS resource permissions တွေကို ထိန်းချုပ်တယ်။
+        AWS Transfer Family က Amazon S3 နဲ့ Amazon EFS ကို native storage backend အဖြစ် ပံ့ပိုးထားပါတယ်။ 
+        EFS ကို သုံးတဲ့အခါ POSIX user/group IDs နဲ့ file permissions တွေကို အသုံးပြုနိုင်ပါတယ်။ 
+    3. ဘာကြောင့် Amazon EFS ကို ရွေးရတာလဲ?
+        ကုမ္ပဏီရဲ့ လက်ရှိ architecture မှာ EC2 Linux instances နှစ်လုံးက shared file system တစ်ခုကို အသုံးပြုထားပါတယ်။ ဒီအချက်က အရေးကြီးပါတယ်။
+        - Shared storage: EC2 နှစ်လုံးနဲ့ ချိတ်ဆက်ထားတဲ့ file system ပုံစံကို ဆက်လက်ထိန်းသိမ်းနိုင်တယ်။
+        - POSIX permissions: Linux user တစ်ယောက်စီရဲ့ file ownership နဲ့ directory access ကို UID/GID နဲ့ ထိန်းချုပ်နိုင်တယ်။
+        - Elastic scaling: File storage capacity က data တိုးလာတာနဲ့အမျှ အလိုအလျောက် တိုးချဲ့နိုင်တယ်။
+        - Less operational overhead: SFTP အတွက် EC2 instances တွေကို ကိုယ်တိုင် patch လုပ်တာ၊ server maintenance လုပ်တာတွေ လျှော့ချနိုင်တယ်။
+        - Encryption: EFS encryption at rest ကို enable လုပ်နိုင်ပြီး SFTP က transfer လုပ်တဲ့ data ကိုလည်း encrypted connection ဖြင့် ပို့နိုင်တယ်။
