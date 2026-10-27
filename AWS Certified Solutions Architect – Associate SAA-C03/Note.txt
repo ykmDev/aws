@@ -1991,15 +1991,15 @@ EC2:
                     Machine Learning
                     Analytics
                 Higher Throughput(large amt of data)
-                    Throughput Mode:
-                        three modes:
-                            Bursting(default): Good for Normal applications.
-                            Provisioned: always needs 1 GB/sec.
-                                good for Databases, High-performance applications, Predictable heavy workloads
-                            Elastic:
-                                If condition is Impossible to predict.
-                                Elastic automatically changes throughput.
-                                Good for Unpredictable workloads.
+        EFS Throughput Mode:
+            three modes:
+                Bursting(default): Good for Normal applications.
+                Provisioned: always needs 1 GB/sec.
+                    good for Databases, High-performance applications, Predictable heavy workloads
+                Elastic:
+                    If condition is Impossible to predict.
+                    Elastic automatically changes throughput.
+                    Good for Unpredictable workloads.
             Performance Mode နဲ့ Throughput Mode ဘာကွာသလဲ?
             ဒီမေးခွန်းမှာ အလွယ်တကူ မှားနိုင်တဲ့အချက်က Bursting Throughput နဲ့ Provisioned Throughput ကို ရွေးမိတာပါ။
             Setting အမျိုးအစား	ဘာကို သတ်မှတ်ပေးသလဲ?	ရွေးချယ်စရာများ
@@ -3057,6 +3057,7 @@ EC2:
                     priorities:
                         Keep Availability Zones balanced.
                         Prefer terminating instances that use older launch templates/configurations.
+                        နောက် billing hour နဲ့ အနီးဆုံး instance ကို စဉ်းစားမယ်
                         Then apply the configured termination policy (which may consider launch time).
                     explanation:
                         Step 1: Is one AZ holding more instances?
@@ -3064,10 +3065,9 @@ EC2:
                             Example:
 
                             AZ-A
-
                             3 instances
-                            AZ-B
 
+                            AZ-B
                             1 instance
 
                             AWS prefers to terminate an instance from AZ-A to keep the AZs balanced.
@@ -3077,7 +3077,8 @@ EC2:
 
                             If there are multiple candidates, AWS looks at the termination policy.
 
-                            The default policy generally prefers to terminate instances launched from older launch configurations/templates or mixed-instance configurations first, before considering launch time.
+                            The default policy generally prefers to terminate instances launched from older launch configurations/templates 
+                                or mixed-instance configurations first, before considering launch time.
 
                             If all instances are equivalent, launch time may become one of the deciding factors.
 
@@ -3099,16 +3100,34 @@ EC2:
                             EC2-D
 
                             If all four are:
-
-                            Same Launch Template
-                            Same AZ balance
-                            Same configuration
+                                Same Launch Template
+                                Same AZ balance
+                                Same configuration
 
                             Then AWS may terminate one of the newer instances according to its default policy.
 
                             But don't memorize "latest is always deleted." That is not the rule.
+                        “Billing hour နဲ့ အနီးဆုံး” ဆိုတာ ဘာလဲ?
+                            ဆိုလိုတာက နောက်တစ်ကြိမ် hourly billing boundary ကို ရောက်ဖို့ အချိန်အနည်းဆုံးကျန်တဲ့ instance ကို ဆိုလိုပါတယ်။
+                            AWS ရဲ့ Default Termination Policy မှာ အခြားသတ်မှတ်ချက်တွေက မဆုံးဖြတ်နိုင်သေးတဲ့အခါ ဒီအချက်ကို ထည့်စဉ်းစားပါတယ်။ 
+                                ဥပမာ နားလည်လွယ်အောင်—
+                                    Instance	Launch time	နောက် hourly boundary (ဥပမာ)
+                                    EC2-A	10:00	11:00
+                                    EC2-B	10:05	11:05
+                                    EC2-C	10:10	11:10
+                                    EC2-D	10:15	11:15
+                                ဒီဥပမာမှာ Scale-in ကို 10:58 မှာ လုပ်တယ်ဆိုပါစို့။
+                                    - EC2-A ရဲ့ နောက် boundary အထိ 2 မိနစ်
+                                    - EC2-B ရဲ့ နောက် boundary အထိ 7 မိနစ်
+                                    - EC2-C ရဲ့ နောက် boundary အထိ 12 မိနစ်
+                                    - EC2-D ရဲ့ နောက် boundary အထိ 17 မိနစ်
+                                ဒီ simplified example အရ EC2-A က နောက် hourly boundary နဲ့ အနီးဆုံးဖြစ်ပါတယ်။
 
-                            Why?
+                                ဒါပေမဲ့ လက်တွေ့မှာ EC2 usage အများစုကို per-second billing နဲ့တွက်တာကြောင့် ဒီ optimization ရဲ့ အကျိုးကျေးဇူးက အရင်ကထက် နည်းသွားပါပြီ။ 
+
+                                Exam အတွက် မှတ်ရန်: ClosestToNextInstanceHour ဆိုတာ အသစ်ဆုံး instance ကို ရွေးတာမဟုတ်ဘူး၊ 
+                                အဟောင်းဆုံး instance ကို ရွေးတာလည်း မဟုတ်ဘူး။ နောက် hourly billing boundary နဲ့ အနီးဆုံးဖြစ်တဲ့ instance ကို ရွေးတာပါ။
+                        First terminate: instances using older launch templates/configurations:
 
                             Imagine:
 
@@ -3132,6 +3151,7 @@ EC2:
 
                             because v2 contains the latest software.
                         Can Customize It.
+
         metrics:
             Based on CloudWatch metrics, launch another EC2.
             1. CPUUtilization(most common)
@@ -7057,6 +7077,7 @@ s3:
             The problem: An administrator might accidentally change/delete archived data.
             AWS provides Vault Lock to prevent this.
         Vault Lock: Prevent modification/deletion.
+            even the AWS account owner or administrator cannot change or delete the locked Vault Lock policy
         Exam Keyword:
             A company needs immutable storage for compliance.
     Object Lock:
@@ -7626,11 +7647,15 @@ Amazon FSx:
 AWS Storage Gateway:
     bridge between on-premises and cloud.
     types of storage:
-        S3 file gateway:
+        File gateway:
+            File-based
             using NFS or SMB, can configure s3 buckets
                 (without directly to glacier) later can transition to glacier using life cycle policy
             most recently used data is cached in file gateway.
             using IAM roles to access bucket.
+            On-premises applications က NFS/SMB file share နဲ့ access လုပ်တယ်။
+            File data ကို Amazon S3 မှာ object အဖြစ် သိမ်းတယ်။
+            မကြာခဏသုံးတဲ့ data အတွက် local cache ရှိနိုင်တယ်။
         Volume gateway:
             block storage using iSCSI protocol backed by s3.
             combines on-premises storage + iSCSI + S3 + EBS snapshots
@@ -7646,10 +7671,26 @@ AWS Storage Gateway:
                     low latency access to most recent data
                         Data ရဲ့ အဓိက storage ကို AWS ဘက်မှာထားပြီး 
                         မကြာသေးခင်က/မကြာခဏအသုံးပြုတဲ့ data ကို on-premises မှာ cache လုပ်ထားတာ
+                        Application က iSCSI block storage အဖြစ် access လုပ်တယ်။
+                        Data အဓိကကို AWS ဘက်မှာ သိမ်းတယ်။
+                        မကြာခဏ access လုပ်တဲ့ data ကို local disk မှာ cache လုပ်တယ်။
                 Stored Volumes:
                     entire dataset is on premise
                     On-premises keeps the main data, AWS keeps backups
                         Data အားလုံးကို on-premises မှာ အဓိကထားသိမ်းပြီး၊ schedule အတိုင်း AWS/S3 ကို backup လုပ်ပေးတာ
+                    Application က iSCSI block storage အဖြစ် access လုပ်တယ်။
+                    Data အပြည့်အစုံကို on-premises မှာ သိမ်းတယ်။
+                    AWS S3 မှာ သိမ်းထားတဲ့ EBS snapshots ကနေ backup/restore လုပ်နိုင်တယ်။
+            Comparison table:
+                Feature                  | File Gateway          | Cached Volume              | Stored Volume
+                -------------------------|-----------------------|-----------------------------|----------------------------
+                Storage type             | File storage          | Block storage               | Block storage
+                Access protocol          | NFS / SMB             | iSCSI                       | iSCSI
+                Primary data location    | Amazon S3             | AWS Cloud                   | On-premises
+                Local storage            | Cache                 | Cache                       | Full dataset
+                AWS backup               | Data stored in S3     | Data stored in S3           | EBS snapshots stored in S3
+                Best for                 | Shared files/folders  | Large datasets, less local  | Low-latency local access
+                                        |                       | storage required            | with full local dataset
             can use Amazon EBS snapshots
                 On-premise Volume ရဲ့ အချိန်တစ်ခုမှာရှိတဲ့ state ကို backup အနေနဲ့ သိမ်းထားတာ
             Note:
@@ -7785,9 +7826,9 @@ Storage Comparison:
     EFS: Network File System for Linux instances, POSIX filesystem
     FS for Windows: Network File System for Windows servers
     FSx for Lustre: High Performance Computing Linux file system
-    FS for NetApp ONTAP: High OS Compatibility
+    FSx for NetApp ONTAP: High OS Compatibility
     FSx for OpenZFS: Managed ZFS file system
-    Storage Gateway: S3 & FS× File Gateway, Volume Gateway (cache & stored), Tape Gateway
+    Storage Gateway: S3 & FSx File Gateway, Volume Gateway (cache & stored), Tape Gateway
     Transfer Family: FTP, FTPS, SFTP interface on top of Amazon S3 or Amazon EFS
     DataSync: Schedule data sync from on-premises to AWS, or AWS to AWS
     Snowcone / Snowball / Snowmobile: to move large amount of data to the cloud, physically
@@ -8270,7 +8311,7 @@ Decoupling Application:
                 useful for cross-account access, allowing other services.
                 IAM is not enough for above resource-to-resource permission(s3 -> SNS Topic)
         SNS Standard:
-        SNS FIFIO:
+        SNS FIFO:
             Message Group ID
             Deduplication by Deduplication ID and Content-Based Deduplication.
         SNS VS SQS:
@@ -8354,7 +8395,7 @@ Decoupling Application:
                 Replay = read previously processed streaming data again.
                 Data can't be deleted from Kinesis.
                     consumers don't individually delete records.
-            Data up to 10 MiB:
+            Data up to 10 Mebibytes:
             Ordering guarantee with the same Partition ID:
                 Same partition key → same partition → ordering preserved.
             Encryption:
@@ -22692,7 +22733,7 @@ service-linked roles:
 AWS Organizations ရဲ့ SCP (Service Control Policy) က AWS Account တစ်ခုအတွင်း ဘယ်သူတွေ ဘယ်အထိ လုပ်ပိုင်ခွင့်ရှိနိုင်သလဲဆိုတာကို ကန့်သတ်ပေးတာ ဖြစ်ပါတယ်။
     SCP does not affect service-linked roles.
     SCP affects all users and roles in member accounts, including the root user.
-    IAM policy က ခွင့်ပြုထားပေမယ့် SCP က ခွင့်မပြုရင် အဲဒီ action ကို လုပ်လို့မရပါဘူး။\
+    IAM policy က ခွင့်ပြုထားပေမယ့် SCP က ခွင့်မပြုရင် အဲဒီ action ကို လုပ်လို့မရပါဘူး။
 
 Amazon EC2: Reboot vs Recover vs Other Instance Actions:
     Reboot နဲ့ Recover ကို နှိုင်းယှဉ်ကြည့်မယ်

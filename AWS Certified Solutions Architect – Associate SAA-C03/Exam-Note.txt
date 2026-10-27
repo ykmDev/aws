@@ -286,3 +286,240 @@ AWS Transfer Family + Amazon EFS:
         - Elastic scaling: File storage capacity က data တိုးလာတာနဲ့အမျှ အလိုအလျောက် တိုးချဲ့နိုင်တယ်။
         - Less operational overhead: SFTP အတွက် EC2 instances တွေကို ကိုယ်တိုင် patch လုပ်တာ၊ server maintenance လုပ်တာတွေ လျှော့ချနိုင်တယ်။
         - Encryption: EFS encryption at rest ကို enable လုပ်နိုင်ပြီး SFTP က transfer လုပ်တဲ့ data ကိုလည်း encrypted connection ဖြင့် ပို့နိုင်တယ်။
+Sporadic bursts/occasional bursts
+    ရံဖန်ရံခါ ပေါ်ပေါက်လာသော လှုပ်ရှားမှုများ
+
+    EFS ကို ဘယ်အချိန်မှာ အသုံးပြုသလဲ?
+        Shared network file system
+        EC2 instances နှစ်ခုစလုံးက EFS ထဲရှိ shared files များကို access လုပ်နိုင်တယ်။
+
+        EFS ရဲ့ အဓိကအင်္ဂါရပ်တွေကတော့
+            - Shared storage: Compute instances အများအပြားက file system တစ်ခုတည်းကို access လုပ်နိုင်တယ်။
+            - Elastic capacity: Storage capacity ကို ကိုယ်တိုင် volume size သတ်မှတ်ပြီး ကြိုတင်တိုးချဲ့စရာ မလိုဘဲ data အလိုက် တိုးလာနိုင်တယ်။
+            - Managed service: AWS က file system infrastructure ကို စီမံပေးတယ်။
+            - NFS: Linux workloads တွေက ပုံမှန်အားဖြင့် NFS protocol ကိုသုံးပြီး mount လုပ်တယ်။
+            - Multi-AZ availability: EFS Regional file system က data ကို multiple AZs အတွင်း redundant သိမ်းဆည်းပေးတယ်။
+            EFS ဟာ block storage မဟုတ်ဘဲ file storage ဖြစ်ပါတယ်။ EC2 တစ်လုံးအတွက် block storage လိုအပ်ရင် EBS ကို စဉ်းစားပါ။
+            2. EFS Storage Classes — ဘယ် data အတွက် ဘယ် class ကိုသုံးမလဲ?
+            Storage class ဆိုတာ file data ကို ဘယ်လိုသိမ်းဆည်းပြီး storage cost နဲ့ access performance ကို ဘယ်လိုချိန်ညှိမလဲ ဆိုတာပါ။ 
+
+        1. EFS Standard
+            Frequently accessed
+            - မကြာခဏ ဖတ်ရှု၊ ရေးသားရတဲ့ active files တွေအတွက်။
+            - Sub-millisecond first-byte read latency ကို ရည်ရွယ်ထားတယ်။
+            - Web applications, shared working files, active research datasets တွေအတွက် သင့်တော်တယ်။
+
+        2. EFS Infrequent Access (IA)
+            Infrequently accessed
+            - တစ်ခါတစ်ရံမှသာ access လုပ်တဲ့ files တွေအတွက်။
+            - Standard ထက် storage cost သက်သာနိုင်တယ်။
+            - File access နဲ့ data retrieval အတွက် ထပ်ဆောင်း charges ရှိနိုင်တယ်။
+
+        3. EFS Archive
+            Rarely accessed
+            - တစ်နှစ်အတွင်း အကြိမ်အနည်းငယ်သာ access လုပ်တဲ့ cold data အတွက်။
+            - IA ထက် storage cost ပိုသက်သာနိုင်တယ်။
+            - Access latency နဲ့ retrieval charges ကို ထည့်စဉ်းစားရမယ်။
+            - Regional EFS နဲ့ Elastic Throughput လိုအပ်တယ်။
+
+        Regional နဲ့ One Zone storage classes
+            Storage class	Data location	Exam မှာ မှတ်ရန်
+            Standard	Multiple AZs	Active data + high availability
+            Standard-IA	Multiple AZs	Infrequent access + lower storage cost
+            Archive	Multiple AZs	Rarely accessed, long-term file data
+            One Zone	Single AZ	Lower cost, AZ failure risk ပိုများ
+            One Zone-IA	Single AZ	Infrequent access + single-AZ storage
+            Regional file systems က data ကို multiple Availability Zones အတွင်း redundant သိမ်းဆည်းပေးတယ်။ One Zone က AZ တစ်ခုတည်းမှာ သိမ်းဆည်းတာကြောင့် အဲဒီ AZ တစ်ခုလုံး ထိခိုက်တဲ့ disaster မှာ data loss risk ရှိတယ်။ 
+
+        အရေးကြီးတဲ့ concept — Lifecycle Management
+            EFS Lifecycle Management ကိုသုံးပြီး မကြာသေးခင်က access မလုပ်ထားတဲ့ files တွေကို Standard ကနေ IA သို့မဟုတ် Archive သို့ အလိုအလျောက် ပြောင်းနိုင်တယ်။ လိုအပ်ရင် Intelligent-Tiering နဲ့ access pattern ပြန်ပြောင်းလာတဲ့ data ကို Standard သို့ ပြန်ရွှေ့နိုင်တယ်။ 
+
+            ဥပမာ — Genomics project မှာ လက်ရှိတွက်ချက်နေတဲ့ data ကို Standard မှာထားပြီး၊ လအတော်ကြာ မသုံးတဲ့ research files တွေကို IA သို့ ရွှေ့နိုင်တယ်။
+            3. EFS Performance Modes
+            Performance mode က file operations တွေရဲ့ latency နဲ့ parallel workload အပေါ် EFS ဘယ်လိုအလုပ်လုပ်မလဲ ဆိုတာကို သတ်မှတ်ပေးတယ်။
+            Performance mode	ဘယ်အချိန်မှာသုံးမလဲ
+            General Purpose	Low latency လိုအပ်တဲ့ workload အများစုအတွက်၊ AWS က အကြံပြုထားတဲ့ default mode
+            Max I/O	ယခင်က အလွန် parallel ဖြစ်တဲ့ workload တွေအတွက် သုံးခဲ့တဲ့ mode၊ latency ပိုမြင့်နိုင်ပြီး ယခု configuration အသစ်များမှာ ကန့်သတ်ချက်ရှိတယ်
+            AWS ရဲ့ လက်ရှိ recommendation က General Purpose ဖြစ်ပါတယ်။ Max I/O ကို One Zone file systems နဲ့ Elastic Throughput အသုံးပြုတဲ့ file systems တွေမှာ မပံ့ပိုးပါဘူး။ 
+
+            Exam tip: “Low latency” ဆိုရင် General Purpose ကို အရင်စဉ်းစားပါ။
+
+        4. EFS Throughput Modes — Exam မှာ အရေးအကြီးဆုံးအပိုင်း
+            Throughput mode က EFS က data ကို ဘယ်လောက်မြန်မြန် ဖတ်ရှု/ရေးသားပေးနိုင်မလဲ၊ throughput ကို ဘယ်လိုသတ်မှတ်မလဲ ဆိုတာနဲ့ သက်ဆိုင်တယ်။
+            လက်ရှိ AWS documentation မှာ Throughput modes သုံးမျိုးရှိတယ် — Elastic, Bursting, Provisioned။ Elastic က default ဖြစ်ပြီး workload အများစုအတွက် AWS က အကြံပြုထားပါတယ်။ 
+
+            1. Elastic Throughput
+            Default / Recommended
+            - Workload လိုအပ်ချက်အလိုက် throughput ကို အလိုအလျောက် တိုး၊ လျှော့ပေးတယ်။
+            - Peak throughput ကို ကြိုတင်သတ်မှတ်စရာမလိုဘူး။
+            - Unpredictable spikes နဲ့ bursty workloads တွေအတွက် သင့်တော်တယ်။
+            - Throughput အသုံးပြုမှုအပေါ် မူတည်ပြီး ကုန်ကျစရိတ်ရှိတယ်။
+            Example: Genomics analysis အတွက် ဘယ်အချိန် throughput မြင့်မယ်ဆိုတာ မသိတဲ့အခါ။
+
+            2. Bursting Throughput
+            - EFS Standard မှာရှိတဲ့ data ပမာဏအပေါ် မူတည်ပြီး baseline throughput ရရှိတယ်။
+            - Throughput credits ကို စုဆောင်းပြီး လိုအပ်ချိန်မှာ burst လုပ်နိုင်တယ်။
+            - Average usage နည်းပြီး ခဏတာ throughput မြင့်ဖို့လိုတဲ့ workload တွေအတွက် သင့်တော်နိုင်တယ်။
+            - Credits ကုန်သွားရင် burst capacity ကန့်သတ်ခံရနိုင်တယ်။
+            Example: အချိန်အများစု idle ဖြစ်ပြီး ခဏတာ data processing လုပ်တဲ့ workload။
+
+            3. Provisioned Throughput
+            - File system size နဲ့ မသက်ဆိုင်ဘဲ လိုချင်တဲ့ throughput ပမာဏကို သတ်မှတ်နိုင်တယ်။
+            - Throughput လိုအပ်ချက်ကို ကြိုတင်သိထားတဲ့ workload အတွက် အသုံးဝင်တယ်။
+            - Provision လုပ်ထားတဲ့ throughput အတွက် အပိုကုန်ကျစရိတ် ရှိနိုင်တယ်။
+            Example: တစ်နေ့လုံး throughput မြင့်မြင့်နဲ့ အချိန်ကြာကြာ အလုပ်လုပ်ရတဲ့ workload။
+
+ဒီမေးခွန်းမှာ အဓိကက Website clickstream data ကို traffic spike များတဲ့အချိန်မှာပါ data မပျောက်စေဘဲ လက်ခံနိုင်ရမယ်၊ real-time analytics လုပ်နိုင်ရမယ်၊ infrastructure ကိုလည်း decouple လုပ်ပြီး scale လုပ်နိုင်ရမယ် ဆိုတာပါ။
+    ✅ Correct Answer
+    Leverage Amazon Kinesis Data Streams to capture the data from the website and feed it into Amazon Kinesis Data Analytics which can query the data in real time. Lastly, the analyzed feed is output into Amazon Kinesis Data Firehose to persist the data on Amazon S3.
+        1. Architecture ကို နားလည်ကြည့်ရအောင်
+            Website Click Events
+            User clicks / product views
+            Amazon Kinesis Data Streams
+            Streaming data ingestion, buffering and replay
+            Amazon Kinesis Data Analytics
+            Streaming data ကို real-time မှာ transform, aggregate နဲ့ analyze လုပ်တယ်။
+            Amazon Data Firehose
+            Analyzed output ကို destination ဆီ အလိုအလျောက် deliver လုပ်တယ်။
+            Amazon S3
+            Analytics results / historical data storage
+
+            ဒီ architecture မှာ service တစ်ခုချင်းစီရဲ့ တာဝန်က မတူပါဘူး။
+        2. AWS Services တွေရဲ့ တာဝန်
+            Service	အဓိကတာဝန်	Exam မှာ မှတ်ရန်
+            Kinesis Data Streams	Streaming records တွေကို လက်ခံ၊ သိမ်းဆည်းပြီး consumer တွေဆီ ပေးပို့တယ်။	Ingest + buffer + replay
+            Kinesis Data Analytics	Streaming data ကို real-time မှာ SQL သို့မဟုတ် supported streaming application နဲ့ analyze လုပ်တယ်။	Real-time analytics
+            Kinesis Data Firehose	Streaming data ကို S3 စတဲ့ supported destinations တွေဆီ managed delivery လုပ်တယ်။	Delivery / ingestion to destination
+            Amazon Athena	S3 ထဲရှိ data ကို SQL နဲ့ query လုပ်တယ်။	Query stored data
+            Amazon QuickSight	BI dashboards နဲ့ visualizations ပြုလုပ်တယ်။	Business intelligence
+            Amazon SQS	Messages တွေကို queue ထဲမှာ buffer လုပ်ပြီး producer နဲ့ consumer ကို decouple လုပ်တယ်။	Message queue
+        3. သင်ရွေးခဲ့တဲ့ Athena Option ဘာကြောင့် မှားသလဲ?
+            သင်ရွေးခဲ့တဲ့ option က —
+            Kinesis Data Streams → Kinesis Data Firehose → S3 → Athena
+        ဒီ architecture က data ကို S3 မှာ သိမ်းဆည်းပြီး SQL query လုပ်ဖို့ ကောင်းပါတယ်။ ဒါပေမဲ့ မေးခွန်းရဲ့ requirement က streaming data ကို real-time မှာ analyze လုပ်ဖို့ ဖြစ်ပါတယ်။
+            - Athena က S3 ထဲက data ကို query လုပ်တဲ့ service ဖြစ်တယ်။
+            - Data ကို S3 ထဲရောက်အောင် အရင်ပို့ပြီးမှ query လုပ်ရတာကြောင့် streaming analytics pipeline အတွက် အဓိက real-time processing engine မဟုတ်ဘူး။
+            - Kinesis Data Analytics က incoming streaming records တွေကို continuous processing လုပ်ဖို့ ပိုသင့်တော်တယ်။
+            Athena ကို နောက်ပိုင်း historical analysis နဲ့ ad hoc SQL queries အတွက်တော့ အသုံးပြုနိုင်ပါတယ်။
+        4. အခြား Options တွေ ဘာကြောင့် မရွေးရသလဲ?
+            Option	အကြောင်းရင်း
+            Kinesis Data Streams → Firehose → S3 → Athena	S3 data အပေါ် query လုပ်ဖို့ကောင်းပေမဲ့ streaming analytics ကို တိုက်ရိုက်လုပ်တဲ့ architecture မဟုတ်ဘူး။
+            Kinesis Data Streams → Kinesis Data Analytics → Firehose → S3	Streaming data ကို အချိန်နဲ့တပြေးညီ analyze လုပ်ပြီး result ကို durable storage ဆီ ပို့နိုင်တယ်။
+            SQS → EC2 Auto Scaling → Third-party analytics	Decoupling နဲ့ scaling ရနိုင်ပေမဲ့ streaming analytics အတွက် EC2 instances နဲ့ analytics software ကို ကိုယ်တိုင် စီမံရတာ ပိုများတယ်။
+            Kinesis Data Streams → QuickSight → Firehose → S3	QuickSight က BI visualization အတွက်ဖြစ်ပြီး ဒီလို raw streaming records တွေကို တိုက်ရိုက် continuous stream-processing လုပ်တဲ့ service မဟုတ်ဘူး။
+        5. “Without any data loss” ဆိုတာကို သတိထားပါ
+            Kinesis services သုံးခြင်းက data loss risk ကို လျှော့ချနိုင်ပေမဲ့ data loss လုံးဝမဖြစ်ဘူးလို့ အာမခံတာ မဟုတ်ပါဘူး။
+
+            Production မှာ data ကို ပိုမိုယုံကြည်စိတ်ချစွာ ကိုင်တွယ်ဖို့ —
+            - Kinesis Data Streams ရဲ့ retention နဲ့ capacity ကို workload အလိုက် configure လုပ်ပါ။
+            - Consumer errors, throttling နဲ့ processing failures တွေကို monitor လုပ်ပါ။
+            - Retry logic နဲ့ duplicate records ဖြစ်နိုင်မှုကို ထည့်စဉ်းစားပြီး idempotent processing လုပ်ပါ။
+            - Firehose delivery errors နဲ့ destination configuration ကို စောင့်ကြည့်ပါ။
+            နောက်တစ်ချက် — ရွေးချယ်ထားတဲ့ architecture က analyzed feed ကို S3 ဆီ ပို့တာဖြစ်ပါတယ်။ မူရင်း click events အားလုံးကိုပါ သီးခြားသိမ်းဆည်းလိုရင် raw stream ကို S3 ဆီ သီးခြား delivery လုပ်မယ့် path တစ်ခု ထပ်တည်ဆောက်နိုင်ပါတယ်။
+        6. AWS SAA-C03 Exam Memory Trick
+            Kinesis Data Streams → Receive and retain streaming records
+            Kinesis Data Analytics → Analyze streams in real time
+            Kinesis Data Firehose → Deliver records to destinations
+            Amazon Athena → Query data stored in S3
+            Amazon QuickSight → Build dashboards and visualizations
+SNI ဆိုတာဘာလဲ?
+    SNI (Server Name Indication) ဆိုတာ TLS handshake လုပ်တဲ့အချိန် client က ဘယ် hostname ကို ချိတ်ဆက်လိုတယ်ဆိုတာ server ကို အသိပေးတဲ့ TLS extension ဖြစ်ပါတယ်။
+
+    ဥပမာ -
+    - checkout.mycorp.com → Checkout အတွက် certificate
+    - www.mycorp.com → Website အတွက် certificate
+    - yourcorp.com → သက်ဆိုင်ရာ certificate
+    ALB ရဲ့ HTTPS listener မှာ certificate အများအပြားကို attach လုပ်ထားနိုင်ပါတယ်။ Client က hostname ကို SNI မှတစ်ဆင့် ပေးပို့တဲ့အခါ ALB က သင့်တော်တဲ့ certificate ကို ရွေးချယ်ပေးပါတယ်။
+
+    အရေးကြီးချက်: SNI က certificate ရွေးချယ်ပေးတာဖြစ်ပြီး request ကို target group ဆီပို့ပေးတာက ALB ရဲ့ listener rules ဖြစ်ပါတယ်။ အောက်ပါ URL တွေကို path-based routing နဲ့လည်း ခွဲပို့နိုင်ပါတယ်။
+    - yourcorp.com/profile → Profile target group
+    - yourcorp.com/search → Search target group
+Use SSL certificates with SNI:
+    ALB တစ်ခုတည်းမှာ certificate အများအပြား attach လုပ်ပြီး domain အလိုက် certificate ရွေးချယ်နိုင်ပါတယ်။
+    ဘာကြောင့် မရွေးသင့်သလဲ
+    Change ELB SSL Security Policy: TLS versions နဲ့ cipher suites စတာတွေကို သတ်မှတ်ပေးတာပါ။ Domain အများအတွက် certificate ခွဲရွေးပေးတဲ့ ဖြေရှင်းချက်မဟုတ်ပါ။
+    Use a wildcard SSL certificate: *.mycorp.com က checkout.mycorp.com နဲ့ www.mycorp.com လို subdomains တွေအတွက် အသုံးဝင်ပါတယ်။ ဒါပေမဲ့ yourcorp.com ဆိုတဲ့ အခြား domain ကို အလိုအလျောက် cover မလုပ်ပါဘူး။
+    Use an HTTP to HTTPS redirect: HTTP request ကို HTTPS သို့ redirect လုပ်ပေးတာပါ။ Domain အများအတွက် မတူညီတဲ့ certificates ကို ရွေးချယ်ပေးတဲ့နည်းလမ်း မဟုတ်ပါ။
+
+    EventBridge ဘယ်လိုအလုပ်လုပ်သလဲ?
+        SaaS Application
+        Event / Update ထုတ်ပေးခြင်း
+
+        Amazon EventBridge
+        Event Bus + Rules + Event Routing
+
+        AWS Lambda
+        In-house app
+
+        Third-party
+        Partner integration
+
+        ဥပမာ CRM မှာ customer အသစ်တစ်ယောက် register လုပ်လိုက်တယ်ဆိုပါစို့။
+            1. SaaS application က customer-created event ကို ထုတ်ပေးတယ်။
+            2. EventBridge က event ကို လက်ခံတယ်။
+            3. သတ်မှတ်ထားတဲ့ rules အရ ဘယ် target တွေဆီ ပို့မလဲ ဆုံးဖြတ်တယ်။
+            4. သက်ဆိုင်ရာ AWS services သို့မဟုတ် third-party SaaS partner တွေဆီ event ကို route လုပ်ပေးတယ်။
+                ဒါကြောင့် application တစ်ခုနဲ့တစ်ခု တိုက်ရိုက်ချိတ်ဆက်ပြီး အမြဲတမ်းအပြန်အလှန်စောင့်ဆိုင်းနေဖို့ မလိုတော့ပါဘူး။
+            2. EventBridge vs SQS vs SNS vs ELB
+            Service	အဓိကအသုံးပြုမှု	ဒီမေးခွန်းမှာ
+                Amazon EventBridge	Event-driven architecture, SaaS integrations, event filtering and routing	အဖြေမှန်
+                Amazon SQS	Queue ထဲမှာ message သိမ်းထားပြီး consumer က process လုပ်ခြင်း	Queue-based decoupling အတွက် ကောင်းပေမဲ့ SaaS integration က အဓိကလိုအပ်ချက်ဖြစ်နေတယ်
+                Amazon SNS	Pub/sub notifications, message fan-out	Subscribers အများအပြားဆီ message ပို့ဖို့ ကောင်းတယ်
+                Elastic Load Balancing	Incoming traffic ကို targets အများအပြားဆီ ဖြန့်ဝေခြင်း	Application တွေကို asynchronous event bus အဖြစ် decouple မလုပ်ပေးဘူး
+                EventBridge နဲ့ SQS ဘာကွာသလဲ?
+                - EventBridge = ဘယ် event ကို ဘယ် target ဆီ ပို့မလဲဆိုတာ ဆုံးဖြတ်ပေးတယ်။
+                - SQS = Message ကို queue ထဲမှာ သိမ်းထားပြီး consumer အဆင်သင့်ဖြစ်တဲ့အချိန် process လုပ်နိုင်စေတယ်။
+                - SNS = Message တစ်ခုကို subscribers အများအပြားဆီ fan-out လုပ်ပေးတယ်။
+                EventBridge နဲ့ SQS/SNS တို့ဟာ အစားထိုးသုံးရတဲ့ service တွေချည်း မဟုတ်ပါဘူး။ လိုအပ်ရင် EventBridge rule ရဲ့ target အဖြစ် SQS သို့မဟုတ် SNS ကိုပါ သုံးနိုင်ပါတယ်။
+            3. Exam မှာ သတိထားရမယ့်အချက်
+                မေးခွန်းထဲမှာ third-party SaaS application က events တွေ ထုတ်ပေးတယ် ဆိုတာက အရေးကြီးဆုံး clue ပါ။
+                SaaS events + event rules + multiple targets
+                → Amazon EventBridge
+
+                Buffer messages + retry processing + smooth traffic spikes
+                → Amazon SQS
+
+                Broadcast notifications to many subscribers
+                → Amazon SNS
+
+                မှတ်ဉာဏ်လွယ်အောင်: SaaS events → EventBridge, Queue and retries → SQS, Pub/sub fan-out → SNS။
+
+                သတိပြုရန် — EventBridge က event routing ကို asynchronous ပုံစံနဲ့ လုပ်ပေးနိုင်ပေမဲ့ delivery ကို အမြဲတမ်းချက်ချင်း သို့မဟုတ် 
+                တစ်ကြိမ်တည်းသာ ဖြစ်မယ်လို့ မယူဆသင့်ပါဘူး။ 
+                လိုအပ်တဲ့ reliability အတွက် retries, dead-letter queues (DLQs) နဲ့ idempotent processing တို့ကိုပါ စီစဉ်သင့်ပါတယ်။
+
+        ECMP ဆိုတာဘာလဲ?
+            ECMP (Equal Cost Multipath) ဆိုတာ cost တူညီတဲ့ network paths အများအပြားကို routing အတွက် အသုံးပြုနိုင်စေတဲ့ နည်းလမ်းပါ။
+            ဥပမာ၊ VPN tunnel တစ်ခုချင်းစီက traffic အားလုံးကို တစ်ခုတည်းက သယ်ဆောင်ရမယ့်အစား ECMP က traffic flows အများအပြားကို 
+            VPN paths အများအပြားပေါ် ခွဲဝေပို့နိုင်ပါတယ်။ ဒါကြောင့် စုစုပေါင်း throughput တိုးလာနိုင်ပါတယ်။
+
+S3 Bucket Keys ဆိုတာ ဘာလဲ?
+    ပုံမှန် SSE-KMS encryption မှာ S3 က object တစ်ခုချင်းစီအတွက် data key ရယူရာမှာ AWS KMS ကို မကြာခဏ request လုပ်ရနိုင်ပါတယ်။
+    Object အရေအတွက်များပြီး upload များလာတဲ့အခါ KMS request cost တက်လာနိုင်ပါတယ်။
+    S3 Bucket Keys ကို enable လုပ်လိုက်ရင် S3 က bucket-level key ကို အသုံးပြုပြီး KMS ဆီ တိုက်ရိုက်သွားရတဲ့ request အရေအတွက်ကို လျှော့ချနိုင်ပါတယ်။
+
+Amazon Transcribe + Amazon Athena
+    Audio to text → Amazon Transcribe
+    Ad-hoc SQL queries on S3 → Amazon Athena
+    Sentiment analysis → Amazon Comprehend သို့မဟုတ် အခြား NLP model
+    Visual dashboards and reporting → Amazon QuickSight
+
+    AWS service	Why it is correct or incorrect
+    Amazon Transcribe: Correct for converting audio recordings into text.
+    Amazon Athena: Correct for running ad-hoc SQL queries on data stored in S3. However, Athena does not automatically perform sentiment analysis. You need sentiment labels generated by Amazon Comprehend or another NLP solution.
+    Amazon QuickSight: Incorrect as the primary answer because it is mainly used for dashboards and data visualization, rather than audio transcription or ad-hoc SQL querying.
+    Amazon Kinesis Data Streams: Incorrect because it collects and streams real-time data; it does not transcribe audio by itself.
+    Amazon Alexa: Incorrect because it is not the appropriate AWS analytics service for this architecture.
+
+You can't directly copy data from AWS Snowball Edge devices into Amazon S3 Glacier.
+    Compare all Snow Family members
+        Family member	Typical capacity / scale	Main purpose	SAA-C03 keyword
+        AWS Snowcone	8 TB HDD or 14 TB SSD configurations	Small, portable data collection and edge computing	Small data, remote locations
+        AWS Snowball Edge Storage Optimized	Current documented configuration: 210 TB usable storage	Large-scale data migration and storage-heavy workloads	Terabytes to petabytes
+        AWS Snowball Edge Compute Optimized	Compute-focused; up to 104 vCPUs in the current documented configuration	Run compute workloads locally while collecting or processing data	Edge compute, local processing
+        AWS Snowmobile	Historically up to 100 PB per truck	Extremely large-scale data-center migration	Hundreds of petabytes or exabytes
+    Migration path	Supported in the standard Snowball Edge import workflow?
+        Snowball Edge → S3 Standard	Yes
+        Snowball Edge → S3 Glacier Flexible Retrieval directly	No
+        Snowball Edge → S3 Glacier Deep Archive directly	No
+        Snowball Edge → S3 Standard → S3 Glacier Deep Archive	Yes, using an S3 Lifecycle transition

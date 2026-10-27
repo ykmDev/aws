@@ -1,0 +1,60 @@
+An Auto Scaling group uses a warm pool to speed up scale-out. 
+During off-peak, the team wants scaled-in instances to return to the pool 
+but also needs the total prepared capacity (InService + warm) to stay under a fixed ceiling. 
+Which configuration best meets both goals?
+
+ a.
+Set warm pool MinSize to the target ceiling and rely on the default termination policy so scale-in places instances back into the pool.
+ b.
+Attach a lifecycle hook on EC2_INSTANCE_TERMINATING to pause scale-in and then resume the instance to keep it warm under the desired ceiling.
+ c.
+Enable EC2 hibernation on the launch template and use a target tracking policy to keep prepared capacity near the ceiling during off-peak.
+ d.
+Enable InstanceReusePolicy (ReuseOnScaleIn=true) and set MaxGroupPreparedCapacity to cap combined InService + warm instances.
+
+ans: d.
+-------------------------------------------------
+
+An EC2 Auto Scaling group runs Spot Instances across multiple instance types and Availability Zones. 
+The team wants to act on the Instance rebalance recommendation to reduce disruption by launching replacement capacity 
+before an interruption occurs. Which approach best matches this goal?
+ a.
+Set a Spot MaxPrice in the launch template and choose the capacity-optimized allocation strategy so the group launches replacement capacity when spot prices shift.
+ b.
+Enable Instance Refresh on the Auto Scaling group so a rolling replacement is triggered when instance health or price conditions change.
+ c.
+Enable Capacity Rebalance on the Auto Scaling group so a replacement Spot instance is launched on rebalance recommendation 
+and the old instance is terminated after replacement is ready.
+
+ d.
+Use scheduled scaling with lifecycle hooks to launch extra Spot capacity during peak times and then terminate instances when rebalance recommendations arrive.
+
+ans: c.
+Instance Rebalance Recommendation ဆိုတာဘာလဲ?
+AWS က Spot Instance တစ်ခုကို မကြာခင် interruption ဖြစ်နိုင်တယ် လို့ ခန့်မှန်းရင် Instance Rebalance Recommendation ပေးတယ်။
+ဒါက—
+    “ဒီ Spot Instance က risk ရှိလာပြီ၊ replacement စဉ်းစားပါ”
+ဆိုတဲ့ warning လိုမျိုးပါ။
+Capacity Rebalance က ဘာလုပ်ပေးလဲ?
+ASG မှာ—
+Capacity Rebalance = Enabled
+လုပ်ထားရင် Rebalance Recommendation ရလာတဲ့အခါ ASG က replacement Spot Instance ကို ကြို launch လုပ်ပေးတယ်။
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+
+
+
+
+

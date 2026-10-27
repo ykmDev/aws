@@ -809,5 +809,85 @@ Which AWS service should you use to set up the DLQ?
 
 ans: 3.
 ----------------------------------------------
+Q:A health-care company manages its web application on Amazon EC2 instances running behind Auto Scaling group (ASG). 
+The company provides ambulances for critical patients and needs the application to be reliable. 
+The workload of the company can be managed on 2 Amazon EC2 instances and can peak up to 6 instances when traffic increases.
+As a Solutions Architect, which of the following configurations would you select as the best fit for these requirements?
+
+1)
+The Auto Scaling group should be configured with the minimum capacity set to 4, with 2 instances each in two different AWS Regions. 
+The maximum capacity of the Auto Scaling group should be set to 6
+2)
+The Auto Scaling group should be configured with the minimum capacity set to 2, with 1 instance each in two different Availability Zones.
+The maximum capacity of the Auto Scaling group should be set to 6
+3)
+The Auto Scaling group should be configured with the minimum capacity set to 4, with 2 instances each in two different Availability Zones. 
+The maximum capacity of the Auto Scaling group should be set to 6
+4)
+The Auto Scaling group should be configured with the minimum capacity set to 2 and 
+the maximum capacity set to 6 in a single Availability Zone
+
+ans: 3)
+
+Answer choices နှိုင်းယှဉ်ခြင်း
+Configuration	ဘာကြောင့် မှန်/မှားလဲ
+Min 4, Max 6, AZ ၂ ခု	အဖြေမှန်။ AZ တစ်ခုမှာ instance ၂ ခုစီထားနိုင်ပြီး AZ တစ်ခု ပျက်လျှင် ၂ ခု ကျန်နိုင်တယ်။
+Min 2, Max 6, AZ ၂ ခု	မှား။ AZ တစ်ခု ပျက်လျှင် instance တစ်ခုပဲ ကျန်နိုင်တယ်။
+Min 2, Max 6, AZ တစ်ခု	မှား။ AZ ပျက်လျှင် application instance အားလုံး ထိခိုက်နိုင်တယ်။
+Min 4, Max 6, Region ၂ ခု	မှား။ ပုံမှန် EC2 Auto Scaling Group တစ်ခုက AWS Region တစ်ခုအတွင်းမှာပဲ AZ များစွာကို အသုံးပြုနိုင်တယ်။
+
+Comparison: Cost vs High Availability
+Configuration	ပုံမှန်အချိန်	AZ တစ်ခု ပျက်သွားရင်	Cost
+Min 2, Max 6, AZ ၂ ခု	2 instances	1 instance ကျန်နိုင်	သက်သာ
+Min 4, Max 6, AZ ၂ ခု	4 instances	2 instances ကျန်နိုင်	ပိုများ
+----------------------------------------------
+Q: The content division at a digital media agency has an application that generates a large number of files on Amazon S3, 
+each approximately 10 megabytes in size. 
+The agency mandates that the files be stored for 5 years before they can be deleted. 
+The files are frequently accessed in the first 30 days of the object creation but are rarely accessed after the first 30 days. 
+The files contain critical business data that is not easy to reproduce, therefore, immediate accessibility is always required.
+Which solution is the MOST cost-effective for the given use case?
+
+1)
+Set up an Amazon S3 bucket lifecycle policy to move files from Amazon S3 Standard to Amazon S3 Standard-IA 30 days after object creation. 
+Archive the files to Amazon S3 Glacier Deep Archive 5 years after object creation
+2)
+Set up an Amazon S3 bucket lifecycle policy to move files from Amazon S3 Standard to Amazon S3 One Zone-IA 30 days after object creation. 
+Delete the files 5 years after object creation
+3)
+Set up an Amazon S3 bucket lifecycle policy to move files from Amazon S3 Standard to Amazon S3 Standard-IA 30 days after object creation. 
+Delete the files 5 years after object creation
+4)
+Set up an Amazon S3 bucket lifecycle policy to move files from Amazon S3 Standard to Amazon S3 Glacier Flexible Retrieval 30 days after object creation. 
+Delete the files 5 years after object creation
+
+ans: 3)
+
+S3 Lifecycle policy မှာ action နှစ်ခု သတ်မှတ်နိုင်ပါတယ်။
+- Transition action: Object ဖန်တီးပြီး 30 ရက်အကြာမှာ Standard-IA သို့ ပြောင်းမယ်။
+- Expiration action: Object ဖန်တီးပြီး 5 နှစ်အကြာမှာ ဖျက်မယ်။
+သတိပြုရန် — Standard-IA မှာ object တစ်ခုချင်းစီအတွက် minimum storage duration 30 days ရှိပြီး retrieval charges လည်း ရှိပါတယ်။
+2. Why are the other options incorrect?
+Option	Why incorrect?
+Standard → Glacier Flexible Retrieval after 30 days → Delete after 5 years	Glacier Flexible Retrieval ရဲ့ ပုံမှန် retrieval က မိနစ်ပိုင်းကနေ နာရီပိုင်းအထိ ကြာနိုင်ပါတယ်။ Immediate/low-latency access လိုအပ်တဲ့ use case အတွက် မသင့်တော်ပါ။
+Standard → Standard-IA after 30 days → Glacier Deep Archive after 5 years	Data ကို 5 နှစ်ပြည့်ရင် ဖျက်ဖို့ သတ်မှတ်ထားတာဖြစ်တဲ့အတွက် အဲဒီအချိန်မှာ archive ထပ်လုပ်တာ မလိုအပ်ပါ။ Archive လုပ်ပြီး နောက်မှဖျက်မယ်ဆိုရင် အပိုကုန်ကျစရိတ်နဲ့ lifecycle complexity ဖြစ်နိုင်ပါတယ်။
+Standard → One Zone-IA after 30 days → Delete after 5 years	One Zone-IA က data ကို AZ တစ်ခုတည်းမှာသာ သိမ်းပါတယ်။ Business-critical data ဖြစ်ပြီး အလွယ်တကူ ပြန်မဖန်တီးနိုင်တဲ့အတွက် AZ-level failure ကြောင့် data ဆုံးရှုံးနိုင်ခြေ ပိုမြင့်တဲ့ ဒီရွေးချယ်မှုကို မရွေးသင့်ပါ။
+Standard → Standard-IA after 30 days → Delete after 5 years	Correct. Data ကို ပထမအချိန်မှာ မြန်မြန် access လုပ်နိုင်ပြီး၊ နောက်ပိုင်း storage cost ကို လျှော့ချနိုင်ပါတယ်။ 5 နှစ်အကြာမှာလည်း သတ်မှတ်ထားတဲ့အတိုင်း ဖျက်နိုင်ပါတယ်။
+
+S3 Storage Classes comparison
+Storage class	Access / retrieval	Resilience	Best use case
+S3 Standard	Milliseconds, frequent access	Multiple AZs	Frequently accessed data
+S3 Standard-IA	Milliseconds, retrieval fee	Multiple AZs	Infrequently accessed but quickly needed data
+S3 One Zone-IA	Milliseconds, retrieval fee	One AZ	Re-creatable secondary copies
+S3 Glacier Flexible Retrieval	Minutes to hours, depending on retrieval tier	Multiple AZs	Archive data that may need retrieval
+S3 Glacier Deep Archive	Typically hours	Multiple AZs	Very long-term, rarely accessed archive data
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
+----------------------------------------------
 ----------------------------------------------
 ----------------------------------------------
